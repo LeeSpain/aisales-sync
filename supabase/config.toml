@@ -1,13 +1,1 @@
-project_id = "yixnijizjjgzlfffgcpu"
-
-[functions.ai-chat]
-verify_jwt = false
-
-[functions.discover-leads]
-verify_jwt = false
-
-[functions.score-lead]
-verify_jwt = false
-
-[functions.generate-outreach]
-verify_jwt = false
+{ "project_id": "REPLACE_WITH_PROJECT_ID" }
