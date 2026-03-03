@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
 import { Zap, UserCheck, MailOpen, TrendingUp, PhoneCall, Users, Target, CalendarCheck, FileText, Handshake } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const stats = [
   { label: "Leads Found", key: "leads", icon: UserCheck, color: "text-primary" },
@@ -59,9 +62,9 @@ const Dashboard = () => {
     qualified: campaigns?.reduce((s, c) => s + (c.leads_qualified || 0), 0) || 0,
     messages: campaigns?.reduce((s, c) => s + (c.emails_sent || 0), 0) || 0,
     replies: campaigns?.reduce((s, c) => s + (c.replies_received || 0), 0) || 0,
-    meetings: campaigns?.reduce((s, c) => s + (c.meetings_booked || 0), 0) || 0,
-    proposals: campaigns?.reduce((s, c) => s + (c.proposals_sent || 0), 0) || 0,
-    deals: campaigns?.reduce((s, c) => s + (c.deals_won || 0), 0) || 0,
+    meetings: campaigns?.reduce((s, c) => s + ((c as any).meetings_booked || 0), 0) || 0,
+    proposals: campaigns?.reduce((s, c) => s + ((c as any).proposals_sent || 0), 0) || 0,
+    deals: campaigns?.reduce((s, c) => s + ((c as any).deals_won || 0), 0) || 0,
     calls: campaigns?.reduce((s, c) => s + (c.calls_made || 0), 0) || 0,
   };
 

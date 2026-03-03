@@ -2,7 +2,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Target, Users, Mail, MessageSquare } from "lucide-react";
+import { ArrowLeft, Target, Users, Mail, MessageSquare, Workflow } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const statusColors: Record<string, string> = {
@@ -47,7 +47,7 @@ const CampaignDetail = () => {
   const { data: messages } = useQuery({
     queryKey: ["campaign-messages", id],
     queryFn: async () => {
-      const { data } = await supabase.from("outreach_messages").select("*").eq("campaign_id", id!).order("created_at", { ascending: false });
+      const { data } = await supabase.from("outreach_emails").select("*").eq("campaign_id", id!).order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!id,
@@ -69,6 +69,10 @@ const CampaignDetail = () => {
           <p className="text-muted-foreground">{campaign.target_description}</p>
         </div>
         <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary uppercase">{campaign.status}</span>
+        <Button size="sm" variant="outline" className="gap-1.5 ml-2" onClick={() => navigate(`/campaigns/${id}/sequence`)}>
+          <Workflow className="h-3.5 w-3.5" />
+          Design Sequence
+        </Button>
       </div>
 
       {/* Stats */}
@@ -78,9 +82,9 @@ const CampaignDetail = () => {
           { label: "Qualified", value: campaign.leads_qualified, icon: Target },
           { label: "Messages Sent", value: campaign.emails_sent, icon: Mail },
           { label: "Replies", value: campaign.replies_received, icon: MessageSquare },
-          { label: "Meetings", value: campaign.meetings_booked || 0, icon: Target },
-          { label: "Proposals", value: campaign.proposals_sent || 0, icon: Target },
-          { label: "Deals Won", value: campaign.deals_won || 0, icon: Target },
+          { label: "Meetings", value: (campaign as any).meetings_booked || 0, icon: Target },
+          { label: "Proposals", value: (campaign as any).proposals_sent || 0, icon: Target },
+          { label: "Deals Won", value: (campaign as any).deals_won || 0, icon: Target },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground">{s.label}</p>

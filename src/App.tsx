@@ -31,6 +31,8 @@ import Proposals from "./pages/Proposals";
 import Reports from "./pages/Reports";
 import SettingsPage from "./pages/Settings";
 import Billing from "./pages/Billing";
+import SequenceDesigner from "./pages/SequenceDesigner";
+import ProposalDetail from "./pages/ProposalDetail";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -40,6 +42,8 @@ import AdminEmailConfig from "./pages/admin/AdminEmailConfig";
 import AdminBilling from "./pages/admin/AdminBilling";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminActivity from "./pages/admin/AdminActivity";
+import AdminClientDetail from "./pages/admin/AdminClientDetail";
+import AdminDataSources from "./pages/admin/AdminDataSources";
 
 const queryClient = new QueryClient();
 
@@ -68,6 +72,7 @@ const App = () => (
             {/* Protected - Full screen (no layout) */}
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/campaigns/new" element={<ProtectedRoute><AppLayout><CampaignNew /></AppLayout></ProtectedRoute>} />
+            <Route path="/campaigns/:id/sequence" element={<ProtectedRoute><AppLayout><SequenceDesigner /></AppLayout></ProtectedRoute>} />
 
             {/* Protected - With app layout */}
             <Route path="/dashboard" element={<ProtectedWithLayout><Dashboard /></ProtectedWithLayout>} />
@@ -79,6 +84,7 @@ const App = () => (
             <Route path="/calls" element={<ProtectedWithLayout><Calls /></ProtectedWithLayout>} />
             <Route path="/pipeline" element={<ProtectedWithLayout><Pipeline /></ProtectedWithLayout>} />
             <Route path="/proposals" element={<ProtectedWithLayout><Proposals /></ProtectedWithLayout>} />
+            <Route path="/proposals/:id" element={<ProtectedWithLayout><ProposalDetail /></ProtectedWithLayout>} />
             <Route path="/reports" element={<ProtectedWithLayout><Reports /></ProtectedWithLayout>} />
             <Route path="/settings" element={<ProtectedWithLayout><SettingsPage /></ProtectedWithLayout>} />
             <Route path="/billing" element={<ProtectedWithLayout><Billing /></ProtectedWithLayout>} />
@@ -86,11 +92,13 @@ const App = () => (
             {/* Admin */}
             <Route path="/admin" element={<ProtectedWithLayout><AdminDashboard /></ProtectedWithLayout>} />
             <Route path="/admin/clients" element={<ProtectedWithLayout><AdminClients /></ProtectedWithLayout>} />
+            <Route path="/admin/clients/:id" element={<ProtectedWithLayout><AdminClientDetail /></ProtectedWithLayout>} />
             <Route path="/admin/ai-config" element={<ProtectedWithLayout><AdminAIConfig /></ProtectedWithLayout>} />
             <Route path="/admin/email-config" element={<ProtectedWithLayout><AdminEmailConfig /></ProtectedWithLayout>} />
             <Route path="/admin/billing" element={<ProtectedWithLayout><AdminBilling /></ProtectedWithLayout>} />
             <Route path="/admin/settings" element={<ProtectedWithLayout><AdminSettings /></ProtectedWithLayout>} />
             <Route path="/admin/activity" element={<ProtectedWithLayout><AdminActivity /></ProtectedWithLayout>} />
+            <Route path="/admin/data-sources" element={<ProtectedWithLayout><AdminDataSources /></ProtectedWithLayout>} />
 
             <Route path="*" element={<NotFound />} />
           </Routes>
