@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          actions_taken: Json | null
+          ai_model_used: string | null
+          company_id: string | null
+          content: string
+          context: string | null
+          created_at: string
+          id: string
+          profile_id: string
+          role: string
+        }
+        Insert: {
+          actions_taken?: Json | null
+          ai_model_used?: string | null
+          company_id?: string | null
+          content: string
+          context?: string | null
+          created_at?: string
+          id?: string
+          profile_id: string
+          role: string
+        }
+        Update: {
+          actions_taken?: Json | null
+          ai_model_used?: string | null
+          company_id?: string | null
+          content?: string
+          context?: string | null
+          created_at?: string
+          id?: string
+          profile_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           ai_profile: Json | null
