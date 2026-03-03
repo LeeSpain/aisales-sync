@@ -56,6 +56,24 @@ const API_KEYS: ApiKeyConfig[] = [
     docsUrl: "https://serpapi.com/dashboard",
   },
   {
+    id: "apollo_api",
+    label: "Apollo API Key",
+    envName: "APOLLO_API_KEY",
+    description: "For B2B prospect discovery and enrichment. Get it from your Apollo.io settings.",
+    icon: Globe,
+    category: "Lead Discovery",
+    docsUrl: "https://apollo.io/settings/api",
+  },
+  {
+    id: "linkedin_cookie",
+    label: "LinkedIn session cookie (li_at)",
+    envName: "LINKEDIN_SESSION_COOKIE",
+    description: "For LinkedIn out-bound sequences and search. Grab 'li_at' cookie from browser.",
+    icon: Globe,
+    category: "Lead Discovery",
+    docsUrl: "https://linkedin.com",
+  },
+  {
     id: "sendgrid",
     label: "SendGrid API Key",
     envName: "SENDGRID_API_KEY",
@@ -185,7 +203,7 @@ const AdminSettings = () => {
 
       <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 mb-8">
         <p className="text-sm text-amber-200">
-          <strong>Important:</strong> After entering a key here, you also need to add it as a backend secret with the exact name shown. 
+          <strong>Important:</strong> After entering a key here, you also need to add it as a backend secret with the exact name shown.
           This page tracks which keys are configured — the actual secrets are stored securely in the backend.
         </p>
       </div>

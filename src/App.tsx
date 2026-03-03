@@ -26,6 +26,9 @@ import Leads from "./pages/Leads";
 import LeadDetail from "./pages/LeadDetail";
 import Inbox from "./pages/Inbox";
 import Calls from "./pages/Calls";
+import Pipeline from "./pages/Pipeline";
+import Proposals from "./pages/Proposals";
+import Reports from "./pages/Reports";
 import SettingsPage from "./pages/Settings";
 import Billing from "./pages/Billing";
 
@@ -74,6 +77,9 @@ const App = () => (
             <Route path="/leads/:id" element={<ProtectedWithLayout><LeadDetail /></ProtectedWithLayout>} />
             <Route path="/inbox" element={<ProtectedWithLayout><Inbox /></ProtectedWithLayout>} />
             <Route path="/calls" element={<ProtectedWithLayout><Calls /></ProtectedWithLayout>} />
+            <Route path="/pipeline" element={<ProtectedWithLayout><Pipeline /></ProtectedWithLayout>} />
+            <Route path="/proposals" element={<ProtectedWithLayout><Proposals /></ProtectedWithLayout>} />
+            <Route path="/reports" element={<ProtectedWithLayout><Reports /></ProtectedWithLayout>} />
             <Route path="/settings" element={<ProtectedWithLayout><SettingsPage /></ProtectedWithLayout>} />
             <Route path="/billing" element={<ProtectedWithLayout><Billing /></ProtectedWithLayout>} />
 

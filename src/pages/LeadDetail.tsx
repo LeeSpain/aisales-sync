@@ -17,10 +17,10 @@ const LeadDetail = () => {
     enabled: !!id,
   });
 
-  const { data: emails } = useQuery({
-    queryKey: ["lead-emails", id],
+  const { data: outreachMessages } = useQuery({
+    queryKey: ["lead-outreach", id],
     queryFn: async () => {
-      const { data } = await supabase.from("outreach_emails").select("*").eq("lead_id", id!).order("created_at", { ascending: false });
+      const { data } = await supabase.from("outreach_messages").select("*").eq("lead_id", id!).order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!id,
@@ -77,6 +77,15 @@ const LeadDetail = () => {
               {lead.contact_role && <p className="text-sm"><span className="text-muted-foreground">Role:</span> {lead.contact_role}</p>}
               {lead.contact_email && <p className="text-sm"><span className="text-muted-foreground">Email:</span> {lead.contact_email}</p>}
               {lead.contact_phone && <p className="text-sm"><span className="text-muted-foreground">Phone:</span> {lead.contact_phone}</p>}
+              {lead.contact_linkedin_url && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">LinkedIn:</span>{" "}
+                  <a href={lead.contact_linkedin_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">View Profile</a>
+                </p>
+              )}
+              {lead.enrichment_source && (
+                <p className="text-xs text-muted-foreground capitalize mt-2">Source: {lead.enrichment_source}</p>
+              )}
             </>
           ) : (
             <p className="text-sm text-muted-foreground">No contact info discovered yet</p>
@@ -91,22 +100,26 @@ const LeadDetail = () => {
 
       {/* Emails timeline */}
       <div className="mt-6 rounded-xl border border-border bg-card p-6">
-        <h3 className="font-semibold mb-4">Outreach History ({emails?.length || 0})</h3>
-        {emails && emails.length > 0 ? (
+        <h3 className="font-semibold mb-4">Outreach History ({outreachMessages?.length || 0})</h3>
+        {outreachMessages && outreachMessages.length > 0 ? (
           <div className="space-y-4">
-            {emails.map((email) => (
-              <div key={email.id} className="border-l-2 border-primary/30 pl-4">
+            {outreachMessages.map((msg) => (
+              <div key={msg.id} className="border-l-2 border-primary/30 pl-4">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-medium uppercase text-primary">{email.email_type.replace("_", " ")}</span>
-                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium capitalize", email.status === "sent" ? "bg-success/10 text-success" : "bg-muted text-muted-foreground")}>{email.status}</span>
+                  <span className="text-xs font-medium uppercase text-primary">{msg.channel}</span>
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium capitalize",
+                    msg.status === "sent" ? "bg-success/10 text-success" :
+                      msg.status === "pending_manual" ? "bg-warning/10 text-warning" :
+                        "bg-muted text-muted-foreground"
+                  )}>{msg.status === "pending_manual" ? "ready to send" : msg.status}</span>
                 </div>
-                <p className="text-sm font-medium">{email.subject}</p>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{email.body}</p>
+                {msg.subject && <p className="text-sm font-medium">{msg.subject}</p>}
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{msg.body}</p>
               </div>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">No outreach emails yet</p>
+          <p className="text-sm text-muted-foreground">No outreach messages yet</p>
         )}
       </div>
     </div>

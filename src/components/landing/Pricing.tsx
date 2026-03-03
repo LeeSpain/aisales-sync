@@ -12,9 +12,9 @@ const tiers = [
     features: [
       "3 active campaigns",
       "500 leads/month",
-      "100 emails/month",
-      "AI reply handling",
-      "Dashboard & reporting",
+      "100 messages/month",
+      "Basic sequences",
+      "Weekly report",
     ],
   },
   {
@@ -25,9 +25,12 @@ const tiers = [
     features: [
       "10 active campaigns",
       "2,000 leads/month",
-      "500 emails/month",
-      "AI voice calls (50/mo)",
-      "Weekly AI report",
+      "500 messages/month",
+      "Multi-channel sequences",
+      "50 AI calls/mo",
+      "5 proposals/mo",
+      "Deal pipeline",
+      "Strategy AI",
     ],
   },
   {
@@ -36,10 +39,9 @@ const tiers = [
     monthly: "Custom",
     features: [
       "Unlimited everything",
-      "Dedicated account manager",
       "Custom AI training",
+      "Dedicated account manager",
       "API access",
-      "Priority support",
     ],
   },
 ];
@@ -51,7 +53,7 @@ const Pricing = () => {
         <div className="mb-16 text-center">
           <h2 className="mb-4 text-3xl font-bold md:text-4xl">Simple Pricing</h2>
           <p className="mx-auto max-w-xl text-muted-foreground">
-            Setup fee + monthly subscription. No hidden costs. Cancel anytime after 6 months.
+            Setup fee + monthly subscription. Full pipeline included. No hidden costs. Cancel anytime after 6 months.
           </p>
         </div>
 

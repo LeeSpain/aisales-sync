@@ -6,7 +6,7 @@ import ChatPanel from "@/components/chat/ChatPanel";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Target, Users, Mail, Phone, Settings,
-  LogOut, Zap, MessageCircle, CreditCard,
+  LogOut, Zap, MessageCircle, CreditCard, FileText, BarChart3, Columns3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -15,8 +15,11 @@ const navItems = [
   { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { label: "Campaigns", icon: Target, path: "/campaigns" },
   { label: "Leads", icon: Users, path: "/leads" },
+  { label: "Pipeline", icon: Columns3, path: "/pipeline" },
+  { label: "Proposals", icon: FileText, path: "/proposals" },
   { label: "Inbox", icon: Mail, path: "/inbox" },
   { label: "Calls", icon: Phone, path: "/calls" },
+  { label: "Reports", icon: BarChart3, path: "/reports" },
   { label: "Settings", icon: Settings, path: "/settings" },
   { label: "Billing", icon: CreditCard, path: "/billing" },
 ];
@@ -31,8 +34,23 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const location = useLocation();
   const [chatOpen, setChatOpen] = useState(false);
 
+  const contextMap: Record<string, any> = {
+    "/dashboard": "dashboard",
+    "/campaigns": "campaign_setup",
+    "/leads": "dashboard",
+    "/pipeline": "deal_review",
+    "/proposals": "proposal_review",
+    "/inbox": "reply_management",
+    "/calls": "call_review",
+    "/reports": "strategy",
+    "/settings": "settings",
+  };
+  const currentContext = Object.entries(contextMap).find(([path]) =>
+    location.pathname.startsWith(path)
+  )?.[1] || "general";
+
   const { messages, isLoading, error, sendMessage, cancel } = useAIChat({
-    context: "dashboard",
+    context: currentContext,
   });
 
   return (

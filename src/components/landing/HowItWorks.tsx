@@ -5,19 +5,19 @@ const steps = [
   {
     num: "01",
     title: "Tell the AI about your business",
-    desc: "No forms. Just talk. The AI researches your website and builds your complete sales profile in minutes.",
+    desc: "No forms. Just chat. The AI researches your website, builds your sales profile, and defines your ideal client persona in minutes.",
     icon: MessageSquare,
   },
   {
     num: "02",
-    title: "AI hunts and qualifies leads",
-    desc: "Finds prospects, visits their websites, scores them 1-5 on fit, and throws away anything below 3.5.",
+    title: "AI finds and qualifies leads",
+    desc: "Discovers prospects across Google, Apollo, and LinkedIn. Visits their websites, enriches contact data, scores them 1–5, and builds a qualified pipeline automatically.",
     icon: Target,
   },
   {
     num: "03",
-    title: "Personalised outreach on autopilot",
-    desc: "Every email references the prospect's specific business. AI handles replies, objections, and books calls.",
+    title: "Full pipeline on autopilot",
+    desc: "Multi-channel sequences across email, LinkedIn, and calls. AI handles every reply, books meetings, generates proposals, and tracks deals to close.",
     icon: Zap,
   },
 ];
@@ -29,7 +29,7 @@ const HowItWorks = () => {
         <div className="mb-16 text-center">
           <h2 className="mb-4 text-3xl font-bold md:text-4xl">How It Works</h2>
           <p className="mx-auto max-w-xl text-muted-foreground">
-            Three steps to autonomous sales. Set it up once, watch leads convert.
+            Three steps from zero to signed contracts. Set it up once, the AI runs your entire sales pipeline.
           </p>
         </div>
 

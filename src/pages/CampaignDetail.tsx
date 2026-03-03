@@ -7,12 +7,19 @@ import { cn } from "@/lib/utils";
 
 const statusColors: Record<string, string> = {
   discovered: "bg-muted text-muted-foreground",
+  researched: "bg-muted text-muted-foreground",
   scored: "bg-primary/10 text-primary",
   qualified: "bg-success/10 text-success",
+  sequence_active: "bg-accent/10 text-accent",
   contacted: "bg-accent/10 text-accent",
   replied: "bg-warning/10 text-warning",
+  in_conversation: "bg-warning/10 text-warning",
+  meeting_booked: "bg-success/10 text-success",
+  proposal_sent: "bg-primary/10 text-primary",
+  negotiating: "bg-warning/10 text-warning",
   converted: "bg-success/10 text-success",
   rejected: "bg-destructive/10 text-destructive",
+  unresponsive: "bg-muted text-muted-foreground",
 };
 
 const CampaignDetail = () => {
@@ -37,10 +44,10 @@ const CampaignDetail = () => {
     enabled: !!id,
   });
 
-  const { data: emails } = useQuery({
-    queryKey: ["campaign-emails", id],
+  const { data: messages } = useQuery({
+    queryKey: ["campaign-messages", id],
     queryFn: async () => {
-      const { data } = await supabase.from("outreach_emails").select("*").eq("campaign_id", id!).order("created_at", { ascending: false });
+      const { data } = await supabase.from("outreach_messages").select("*").eq("campaign_id", id!).order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!id,
@@ -65,13 +72,15 @@ const CampaignDetail = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-8">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 mb-8">
         {[
           { label: "Leads Found", value: campaign.leads_found, icon: Users },
           { label: "Qualified", value: campaign.leads_qualified, icon: Target },
-          { label: "Emails Sent", value: campaign.emails_sent, icon: Mail },
+          { label: "Messages Sent", value: campaign.emails_sent, icon: Mail },
           { label: "Replies", value: campaign.replies_received, icon: MessageSquare },
-          { label: "Calls Made", value: campaign.calls_made, icon: Target },
+          { label: "Meetings", value: campaign.meetings_booked || 0, icon: Target },
+          { label: "Proposals", value: campaign.proposals_sent || 0, icon: Target },
+          { label: "Deals Won", value: campaign.deals_won || 0, icon: Target },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -103,7 +112,7 @@ const CampaignDetail = () => {
             ))}
           </div>
         ) : (
-          <div className="py-12 text-center text-sm text-muted-foreground">No leads yet. The AI will populate leads when the campaign starts hunting.</div>
+          <div className="py-12 text-center text-sm text-muted-foreground">No leads yet. The AI will discover and enrich leads when the campaign starts running.</div>
         )}
       </div>
     </div>

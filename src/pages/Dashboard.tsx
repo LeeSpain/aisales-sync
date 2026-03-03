@@ -1,15 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Zap, UserCheck, MailOpen, TrendingUp, PhoneCall, Users } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { Zap, UserCheck, MailOpen, TrendingUp, PhoneCall, Users, Target, CalendarCheck, FileText, Handshake } from "lucide-react";
 
 const stats = [
   { label: "Leads Found", key: "leads", icon: UserCheck, color: "text-primary" },
-  { label: "Emails Sent", key: "emails", icon: MailOpen, color: "text-accent" },
+  { label: "Qualified", key: "qualified", icon: Target, color: "text-primary" },
+  { label: "Messages Sent", key: "messages", icon: MailOpen, color: "text-accent" },
   { label: "Replies", key: "replies", icon: TrendingUp, color: "text-success" },
+  { label: "Meetings", key: "meetings", icon: CalendarCheck, color: "text-warning" },
+  { label: "Proposals", key: "proposals", icon: FileText, color: "text-accent" },
+  { label: "Deals Won", key: "deals", icon: Handshake, color: "text-success" },
   { label: "Calls Made", key: "calls", icon: PhoneCall, color: "text-warning" },
 ];
 
@@ -55,18 +56,30 @@ const Dashboard = () => {
 
   const totals = {
     leads: campaigns?.reduce((s, c) => s + (c.leads_found || 0), 0) || 0,
-    emails: campaigns?.reduce((s, c) => s + (c.emails_sent || 0), 0) || 0,
+    qualified: campaigns?.reduce((s, c) => s + (c.leads_qualified || 0), 0) || 0,
+    messages: campaigns?.reduce((s, c) => s + (c.emails_sent || 0), 0) || 0,
     replies: campaigns?.reduce((s, c) => s + (c.replies_received || 0), 0) || 0,
+    meetings: campaigns?.reduce((s, c) => s + (c.meetings_booked || 0), 0) || 0,
+    proposals: campaigns?.reduce((s, c) => s + (c.proposals_sent || 0), 0) || 0,
+    deals: campaigns?.reduce((s, c) => s + (c.deals_won || 0), 0) || 0,
     calls: campaigns?.reduce((s, c) => s + (c.calls_made || 0), 0) || 0,
   };
 
   const statusColor: Record<string, string> = {
+    discovered: "text-muted-foreground bg-muted",
+    researched: "text-muted-foreground bg-muted",
+    scored: "text-primary-light bg-primary/10",
     qualified: "text-success bg-success/10",
+    sequence_active: "text-accent bg-accent/10",
     contacted: "text-primary bg-primary/10",
     replied: "text-accent bg-accent/10",
-    converted: "text-warning bg-warning/10",
-    discovered: "text-muted-foreground bg-muted",
-    scored: "text-primary-light bg-primary/10",
+    in_conversation: "text-accent bg-accent/10",
+    meeting_booked: "text-warning bg-warning/10",
+    proposal_sent: "text-primary bg-primary/10",
+    negotiating: "text-warning bg-warning/10",
+    converted: "text-success bg-success/10",
+    rejected: "text-destructive bg-destructive/10",
+    unresponsive: "text-muted-foreground bg-muted",
   };
 
   return (
@@ -77,7 +90,7 @@ const Dashboard = () => {
       </p>
 
       {/* Stats */}
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-4 grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
         {stats.map((stat) => (
           <div key={stat.label} className="rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30">
             <div className="flex items-center justify-between">
@@ -103,7 +116,7 @@ const Dashboard = () => {
         <p className="text-sm text-muted-foreground leading-relaxed">
           {campaigns && campaigns.length > 0
             ? `You have ${campaigns.length} campaign${campaigns.length > 1 ? "s" : ""} running with ${totals.leads} leads found. ${totals.replies > 0 ? `${totals.replies} replies need attention.` : "Start outreach to begin receiving replies."}`
-            : "Your AI sales engine is ready. Create your first campaign to start discovering leads."}
+            : "Your AI sales team is ready. Create your first campaign to start finding clients and building your pipeline."}
         </p>
         <div className="mt-4 flex gap-2">
           <Button size="sm" className="gradient-primary border-0 text-white hover:opacity-90" onClick={() => navigate("/campaigns")}>
@@ -111,6 +124,9 @@ const Dashboard = () => {
           </Button>
           <Button size="sm" variant="outline" onClick={() => navigate("/leads")}>
             View Leads
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/pipeline")}>
+            View Pipeline
           </Button>
         </div>
       </div>

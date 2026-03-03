@@ -17,7 +17,7 @@ const Hero = () => {
           transition={{ duration: 0.6 }}
         >
           <span className="mb-6 inline-block rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
-            AI-Powered Sales Automation
+            AI-Powered Sales Automation — Find to Close
           </span>
         </motion.div>
 
@@ -27,8 +27,8 @@ const Hero = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
-          Your AI finds clients.{" "}
-          <span className="gradient-text">You close deals.</span>
+          From first contact to{" "}
+          <span className="gradient-text">signed contract.</span>
         </motion.h1>
 
         <motion.p
@@ -37,8 +37,8 @@ const Hero = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          Media Sync hunts for prospects, scores them, writes personalised outreach,
-          handles replies, and makes sales calls. You just watch the leads come in.
+          Media Sync finds your ideal clients, writes personalised outreach across email and LinkedIn,
+          handles every reply, makes AI sales calls, generates proposals, and tracks deals to close. Your AI sales team handles the entire pipeline.
         </motion.p>
 
         <motion.div
@@ -49,7 +49,7 @@ const Hero = () => {
         >
           <Button size="lg" asChild className="gradient-primary border-0 px-8 text-base text-white shadow-lg glow-primary hover:opacity-90">
             <Link to="/signup">
-              Start Free Trial
+              Start Your AI Sales Team
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>

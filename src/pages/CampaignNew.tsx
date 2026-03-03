@@ -28,7 +28,7 @@ const CampaignNew = () => {
     initialMessages: [
       {
         role: "assistant",
-        content: "Let's set up a new campaign! 🎯\n\nTell me — **who do you want to target?** What type of businesses or clients are you looking for? I'll help you define the perfect criteria.",
+        content: "Let's set up a new campaign! 🎯\n\nTell me — **who do you want to target?** What type of businesses or clients are you looking for? I'll help you define the perfect criteria, build a multi-channel outreach sequence, and get your pipeline moving.",
       },
     ],
   });
@@ -42,10 +42,10 @@ const CampaignNew = () => {
         </div>
         <h2 className="mb-2 text-lg font-bold">New Campaign</h2>
         <p className="text-sm text-muted-foreground mb-8">
-          The AI will help you define targets, criteria, and launch your lead discovery campaign.
+          The AI will help you define targets, build sector-specific strategy, design a multi-channel outreach sequence, and launch your campaign.
         </p>
         <div className="space-y-4">
-          {["Target audience", "Geographic focus", "Quality criteria", "Campaign name", "Launch"].map((step, i) => (
+          {["Target audience", "Sector strategy", "Geographic focus", "Outreach sequence", "Campaign name", "Launch"].map((step, i) => (
             <div key={step} className="flex items-center gap-3">
               <div className={`h-2.5 w-2.5 rounded-full ${messages.length > (i + 1) * 2 ? "bg-success" : "bg-border"}`} />
               <span className={`text-sm ${messages.length > (i + 1) * 2 ? "text-foreground" : "text-muted-foreground"}`}>{step}</span>

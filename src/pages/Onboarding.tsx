@@ -19,7 +19,7 @@ const Onboarding = () => {
       {
         role: "assistant",
         content:
-          "Welcome to Media Sync! 🚀 I'm your AI sales engine. I'm going to learn everything about your business so I can start finding you clients.\n\nThis takes about 5 minutes. Let's start simple — **what's your company website?**",
+          "Welcome to Media Sync! 🚀 I'm your AI sales team. I'm going to learn everything about your business so I can start finding clients, running outreach, and building your pipeline.\n\nThis takes about 5 minutes. Let's start simple — **what's your company website?**",
       },
     ],
   });
@@ -72,7 +72,7 @@ const Onboarding = () => {
         </div>
         <h2 className="mb-2 text-xl font-bold">Media Sync</h2>
         <p className="text-center text-sm text-muted-foreground">
-          Your AI is getting to know your business. Once complete, it will start hunting for clients automatically.
+          Your AI sales team is getting to know your business. Once complete, it will start finding clients, running multi-channel outreach, and building your deal pipeline.
         </p>
 
         <div className="mt-12 space-y-4 w-full">
@@ -80,18 +80,17 @@ const Onboarding = () => {
             { label: "Business profile", done: messages.length > 2 },
             { label: "Target markets", done: messages.length > 6 },
             { label: "Differentiators", done: messages.length > 8 },
-            { label: "First campaign", done: messages.length > 10 },
+            { label: "Outreach style", done: messages.length > 10 },
+            { label: "First campaign", done: messages.length > 12 },
           ].map((step) => (
             <div key={step.label} className="flex items-center gap-3">
               <div
-                className={`h-2.5 w-2.5 rounded-full ${
-                  step.done ? "bg-success" : "bg-border"
-                }`}
+                className={`h-2.5 w-2.5 rounded-full ${step.done ? "bg-success" : "bg-border"
+                  }`}
               />
               <span
-                className={`text-sm ${
-                  step.done ? "text-foreground" : "text-muted-foreground"
-                }`}
+                className={`text-sm ${step.done ? "text-foreground" : "text-muted-foreground"
+                  }`}
               >
                 {step.label}
               </span>

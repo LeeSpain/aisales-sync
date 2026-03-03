@@ -43,7 +43,7 @@ const Campaigns = () => {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold">Campaigns</h1>
-          <p className="text-muted-foreground">Manage your lead discovery campaigns</p>
+          <p className="text-muted-foreground">Manage your lead discovery and outreach campaigns</p>
         </div>
         <Button className="gradient-primary border-0 text-white hover:opacity-90" onClick={() => navigate("/campaigns/new")}>
           <Plus className="h-4 w-4 mr-2" /> New Campaign
@@ -71,18 +71,26 @@ const Campaigns = () => {
               {campaign.target_description && (
                 <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{campaign.target_description}</p>
               )}
-              <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="grid grid-cols-5 gap-2 text-center">
                 <div>
                   <p className="text-lg font-bold">{campaign.leads_found}</p>
                   <p className="text-[10px] text-muted-foreground">Leads</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold">{campaign.emails_sent}</p>
-                  <p className="text-[10px] text-muted-foreground">Emails</p>
+                  <p className="text-[10px] text-muted-foreground">Sent</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold">{campaign.replies_received}</p>
                   <p className="text-[10px] text-muted-foreground">Replies</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold">{campaign.meetings_booked || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">Meetings</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold">{campaign.deals_won || 0}</p>
+                  <p className="text-[10px] text-muted-foreground">Deals</p>
                 </div>
               </div>
             </div>
@@ -92,7 +100,7 @@ const Campaigns = () => {
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16">
           <Target className="h-12 w-12 text-muted-foreground/30 mb-4" />
           <h3 className="text-lg font-semibold mb-2">No campaigns yet</h3>
-          <p className="text-sm text-muted-foreground mb-6">Create your first campaign to start discovering leads</p>
+          <p className="text-sm text-muted-foreground mb-6">Create your first campaign to start finding clients and building your pipeline</p>
           <Button className="gradient-primary border-0 text-white hover:opacity-90" onClick={() => navigate("/campaigns/new")}>
             <Plus className="h-4 w-4 mr-2" /> Create Campaign
           </Button>
