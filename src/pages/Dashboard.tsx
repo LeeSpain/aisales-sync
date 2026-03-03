@@ -1,188 +1,178 @@
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { useAIChat } from "@/hooks/useAIChat";
-import ChatPanel from "@/components/chat/ChatPanel";
+import { Zap, UserCheck, MailOpen, TrendingUp, PhoneCall, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  LayoutDashboard, Target, Users, Mail, Phone, Settings,
-  LogOut, Zap, MessageCircle, TrendingUp, UserCheck, MailOpen, PhoneCall,
-} from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
-
-const navItems = [
-  { label: "Dashboard", icon: LayoutDashboard, active: true },
-  { label: "Campaigns", icon: Target },
-  { label: "Leads", icon: Users },
-  { label: "Inbox", icon: Mail, badge: 0 },
-  { label: "Calls", icon: Phone },
-  { label: "Settings", icon: Settings },
-];
 
 const stats = [
-  { label: "Leads Found", value: "—", icon: UserCheck, color: "text-primary" },
-  { label: "Emails Sent", value: "—", icon: MailOpen, color: "text-accent" },
-  { label: "Replies", value: "—", icon: TrendingUp, color: "text-success" },
-  { label: "Calls Made", value: "—", icon: PhoneCall, color: "text-warning" },
+  { label: "Leads Found", key: "leads", icon: UserCheck, color: "text-primary" },
+  { label: "Emails Sent", key: "emails", icon: MailOpen, color: "text-accent" },
+  { label: "Replies", key: "replies", icon: TrendingUp, color: "text-success" },
+  { label: "Calls Made", key: "calls", icon: PhoneCall, color: "text-warning" },
 ];
 
 const Dashboard = () => {
-  const { user, signOut } = useAuth();
-  const [chatOpen, setChatOpen] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const { messages, isLoading, error, sendMessage, cancel } = useAIChat({
-    context: "dashboard",
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("*").eq("id", user!.id).single();
+      return data;
+    },
+    enabled: !!user,
   });
 
+  const { data: campaigns } = useQuery({
+    queryKey: ["campaigns-stats", profile?.company_id],
+    queryFn: async () => {
+      const { data } = await supabase.from("campaigns").select("*").eq("company_id", profile!.company_id!);
+      return data || [];
+    },
+    enabled: !!profile?.company_id,
+  });
+
+  const { data: recentLeads } = useQuery({
+    queryKey: ["recent-leads", profile?.company_id],
+    queryFn: async () => {
+      const { data } = await supabase.from("leads").select("*").eq("company_id", profile!.company_id!).order("created_at", { ascending: false }).limit(5);
+      return data || [];
+    },
+    enabled: !!profile?.company_id,
+  });
+
+  const { data: recentActivity } = useQuery({
+    queryKey: ["recent-activity", profile?.company_id],
+    queryFn: async () => {
+      const { data } = await supabase.from("activity_log").select("*").eq("company_id", profile!.company_id!).order("created_at", { ascending: false }).limit(10);
+      return data || [];
+    },
+    enabled: !!profile?.company_id,
+  });
+
+  const totals = {
+    leads: campaigns?.reduce((s, c) => s + (c.leads_found || 0), 0) || 0,
+    emails: campaigns?.reduce((s, c) => s + (c.emails_sent || 0), 0) || 0,
+    replies: campaigns?.reduce((s, c) => s + (c.replies_received || 0), 0) || 0,
+    calls: campaigns?.reduce((s, c) => s + (c.calls_made || 0), 0) || 0,
+  };
+
+  const statusColor: Record<string, string> = {
+    qualified: "text-success bg-success/10",
+    contacted: "text-primary bg-primary/10",
+    replied: "text-accent bg-accent/10",
+    converted: "text-warning bg-warning/10",
+    discovered: "text-muted-foreground bg-muted",
+    scored: "text-primary-light bg-primary/10",
+  };
+
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className="flex w-64 flex-col border-r border-border bg-card">
-        <div className="flex h-16 items-center gap-2 border-b border-border px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
-            <Zap className="h-4 w-4 text-white" />
+    <div className="p-8">
+      <h1 className="mb-2 text-2xl font-bold">Dashboard</h1>
+      <p className="text-muted-foreground">
+        Welcome back{user?.email ? `, ${user.email}` : ""}
+      </p>
+
+      {/* Stats */}
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat) => (
+          <div key={stat.label} className="rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">{stat.label}</span>
+              <stat.icon className={cn("h-4 w-4", stat.color)} />
+            </div>
+            <p className="mt-2 text-2xl font-bold">{totals[stat.key as keyof typeof totals]}</p>
           </div>
-          <span className="font-bold">Media Sync</span>
+        ))}
+      </div>
+
+      {/* AI Briefing */}
+      <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-6">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
+            <Zap className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <p className="font-semibold">AI Briefing</p>
+            <p className="text-xs text-muted-foreground">Updated just now</p>
+          </div>
         </div>
-
-        <nav className="flex-1 space-y-1 p-3">
-          {navItems.map((item) => (
-            <button
-              key={item.label}
-              className={cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                item.active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-              {item.badge !== undefined && item.badge > 0 && (
-                <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full gradient-primary text-[10px] font-bold text-white">
-                  {item.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </nav>
-
-        <div className="border-t border-border p-3">
-          <button
-            onClick={signOut}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </button>
-        </div>
-      </aside>
-
-      {/* Main */}
-      <main className="flex-1 p-8">
-        <h1 className="mb-2 text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back{user?.email ? `, ${user.email}` : ""}
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          {campaigns && campaigns.length > 0
+            ? `You have ${campaigns.length} campaign${campaigns.length > 1 ? "s" : ""} running with ${totals.leads} leads found. ${totals.replies > 0 ? `${totals.replies} replies need attention.` : "Start outreach to begin receiving replies."}`
+            : "Your AI sales engine is ready. Create your first campaign to start discovering leads."}
         </p>
+        <div className="mt-4 flex gap-2">
+          <Button size="sm" className="gradient-primary border-0 text-white hover:opacity-90" onClick={() => navigate("/campaigns")}>
+            {campaigns && campaigns.length > 0 ? "View Campaigns" : "Create Campaign"}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => navigate("/leads")}>
+            View Leads
+          </Button>
+        </div>
+      </div>
 
-        {/* Stats */}
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <div
-              key={stat.label}
-              className="rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{stat.label}</span>
-                <stat.icon className={cn("h-4 w-4", stat.color)} />
-              </div>
-              <p className="mt-2 text-2xl font-bold">{stat.value}</p>
+      {/* Content Grid */}
+      <div className="mt-8 grid gap-8 lg:grid-cols-2">
+        {/* Top Leads */}
+        <div className="rounded-xl border border-border bg-card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold">Top Leads</h3>
+            <button onClick={() => navigate("/leads")} className="text-xs text-primary hover:underline">View all</button>
+          </div>
+          {recentLeads && recentLeads.length > 0 ? (
+            <div className="space-y-3">
+              {recentLeads.map((lead) => (
+                <div key={lead.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/50 cursor-pointer" onClick={() => navigate(`/leads/${lead.id}`)}>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
+                    {lead.score?.toFixed(1) || "—"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{lead.business_name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{lead.industry} • {lead.city}</p>
+                  </div>
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium capitalize", statusColor[lead.status] || "text-muted-foreground bg-muted")}>
+                    {lead.status}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            <div className="flex flex-col items-center py-8 text-center">
+              <Users className="h-8 w-8 text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">No leads yet</p>
+            </div>
+          )}
         </div>
 
-        {/* AI Briefing */}
-        <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-6">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
-              <Zap className="h-5 w-5 text-white" />
+        {/* Activity Feed */}
+        <div className="rounded-xl border border-border bg-card p-6">
+          <h3 className="font-semibold mb-4">Recent Activity</h3>
+          {recentActivity && recentActivity.length > 0 ? (
+            <div className="space-y-3">
+              {recentActivity.map((item) => (
+                <div key={item.id} className="flex gap-3">
+                  <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                  <div>
+                    <p className="text-sm">{item.description || item.action}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(item.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div>
-              <p className="font-semibold">AI Briefing</p>
-              <p className="text-xs text-muted-foreground">Updated just now</p>
+          ) : (
+            <div className="flex flex-col items-center py-8 text-center">
+              <TrendingUp className="h-8 w-8 text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">No activity yet</p>
             </div>
-          </div>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Your AI sales engine is ready. Complete your first campaign setup to start discovering leads.
-            Click the chat button to talk to your AI assistant about strategy, targets, or next steps.
-          </p>
-          <div className="mt-4 flex gap-2">
-            <Button
-              size="sm"
-              className="gradient-primary border-0 text-white hover:opacity-90"
-              onClick={() => setChatOpen(true)}
-            >
-              Talk to AI
-            </Button>
-            <Button size="sm" variant="outline">
-              Create Campaign
-            </Button>
-          </div>
+          )}
         </div>
-
-        {/* Placeholder sections */}
-        <div className="mt-8 grid gap-8 lg:grid-cols-2">
-          <div className="rounded-xl border border-dashed border-border p-8 text-center">
-            <Users className="mx-auto h-8 w-8 text-muted-foreground/40 mb-3" />
-            <p className="font-medium text-muted-foreground">Top Leads</p>
-            <p className="mt-1 text-sm text-muted-foreground/60">
-              Leads will appear here once your first campaign runs
-            </p>
-          </div>
-          <div className="rounded-xl border border-dashed border-border p-8 text-center">
-            <TrendingUp className="mx-auto h-8 w-8 text-muted-foreground/40 mb-3" />
-            <p className="font-medium text-muted-foreground">Recent Activity</p>
-            <p className="mt-1 text-sm text-muted-foreground/60">
-              Campaign activity and AI actions will show here
-            </p>
-          </div>
-        </div>
-      </main>
-
-      {/* Floating chat button */}
-      {!chatOpen && (
-        <motion.button
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-2xl gradient-primary shadow-lg glow-primary z-50"
-          onClick={() => setChatOpen(true)}
-        >
-          <MessageCircle className="h-6 w-6 text-white" />
-        </motion.button>
-      )}
-
-      {/* Chat panel */}
-      <AnimatePresence>
-        {chatOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50"
-          >
-            <ChatPanel
-              messages={messages}
-              isLoading={isLoading}
-              error={error}
-              onSend={sendMessage}
-              onCancel={cancel}
-              onClose={() => setChatOpen(false)}
-              title="AI Assistant"
-              placeholder="Ask the AI..."
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 };
