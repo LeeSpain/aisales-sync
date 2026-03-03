@@ -31,7 +31,11 @@ import Billing from "./pages/Billing";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminClients from "./pages/admin/AdminClients";
 import AdminAIConfig from "./pages/admin/AdminAIConfig";
+import AdminEmailConfig from "./pages/admin/AdminEmailConfig";
+import AdminBilling from "./pages/admin/AdminBilling";
+import AdminSettings from "./pages/admin/AdminSettings";
 import AdminActivity from "./pages/admin/AdminActivity";
 
 const queryClient = new QueryClient();
@@ -75,8 +79,11 @@ const App = () => (
 
             {/* Admin */}
             <Route path="/admin" element={<ProtectedWithLayout><AdminDashboard /></ProtectedWithLayout>} />
-            <Route path="/admin/clients" element={<ProtectedWithLayout><AdminDashboard /></ProtectedWithLayout>} />
+            <Route path="/admin/clients" element={<ProtectedWithLayout><AdminClients /></ProtectedWithLayout>} />
             <Route path="/admin/ai-config" element={<ProtectedWithLayout><AdminAIConfig /></ProtectedWithLayout>} />
+            <Route path="/admin/email-config" element={<ProtectedWithLayout><AdminEmailConfig /></ProtectedWithLayout>} />
+            <Route path="/admin/billing" element={<ProtectedWithLayout><AdminBilling /></ProtectedWithLayout>} />
+            <Route path="/admin/settings" element={<ProtectedWithLayout><AdminSettings /></ProtectedWithLayout>} />
             <Route path="/admin/activity" element={<ProtectedWithLayout><AdminActivity /></ProtectedWithLayout>} />
 
             <Route path="*" element={<NotFound />} />

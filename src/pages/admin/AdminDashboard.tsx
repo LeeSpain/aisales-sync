@@ -55,6 +55,7 @@ const AdminDashboard = () => {
     { label: "AI Config", path: "/admin/ai-config" },
     { label: "Email Config", path: "/admin/email-config" },
     { label: "Billing", path: "/admin/billing" },
+    { label: "Settings", path: "/admin/settings" },
     { label: "Activity Log", path: "/admin/activity" },
   ];
 
