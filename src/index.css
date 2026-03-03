@@ -114,4 +114,64 @@
   .glow-accent {
     box-shadow: 0 0 30px hsl(187 92% 69% / 0.15);
   }
+
+  .glass-card {
+    background: linear-gradient(
+      135deg,
+      hsl(240 20% 14% / 0.7) 0%,
+      hsl(240 20% 8% / 0.5) 100%
+    );
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid hsl(240 14% 30% / 0.4);
+    box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3),
+      inset 0 1px 0 hsl(240 14% 40% / 0.2);
+  }
+
+  .hero-grid-floor {
+    background-image:
+      linear-gradient(hsl(239 84% 67% / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(239 84% 67% / 0.06) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: linear-gradient(to top, white 0%, transparent 70%);
+    -webkit-mask-image: linear-gradient(to top, white 0%, transparent 70%);
+  }
+}
+
+/* 3D Hero keyframe animations */
+@keyframes hero-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes hero-float-delayed {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+@keyframes orbit {
+  from { transform: rotateZ(0deg); }
+  to { transform: rotateZ(360deg); }
+}
+
+@keyframes particle-drift {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(-80px) translateX(30px); opacity: 0; }
+}
+
+@keyframes dash-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+@keyframes scan-line {
+  0% { transform: translateY(-100%); opacity: 0; }
+  50% { opacity: 0.5; }
+  100% { transform: translateY(200%); opacity: 0; }
 }
