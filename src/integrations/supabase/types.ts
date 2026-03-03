@@ -14,6 +14,230 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_log: {
+        Row: {
+          action: string
+          company_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          metadata: Json | null
+        }
+        Insert: {
+          action: string
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Update: {
+          action?: string
+          company_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "activity_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_config: {
+        Row: {
+          api_key_encrypted: string | null
+          created_at: string
+          current_month_spend: number | null
+          id: string
+          is_active: boolean | null
+          max_tokens: number | null
+          model: string | null
+          monthly_budget_cap: number | null
+          provider: string | null
+          purpose: string | null
+          temperature: number | null
+          updated_at: string
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          created_at?: string
+          current_month_spend?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_tokens?: number | null
+          model?: string | null
+          monthly_budget_cap?: number | null
+          provider?: string | null
+          purpose?: string | null
+          temperature?: number | null
+          updated_at?: string
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          created_at?: string
+          current_month_spend?: number | null
+          id?: string
+          is_active?: boolean | null
+          max_tokens?: number | null
+          model?: string | null
+          monthly_budget_cap?: number | null
+          provider?: string | null
+          purpose?: string | null
+          temperature?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      calls: {
+        Row: {
+          call_type: string | null
+          campaign_id: string | null
+          company_id: string
+          created_at: string
+          duration_seconds: number | null
+          ended_at: string | null
+          id: string
+          lead_id: string | null
+          next_steps: string | null
+          outcome: string | null
+          recording_url: string | null
+          scheduled_at: string | null
+          started_at: string | null
+          status: string | null
+          summary: string | null
+          transcript: string | null
+          twilio_call_sid: string | null
+        }
+        Insert: {
+          call_type?: string | null
+          campaign_id?: string | null
+          company_id: string
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          lead_id?: string | null
+          next_steps?: string | null
+          outcome?: string | null
+          recording_url?: string | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          transcript?: string | null
+          twilio_call_sid?: string | null
+        }
+        Update: {
+          call_type?: string | null
+          campaign_id?: string | null
+          company_id?: string
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          id?: string
+          lead_id?: string | null
+          next_steps?: string | null
+          outcome?: string | null
+          recording_url?: string | null
+          scheduled_at?: string | null
+          started_at?: string | null
+          status?: string | null
+          summary?: string | null
+          transcript?: string | null
+          twilio_call_sid?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calls_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calls_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calls_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaigns: {
+        Row: {
+          calls_made: number | null
+          company_id: string
+          created_at: string
+          emails_sent: number | null
+          geographic_focus: string | null
+          id: string
+          leads_found: number | null
+          leads_qualified: number | null
+          minimum_score: number | null
+          name: string
+          replies_received: number | null
+          status: string | null
+          target_criteria: Json | null
+          target_description: string | null
+          updated_at: string
+        }
+        Insert: {
+          calls_made?: number | null
+          company_id: string
+          created_at?: string
+          emails_sent?: number | null
+          geographic_focus?: string | null
+          id?: string
+          leads_found?: number | null
+          leads_qualified?: number | null
+          minimum_score?: number | null
+          name: string
+          replies_received?: number | null
+          status?: string | null
+          target_criteria?: Json | null
+          target_description?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calls_made?: number | null
+          company_id?: string
+          created_at?: string
+          emails_sent?: number | null
+          geographic_focus?: string | null
+          id?: string
+          leads_found?: number | null
+          leads_qualified?: number | null
+          minimum_score?: number | null
+          name?: string
+          replies_received?: number | null
+          status?: string | null
+          target_criteria?: Json | null
+          target_description?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_messages: {
         Row: {
           actions_taken: Json | null
@@ -138,6 +362,297 @@ export type Database = {
           },
         ]
       }
+      email_config: {
+        Row: {
+          api_key_encrypted: string | null
+          company_id: string | null
+          created_at: string
+          daily_send_limit: number | null
+          id: string
+          provider: string | null
+          sender_name: string | null
+          sending_domain: string | null
+          sending_email: string | null
+          updated_at: string
+          warmup_started_at: string | null
+          warmup_status: string | null
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          company_id?: string | null
+          created_at?: string
+          daily_send_limit?: number | null
+          id?: string
+          provider?: string | null
+          sender_name?: string | null
+          sending_domain?: string | null
+          sending_email?: string | null
+          updated_at?: string
+          warmup_started_at?: string | null
+          warmup_status?: string | null
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          company_id?: string | null
+          created_at?: string
+          daily_send_limit?: number | null
+          id?: string
+          provider?: string | null
+          sender_name?: string | null
+          sending_domain?: string | null
+          sending_email?: string | null
+          updated_at?: string
+          warmup_started_at?: string | null
+          warmup_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_config_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_replies: {
+        Row: {
+          ai_draft_approved: boolean | null
+          ai_draft_response: string | null
+          body: string
+          created_at: string
+          from_email: string | null
+          handled_by: string | null
+          id: string
+          intent: string | null
+          lead_id: string
+          outreach_email_id: string | null
+          sent_response: string | null
+          subject: string | null
+        }
+        Insert: {
+          ai_draft_approved?: boolean | null
+          ai_draft_response?: string | null
+          body: string
+          created_at?: string
+          from_email?: string | null
+          handled_by?: string | null
+          id?: string
+          intent?: string | null
+          lead_id: string
+          outreach_email_id?: string | null
+          sent_response?: string | null
+          subject?: string | null
+        }
+        Update: {
+          ai_draft_approved?: boolean | null
+          ai_draft_response?: string | null
+          body?: string
+          created_at?: string
+          from_email?: string | null
+          handled_by?: string | null
+          id?: string
+          intent?: string | null
+          lead_id?: string
+          outreach_email_id?: string | null
+          sent_response?: string | null
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_replies_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_replies_outreach_email_id_fkey"
+            columns: ["outreach_email_id"]
+            isOneToOne: false
+            referencedRelation: "outreach_emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          address: string | null
+          business_name: string
+          campaign_id: string | null
+          city: string | null
+          company_id: string
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          contact_role: string | null
+          country: string | null
+          created_at: string
+          description: string | null
+          email: string | null
+          id: string
+          industry: string | null
+          phone: string | null
+          rating: number | null
+          region: string | null
+          research_data: Json | null
+          review_count: number | null
+          score: number | null
+          score_reasoning: string | null
+          size_estimate: string | null
+          source: string | null
+          status: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          business_name: string
+          campaign_id?: string | null
+          city?: string | null
+          company_id: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_role?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          phone?: string | null
+          rating?: number | null
+          region?: string | null
+          research_data?: Json | null
+          review_count?: number | null
+          score?: number | null
+          score_reasoning?: string | null
+          size_estimate?: string | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          business_name?: string
+          campaign_id?: string | null
+          city?: string | null
+          company_id?: string
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_role?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          id?: string
+          industry?: string | null
+          phone?: string | null
+          rating?: number | null
+          region?: string | null
+          research_data?: Json | null
+          review_count?: number | null
+          score?: number | null
+          score_reasoning?: string | null
+          size_estimate?: string | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      outreach_emails: {
+        Row: {
+          ai_model_used: string | null
+          body: string
+          campaign_id: string | null
+          clicked_at: string | null
+          company_id: string
+          created_at: string
+          email_type: string | null
+          id: string
+          lead_id: string
+          opened_at: string | null
+          replied_at: string | null
+          sent_at: string | null
+          status: string | null
+          subject: string
+        }
+        Insert: {
+          ai_model_used?: string | null
+          body: string
+          campaign_id?: string | null
+          clicked_at?: string | null
+          company_id: string
+          created_at?: string
+          email_type?: string | null
+          id?: string
+          lead_id: string
+          opened_at?: string | null
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject: string
+        }
+        Update: {
+          ai_model_used?: string | null
+          body?: string
+          campaign_id?: string | null
+          clicked_at?: string | null
+          company_id?: string
+          created_at?: string
+          email_type?: string | null
+          id?: string
+          lead_id?: string
+          opened_at?: string | null
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string | null
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outreach_emails_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_emails_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outreach_emails_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -179,6 +694,56 @@ export type Database = {
           },
         ]
       }
+      subscriptions: {
+        Row: {
+          company_id: string
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          monthly_amount: number | null
+          plan: string | null
+          setup_fee_paid: boolean | null
+          status: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          monthly_amount?: number | null
+          plan?: string | null
+          setup_fee_paid?: boolean | null
+          status?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          monthly_amount?: number | null
+          plan?: string | null
+          setup_fee_paid?: boolean | null
+          status?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -202,6 +767,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
