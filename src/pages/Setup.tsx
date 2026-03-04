@@ -42,7 +42,7 @@ const Setup = () => {
           <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl gradient-primary">
             <Zap className="h-6 w-6 text-white" />
           </div>
-          <h1 className="text-2xl font-bold">Media Sync — Account Setup</h1>
+          <h1 className="text-2xl font-bold">AI Sales Sync — Account Setup</h1>
           <p className="mt-2 text-sm text-muted-foreground">
             Creates two test accounts with full dashboard access
           </p>

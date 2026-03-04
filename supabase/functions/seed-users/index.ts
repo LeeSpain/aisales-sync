@@ -163,7 +163,7 @@ serve(async (req) => {
       email: "leewakeman@hotmail.co.uk",
       password: "test1234",
       fullName: "Lee Wakeman",
-      companyName: "Media Sync HQ",
+      companyName: "AI Sales Sync HQ",
       industry: "SaaS / Technology",
       plan: "enterprise",
       planStatus: "active",

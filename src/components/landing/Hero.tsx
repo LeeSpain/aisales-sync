@@ -281,7 +281,7 @@ const Hero = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              Media Sync finds your ideal clients, writes personalised outreach
+              AI Sales Sync finds your ideal clients, writes personalised outreach
               across email and LinkedIn, handles every reply, makes AI sales
               calls, generates proposals, and tracks deals to close.
             </motion.p>

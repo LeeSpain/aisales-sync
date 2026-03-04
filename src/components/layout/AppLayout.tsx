@@ -106,7 +106,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
             <Zap className="h-4 w-4 text-white" />
           </div>
-          <span className="font-bold">Media Sync</span>
+          <span className="font-bold">AI Sales Sync</span>
         </div>
 
         <nav className="flex-1 space-y-1 p-3">

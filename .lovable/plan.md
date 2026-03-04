@@ -1,11 +1,11 @@
-# Media-sync.com - CC Build Specification
+# AI Sales Sync - CC Build Specification
 # Version 2.0 — Updated with multi-channel, LinkedIn, proposals, deals, sequences, strategy AI
 
 ## Product Overview
 
-Media-sync.com is an AI-powered autonomous sales platform. Businesses sign up, tell the AI about their company through natural conversation (AI wizards - no forms), and the AI finds clients, scores them, writes personalised multi-channel outreach, handles replies, makes sales calls, generates commercial proposals, and tracks deals to close. The owner watches leads convert into revenue.
+AI Sales Sync is an AI-powered autonomous sales platform. Businesses sign up, tell the AI about their company through natural conversation (AI wizards - no forms), and the AI finds clients, scores them, writes personalised multi-channel outreach, handles replies, makes sales calls, generates commercial proposals, and tracks deals to close. The owner watches leads convert into revenue.
 
-Brand: Media Sync | Domain: media-sync.com | Tagline: Your AI Sales Team
+Brand: AI Sales Sync | Domain: aisales-sync.com | Tagline: Your AI Sales Team
 
 ## Tech Stack
 

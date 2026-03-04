@@ -41,7 +41,7 @@ const Login = () => {
             <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-primary">
               <Zap className="h-5 w-5 text-white" />
             </div>
-            <span className="text-lg font-bold">Media Sync</span>
+            <span className="text-lg font-bold">AI Sales Sync</span>
           </Link>
           <h1 className="mt-4 text-2xl font-bold">Welcome back</h1>
           <p className="mt-1 text-sm text-muted-foreground">Sign in to your account</p>

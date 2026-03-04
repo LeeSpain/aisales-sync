@@ -7,7 +7,7 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   console.error(
-    '[Media Sync] Missing Supabase environment variables.\n' +
+    '[AI Sales Sync] Missing Supabase environment variables.\n' +
     'Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in your Vercel project settings.\n' +
     'Go to: Vercel Dashboard → Settings → Environment Variables'
   );

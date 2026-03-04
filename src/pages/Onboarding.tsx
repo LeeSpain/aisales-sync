@@ -19,7 +19,7 @@ const Onboarding = () => {
       {
         role: "assistant",
         content:
-          "Welcome to Media Sync! 🚀 I'm your AI sales team. I'm going to learn everything about your business so I can start finding clients, running outreach, and building your pipeline.\n\nThis takes about 5 minutes. Let's start simple — **what's your company website?**",
+          "Welcome to AI Sales Sync! 🚀 I'm your AI sales team. I'm going to learn everything about your business so I can start finding clients, running outreach, and building your pipeline.\n\nThis takes about 5 minutes. Let's start simple — **what's your company website?**",
       },
     ],
   });
@@ -70,7 +70,7 @@ const Onboarding = () => {
         <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary">
           <Zap className="h-8 w-8 text-white" />
         </div>
-        <h2 className="mb-2 text-xl font-bold">Media Sync</h2>
+        <h2 className="mb-2 text-xl font-bold">AI Sales Sync</h2>
         <p className="text-center text-sm text-muted-foreground">
           Your AI sales team is getting to know your business. Once complete, it will start finding clients, running multi-channel outreach, and building your deal pipeline.
         </p>

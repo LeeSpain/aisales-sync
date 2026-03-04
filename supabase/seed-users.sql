@@ -1,5 +1,5 @@
 -- ============================================================
--- Media Sync — Seed Script: Two Dashboard Users
+-- AI Sales Sync — Seed Script: Two Dashboard Users
 -- Run this in Supabase SQL Editor (Dashboard → SQL Editor → New query)
 -- ============================================================
 -- Super Admin: leewakeman@hotmail.co.uk / test1234
@@ -110,7 +110,7 @@ BEGIN
   INSERT INTO public.companies (id, name, owner_id, industry, description, status, created_at, updated_at)
   VALUES (
     v_super_company_id,
-    'Media Sync HQ',
+    'AI Sales Sync HQ',
     v_super_admin_id,
     'SaaS / Technology',
     'Platform owner — Super Admin account',

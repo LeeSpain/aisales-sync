@@ -11,7 +11,7 @@ const Navbar = () => {
             <Zap className="h-5 w-5 text-white" />
           </div>
           <span className="text-lg font-bold tracking-tight text-foreground">
-            Media Sync
+            AI Sales Sync
           </span>
         </Link>
 

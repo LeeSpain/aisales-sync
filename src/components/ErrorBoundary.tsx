@@ -20,7 +20,7 @@ class ErrorBoundary extends Component<Props, State> {
     }
 
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        console.error("[Media Sync] Runtime error:", error, errorInfo);
+        console.error("[AI Sales Sync] Runtime error:", error, errorInfo);
     }
 
     render() {
