@@ -57,10 +57,12 @@ export type Database = {
           id: string
           is_active: boolean | null
           max_tokens: number | null
+          metadata: Json | null
           model: string | null
           monthly_budget_cap: number | null
           provider: string | null
           purpose: string | null
+          system_prompt: string | null
           temperature: number | null
           updated_at: string
         }
@@ -71,10 +73,12 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           max_tokens?: number | null
+          metadata?: Json | null
           model?: string | null
           monthly_budget_cap?: number | null
           provider?: string | null
           purpose?: string | null
+          system_prompt?: string | null
           temperature?: number | null
           updated_at?: string
         }
@@ -85,10 +89,12 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           max_tokens?: number | null
+          metadata?: Json | null
           model?: string | null
           monthly_budget_cap?: number | null
           provider?: string | null
           purpose?: string | null
+          system_prompt?: string | null
           temperature?: number | null
           updated_at?: string
         }

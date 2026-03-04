@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -11,6 +12,22 @@ serve(async (req) => {
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+
+    // Check dead switch
+    const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: deadSwitch } = await sb
+      .from("ai_config")
+      .select("is_active")
+      .eq("provider", "dead_switch")
+      .eq("purpose", "system_setting")
+      .maybeSingle();
+
+    if (deadSwitch?.is_active) {
+      return new Response(JSON.stringify({ error: "AI operations are currently disabled by admin." }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const { lead, companyProfile, tone = "professional" } = await req.json();
 

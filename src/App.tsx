@@ -46,6 +46,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminActivity from "./pages/admin/AdminActivity";
 import AdminClientDetail from "./pages/admin/AdminClientDetail";
 import AdminDataSources from "./pages/admin/AdminDataSources";
+import AdminAIAgentCenter from "./pages/admin/AdminAIAgentCenter";
 
 const queryClient = new QueryClient();
 
@@ -97,6 +98,7 @@ const App = () => (
             <Route path="/admin" element={<ProtectedWithLayout><AdminDashboard /></ProtectedWithLayout>} />
             <Route path="/admin/clients" element={<ProtectedWithLayout><AdminClients /></ProtectedWithLayout>} />
             <Route path="/admin/clients/:id" element={<ProtectedWithLayout><AdminClientDetail /></ProtectedWithLayout>} />
+            <Route path="/admin/ai-agents" element={<ProtectedWithLayout><AdminAIAgentCenter /></ProtectedWithLayout>} />
             <Route path="/admin/ai-config" element={<ProtectedWithLayout><AdminAIConfig /></ProtectedWithLayout>} />
             <Route path="/admin/email-config" element={<ProtectedWithLayout><AdminEmailConfig /></ProtectedWithLayout>} />
             <Route path="/admin/billing" element={<ProtectedWithLayout><AdminBilling /></ProtectedWithLayout>} />

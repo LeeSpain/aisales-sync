@@ -100,6 +100,25 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    // Check dead switch
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const sb = createClient(supabaseUrl, supabaseKey);
+
+    const { data: deadSwitch } = await sb
+      .from("ai_config")
+      .select("is_active")
+      .eq("provider", "dead_switch")
+      .eq("purpose", "system_setting")
+      .maybeSingle();
+
+    if (deadSwitch?.is_active) {
+      return new Response(JSON.stringify({ error: "AI operations are currently disabled by admin." }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { messages, context = "general", companyProfile } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
@@ -109,8 +128,16 @@ serve(async (req) => {
       });
     }
 
-    // Build system prompt with context
-    let systemPrompt = SYSTEM_PROMPTS[context] || SYSTEM_PROMPTS.general;
+    // Load system prompt from DB (admin-editable), fall back to hardcoded
+    const { data: promptConfig } = await sb
+      .from("ai_config")
+      .select("system_prompt")
+      .eq("purpose", context)
+      .eq("is_active", true)
+      .not("provider", "in", '("test_mode","dead_switch","api_key_store","autonomy_rules")')
+      .maybeSingle();
+
+    let systemPrompt = promptConfig?.system_prompt || SYSTEM_PROMPTS[context] || SYSTEM_PROMPTS.general;
 
     // Inject company profile if available
     if (companyProfile) {

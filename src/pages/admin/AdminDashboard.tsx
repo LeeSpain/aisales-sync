@@ -103,6 +103,7 @@ const AdminDashboard = () => {
 
   const navItems = [
     { label: "Clients", path: "/admin/clients", icon: Building2 },
+    { label: "AI Agents", path: "/admin/ai-agents", icon: Shield },
     { label: "AI Config", path: "/admin/ai-config", icon: Zap },
     { label: "Email Config", path: "/admin/email-config", icon: Mail },
     { label: "Billing", path: "/admin/billing", icon: CreditCard },
