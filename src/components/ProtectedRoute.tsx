@@ -118,7 +118,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   // If they have a subscription but haven't finished onboarding, FORCE them to /onboarding
   if (!flowState.onboardingCompleted) {
-    if (!isOnboardingRoute && !isSelectPlanRoute) {
+    if (!isOnboardingRoute) {
       return <Navigate to="/onboarding" replace />;
     }
     return <>{children}</>;
