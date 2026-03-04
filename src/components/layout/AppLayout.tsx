@@ -37,11 +37,11 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const location = useLocation();
   const [chatOpen, setChatOpen] = useState(false);
 
-  // Get profile to check subscription status
+  // Get profile with company to check subscription status + pass to AI
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", user!.id).single();
+      const { data } = await supabase.from("profiles").select("*, companies(*)").eq("id", user!.id).single();
       return data;
     },
     enabled: !!user,
@@ -74,7 +74,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   });
 
   const { isTestMode } = useTestMode();
-  const isTrial = subscription?.status === "trial";
+  const isTrial = subscription?.status === "trialing" || subscription?.status === "trial";
   const daysLeft = subscription?.current_period_end
     ? Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
     : 0;
@@ -96,6 +96,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   const { messages, isLoading, error, sendMessage, cancel } = useAIChat({
     context: currentContext,
+    companyProfile: profile?.companies as Record<string, unknown> | null,
   });
 
   return (

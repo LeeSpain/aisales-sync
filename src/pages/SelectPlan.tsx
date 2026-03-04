@@ -120,7 +120,7 @@ const SelectPlan = () => {
         const isTrial = mode === "trial";
         const subscriptionData = {
             plan,
-            status: isTrial ? "trial" : "active",
+            status: isTrial ? "trialing" : "active",
             monthly_amount: plan === "starter" ? 750 : plan === "growth" ? 1250 : 0,
             setup_fee_paid: !isTrial,
             current_period_start: new Date().toISOString(),

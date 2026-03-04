@@ -75,7 +75,7 @@ const AdminDashboard = () => {
   const activeCampaigns = allCampaigns?.length || 0;
   const totalLeads = allLeads?.length || 0;
   const mrr = allSubscriptions
-    ?.filter((s) => s.status === "active" || s.status === "trial")
+    ?.filter((s) => s.status === "active" || s.status === "trialing" || s.status === "trial")
     .reduce((sum, s) => sum + (s.monthly_amount || 0), 0) || 0;
 
   const revenueByPlan = (() => {

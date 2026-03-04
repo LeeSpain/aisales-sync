@@ -1,17 +1,32 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAIChat } from "@/hooks/useAIChat";
 import { supabase } from "@/integrations/supabase/client";
 import ChatPanel from "@/components/chat/ChatPanel";
 import { useToast } from "@/hooks/use-toast";
-import { Zap, Target } from "lucide-react";
+import { Target } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+
+/** Extract :::CAMPAIGN_JSON::: block from message */
+function extractCampaignJSON(text: string): [string, Record<string, unknown> | null] {
+  const regex = /:::CAMPAIGN_JSON:::\s*([\s\S]*?)\s*:::END_CAMPAIGN:::/;
+  const match = text.match(regex);
+  if (!match) return [text, null];
+  try {
+    const data = JSON.parse(match[1].trim());
+    const clean = text.replace(regex, "").trim();
+    return [clean, data];
+  } catch {
+    return [text, null];
+  }
+}
 
 const CampaignNew = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const campaignCreatedRef = useRef(false);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -31,6 +46,59 @@ const CampaignNew = () => {
         content: "Let's set up a new campaign! 🎯\n\nTell me — **who do you want to target?** What type of businesses or clients are you looking for? I'll help you define the perfect criteria, build a multi-channel outreach sequence, and get your pipeline moving.",
       },
     ],
+  });
+
+  // Watch for :::CAMPAIGN_JSON::: in assistant messages and create campaign
+  useEffect(() => {
+    if (campaignCreatedRef.current || !user || !profile?.company_id) return;
+
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+    if (!lastAssistant) return;
+
+    const [, campaignData] = extractCampaignJSON(lastAssistant.content);
+    if (!campaignData) return;
+
+    campaignCreatedRef.current = true;
+
+    (async () => {
+      try {
+        const { data: newCampaign, error: campErr } = await supabase
+          .from("campaigns")
+          .insert({
+            company_id: profile.company_id!,
+            name: (campaignData.name as string) || "New Campaign",
+            target_description: (campaignData.target_description as string) || null,
+            geographic_focus: (campaignData.geographic_focus as string) || null,
+            minimum_score: (campaignData.minimum_score as number) || 3.5,
+            target_criteria: campaignData.target_criteria || null,
+            status: "active",
+          })
+          .select("id")
+          .single();
+
+        if (campErr) {
+          console.error("Failed to create campaign:", campErr.message);
+          toast({ title: "Error", description: "Could not create campaign. Please try again.", variant: "destructive" });
+          campaignCreatedRef.current = false;
+          return;
+        }
+
+        toast({ title: "Campaign launched!", description: `"${campaignData.name}" is now active. Your AI is starting lead discovery.` });
+        setTimeout(() => navigate(`/campaigns/${newCampaign.id}`), 2000);
+      } catch (e) {
+        console.error("Error creating campaign:", e);
+        campaignCreatedRef.current = false;
+      }
+    })();
+  }, [messages, user, profile, navigate, toast]);
+
+  // Strip :::CAMPAIGN_JSON::: blocks from displayed messages
+  const displayMessages = messages.map((m) => {
+    if (m.role === "assistant" && m.content.includes(":::CAMPAIGN_JSON:::")) {
+      const [clean] = extractCampaignJSON(m.content);
+      return { ...m, content: clean };
+    }
+    return m;
   });
 
   return (
@@ -57,7 +125,7 @@ const CampaignNew = () => {
       {/* Chat */}
       <div className="flex-1">
         <ChatPanel
-          messages={messages}
+          messages={displayMessages}
           isLoading={isLoading}
           error={error}
           onSend={sendMessage}

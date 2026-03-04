@@ -58,7 +58,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           .from("subscriptions")
           .select("id, status")
           .eq("company_id", profile.company_id)
-          .in("status", ["active", "trial", "past_due"])
+          .in("status", ["active", "trialing", "trial", "past_due"])
           .maybeSingle();
 
         if (mounted) {
