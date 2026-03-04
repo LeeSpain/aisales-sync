@@ -7,7 +7,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useTestMode } from "@/hooks/useTestMode";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
 
 const tiers = [
     {
@@ -61,84 +60,6 @@ const SelectPlan = () => {
     const { isTestMode } = useTestMode();
     const [activating, setActivating] = useState<string | null>(null);
 
-    // Get profile to find company_id
-    const { data: profile } = useQuery({
-        queryKey: ["profile", user?.id],
-        queryFn: async () => {
-            const { data } = await supabase
-                .from("profiles")
-                .select("*")
-                .eq("id", user!.id)
-                .single();
-            return data;
-        },
-        enabled: !!user,
-    });
-
-    const ensureCompany = async (): Promise<string | null> => {
-        // The DB trigger creates profile + company on signup.
-        // Just fetch the latest profile to get company_id.
-        if (profile?.company_id) return profile.company_id;
-
-        // Re-fetch in case React Query cache is stale
-        const { data: freshProfile } = await supabase
-            .from("profiles")
-            .select("company_id")
-            .eq("id", user!.id)
-            .maybeSingle();
-
-        if (freshProfile?.company_id) return freshProfile.company_id;
-
-        // Fallback: trigger may not have created the company yet.
-        // Create profile if missing, then company.
-        if (!freshProfile) {
-            await supabase.from("profiles").insert({
-                id: user!.id,
-                email: user!.email!,
-                full_name: user?.user_metadata?.full_name || "",
-            });
-        }
-
-        // Create company — use .insert() without .select() to avoid RLS SELECT issue,
-        // then query it back using owner_id
-        const fullName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "My Company";
-        const { error: compErr } = await supabase
-            .from("companies")
-            .insert({ name: `${fullName}'s Company`, owner_id: user!.id, status: "active" });
-
-        if (compErr) {
-            console.error("Failed to create company:", compErr.message);
-            return null;
-        }
-
-        // Fetch the company we just created by owner_id
-        const { data: newCompany } = await supabase
-            .from("companies")
-            .select("id")
-            .eq("owner_id", user!.id)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .single();
-
-        if (!newCompany) {
-            console.error("Company created but could not be retrieved");
-            return null;
-        }
-
-        // Link profile to company
-        await supabase.from("profiles").update({ company_id: newCompany.id }).eq("id", user!.id);
-
-        // Log signup activity (ignore errors)
-        await supabase.from("activity_log").insert({
-            company_id: newCompany.id,
-            action: "user_signup",
-            description: `New user signed up: ${user?.email}`,
-            metadata: { user_id: user!.id, email: user?.email },
-        }).then(() => {}, () => {});
-
-        return newCompany.id;
-    };
-
     const activateSubscription = async (plan: string, mode: "trial" | "paid") => {
         if (!user) {
             toast({ title: "Error", description: "Not authenticated.", variant: "destructive" });
@@ -146,75 +67,30 @@ const SelectPlan = () => {
         }
 
         setActivating(plan);
+        const isTrial = mode === "trial";
 
         try {
-        // Ensure company exists (auto-create for new signups)
-        const companyId = await ensureCompany();
-        if (!companyId) {
-            toast({ title: "Error", description: "Failed to set up your account. Please try again.", variant: "destructive" });
-            setActivating(null);
-            return;
-        }
-
-        const isTrial = mode === "trial";
-        const subscriptionData = {
-            plan,
-            status: isTrial ? "trialing" : "active",
-            monthly_amount: plan === "starter" ? 750 : plan === "growth" ? 1250 : 0,
-            setup_fee_paid: !isTrial,
-            current_period_start: new Date().toISOString(),
-            current_period_end: new Date(
-                Date.now() + (isTrial ? 14 : 30) * 24 * 60 * 60 * 1000
-            ).toISOString(),
-        };
-
-            const { data: existing } = await supabase
-                .from("subscriptions")
-                .select("id")
-                .eq("company_id", companyId)
-                .maybeSingle();
-
-            if (existing) {
-                const { error: subErr } = await supabase
-                    .from("subscriptions")
-                    .update(subscriptionData)
-                    .eq("id", existing.id);
-                if (subErr) throw new Error(`Subscription update failed: ${subErr.message}`);
-            } else {
-                const { error: subErr } = await supabase.from("subscriptions").insert({
-                    company_id: companyId,
-                    ...subscriptionData,
-                });
-                if (subErr) throw new Error(`Subscription create failed: ${subErr.message}`);
-            }
-
-            // Log subscription activation
-            await supabase.from("activity_log").insert({
-                company_id: companyId,
-                action: "subscription_activated",
-                description: `${isTrial ? "Trial" : "Subscription"} activated on ${plan} plan (€${subscriptionData.monthly_amount}/mo)`,
-                metadata: { plan, mode, monthly_amount: subscriptionData.monthly_amount },
+            // Single server-side call: creates profile, company, subscription — bypasses all RLS
+            const { error } = await supabase.rpc("activate_plan", {
+                p_plan: plan,
+                p_is_trial: isTrial,
             });
 
-            if (isTrial) {
-                toast({
-                    title: "Trial activated!",
-                    description: `You're on the ${plan} plan (14-day trial). Let's set up your AI sales team.`,
-                });
-            } else {
-                toast({
-                    title: "Subscription activated!",
-                    description: `You're on the ${plan} plan (test mode — no payment taken). Let's set up your AI sales team.`,
-                });
+            if (error) {
+                console.error("activate_plan failed:", error.message);
+                toast({ title: "Error", description: error.message, variant: "destructive" });
+                return;
             }
+
+            toast({
+                title: isTrial ? "Trial activated!" : "Subscription activated!",
+                description: `You're on the ${plan} plan${isTrial ? " (14-day trial)" : ""}. Let's set up your AI sales team.`,
+            });
 
             navigate("/onboarding");
         } catch (err) {
-            toast({
-                title: "Error",
-                description: "Failed to activate. Please try again.",
-                variant: "destructive",
-            });
+            console.error("activate_plan exception:", err);
+            toast({ title: "Error", description: "Failed to activate. Please try again.", variant: "destructive" });
         } finally {
             setActivating(null);
         }
