@@ -97,6 +97,14 @@ const SelectPlan = () => {
         // Also add client role
         await supabase.from("user_roles").insert({ user_id: user!.id, role: "client" as const });
 
+        // Log signup activity
+        await supabase.from("activity_log").insert({
+            company_id: newCompany.id,
+            action: "user_signup",
+            description: `New user signed up: ${user?.email}`,
+            metadata: { user_id: user!.id, email: user?.email },
+        });
+
         return newCompany.id;
     };
 
@@ -146,6 +154,14 @@ const SelectPlan = () => {
                     ...subscriptionData,
                 });
             }
+
+            // Log subscription activation
+            await supabase.from("activity_log").insert({
+                company_id: companyId,
+                action: "subscription_activated",
+                description: `${isTrial ? "Trial" : "Subscription"} activated on ${plan} plan (€${subscriptionData.monthly_amount}/mo)`,
+                metadata: { plan, mode, monthly_amount: subscriptionData.monthly_amount },
+            });
 
             if (isTrial) {
                 toast({

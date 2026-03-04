@@ -153,6 +153,14 @@ const Onboarding = () => {
         .update({ onboarding_completed: true })
         .eq("id", user.id);
 
+      // Log onboarding completion
+      await supabase.from("activity_log").insert({
+        company_id: profile.company_id,
+        action: "onboarding_completed",
+        description: `${companyName} completed onboarding — ${industry}, targeting ${targetMarkets.join(", ")}`,
+        metadata: { company_name: companyName, industry, services, target_markets: targetMarkets, geographic_range: geo },
+      });
+
       toast({ title: "You're all set!", description: "Your AI sales team now knows your business." });
       navigate("/dashboard");
     } catch (e) {

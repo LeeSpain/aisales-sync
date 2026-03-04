@@ -17,6 +17,11 @@ import {
     Save,
     FileText,
     ShieldAlert,
+    Package,
+    Crosshair,
+    Award,
+    Globe,
+    DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -185,7 +190,7 @@ const AdminClientDetail = () => {
                                 <Icon className={cn("h-3.5 w-3.5", stat.color)} />
                                 {stat.label}
                             </div>
-                            <p className="text-lg font-bold text-white">{stat.value}</p>
+                            <p className="text-lg font-bold text-foreground">{stat.value}</p>
                         </div>
                     );
                 })}
@@ -193,32 +198,20 @@ const AdminClientDetail = () => {
 
             {/* Company details */}
             <div className="grid lg:grid-cols-2 gap-6 mb-8">
+                {/* Company Info */}
                 <div className="rounded-xl border border-border bg-card p-6">
                     <h3 className="text-lg font-semibold mb-4">Company Info</h3>
                     <div className="space-y-3 text-sm">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Description</span>
-                            <span className="text-white text-right max-w-[60%]">{company.description ?? "—"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Geographic Range</span>
-                            <span className="text-white">{company.geographic_range ?? "—"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Tone</span>
-                            <span className="text-white capitalize">{company.tone_preference ?? "—"}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Autonomy Level</span>
-                            <span className="text-white">{company.autonomy_level ?? "—"}/10</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">Created</span>
-                            <span className="text-white">{new Date(company.created_at).toLocaleDateString()}</span>
-                        </div>
+                        <DetailRow label="Description" value={company.description} />
+                        <DetailRow label="Website" value={company.website} />
+                        <DetailRow label="Geographic Range" value={company.geographic_range} icon={<Globe className="h-3.5 w-3.5 text-cyan-400" />} />
+                        <DetailRow label="Tone" value={company.tone_preference} capitalize />
+                        <DetailRow label="Autonomy Level" value={company.autonomy_level != null ? `${company.autonomy_level}/10` : null} />
+                        <DetailRow label="Created" value={new Date(company.created_at).toLocaleDateString()} />
                     </div>
                 </div>
 
+                {/* Subscription */}
                 <div className="rounded-xl border border-border bg-card p-6">
                     <h3 className="text-lg font-semibold mb-4">Subscription</h3>
                     {subscription ? (
@@ -227,23 +220,82 @@ const AdminClientDetail = () => {
                                 <span className="text-muted-foreground">Plan</span>
                                 <Badge variant="secondary" className="uppercase text-xs">{subscription.plan ?? "—"}</Badge>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Monthly</span>
-                                <span className="text-white">€{subscription.monthly_amount ?? 0}</span>
-                            </div>
+                            <DetailRow label="Monthly" value={`€${subscription.monthly_amount ?? 0}`} icon={<DollarSign className="h-3.5 w-3.5 text-emerald-400" />} />
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Status</span>
                                 <Badge className={cn("text-xs",
-                                    subscription.status === "active" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"
+                                    subscription.status === "active" || subscription.status === "trialing" || subscription.status === "trial"
+                                        ? "bg-emerald-500/10 text-emerald-400"
+                                        : "bg-muted text-muted-foreground"
                                 )}>{subscription.status ?? "—"}</Badge>
                             </div>
-                            <div className="flex justify-between">
-                                <span className="text-muted-foreground">Setup Fee</span>
-                                <span className="text-white">{subscription.setup_fee_paid ? "Paid" : "Unpaid"}</span>
-                            </div>
+                            <DetailRow label="Setup Fee" value={subscription.setup_fee_paid ? "Paid" : "Unpaid"} />
+                            {subscription.current_period_end && (
+                                <DetailRow label="Period End" value={new Date(subscription.current_period_end).toLocaleDateString()} />
+                            )}
                         </div>
                     ) : (
                         <p className="text-sm text-muted-foreground">No subscription found</p>
+                    )}
+                </div>
+            </div>
+
+            {/* Onboarding / Business Profile */}
+            <div className="grid lg:grid-cols-3 gap-6 mb-8">
+                {/* Services */}
+                <div className="rounded-xl border border-border bg-card p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Package className="h-4 w-4 text-primary" />
+                        <h3 className="font-semibold">Services / Products</h3>
+                    </div>
+                    {company.services && (company.services as string[]).length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                            {(company.services as string[]).map((s: string, i: number) => (
+                                <Badge key={i} variant="secondary" className="text-xs">{s}</Badge>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Not set</p>
+                    )}
+                    {company.pricing_summary && (
+                        <div className="mt-3 pt-3 border-t border-border">
+                            <p className="text-xs text-muted-foreground mb-1">Pricing</p>
+                            <p className="text-sm text-foreground">{company.pricing_summary}</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Target Markets */}
+                <div className="rounded-xl border border-border bg-card p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Crosshair className="h-4 w-4 text-accent" />
+                        <h3 className="font-semibold">Target Markets</h3>
+                    </div>
+                    {company.target_markets && (company.target_markets as string[]).length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                            {(company.target_markets as string[]).map((t: string, i: number) => (
+                                <Badge key={i} variant="secondary" className="text-xs">{t}</Badge>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Not set</p>
+                    )}
+                </div>
+
+                {/* Selling Points */}
+                <div className="rounded-xl border border-border bg-card p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                        <Award className="h-4 w-4 text-warning" />
+                        <h3 className="font-semibold">Selling Points / USPs</h3>
+                    </div>
+                    {company.selling_points && (company.selling_points as string[]).length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                            {(company.selling_points as string[]).map((s: string, i: number) => (
+                                <Badge key={i} variant="secondary" className="text-xs">{s}</Badge>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">Not set</p>
                     )}
                 </div>
             </div>
@@ -256,7 +308,7 @@ const AdminClientDetail = () => {
                         {campaigns.map((camp) => (
                             <div key={camp.id} className="flex items-center justify-between rounded-lg border border-border p-4 hover:border-primary/30 transition-colors">
                                 <div>
-                                    <p className="font-medium text-white">{camp.name}</p>
+                                    <p className="font-medium text-foreground">{camp.name}</p>
                                     <p className="text-xs text-muted-foreground mt-0.5">
                                         {camp.leads_found ?? 0} leads · {camp.emails_sent ?? 0} emails · {camp.replies_received ?? 0} replies
                                     </p>
@@ -319,5 +371,18 @@ const AdminClientDetail = () => {
         </div>
     );
 };
+
+/** Reusable detail row */
+function DetailRow({ label, value, icon, capitalize: cap }: { label: string; value?: string | null; icon?: React.ReactNode; capitalize?: boolean }) {
+    return (
+        <div className="flex justify-between gap-4">
+            <span className="text-muted-foreground flex items-center gap-1.5">
+                {icon}
+                {label}
+            </span>
+            <span className={cn("text-foreground text-right max-w-[60%]", cap && "capitalize")}>{value || "—"}</span>
+        </div>
+    );
+}
 
 export default AdminClientDetail;
