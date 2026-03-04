@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAIChat } from "@/hooks/useAIChat";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import ChatPanel from "@/components/chat/ChatPanel";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +35,36 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [chatOpen, setChatOpen] = useState(false);
+
+  // Get profile to check subscription status
+  const { data: profile } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("*").eq("id", user!.id).single();
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const { data: subscription } = useQuery({
+    queryKey: ["subscription", profile?.company_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("status, current_period_end")
+        .eq("company_id", profile!.company_id!)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!profile?.company_id,
+  });
+
+  const isTrial = subscription?.status === "trial";
+  const daysLeft = subscription?.current_period_end
+    ? Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
 
   const contextMap: Record<string, any> = {
     "/dashboard": "dashboard",
@@ -86,6 +118,15 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </nav>
 
         <div className="border-t border-border p-3 space-y-1">
+          {isTrial && (
+            <div className="mb-2 px-3 py-2 text-xs font-medium text-warning flex items-center gap-2 bg-warning/10 rounded-lg">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-warning"></span>
+              </span>
+              Trial: {daysLeft} days left
+            </div>
+          )}
           <div className="px-3 py-2 text-xs text-muted-foreground truncate">
             {user?.email}
           </div>

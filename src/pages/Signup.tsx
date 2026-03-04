@@ -18,7 +18,7 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -26,13 +26,25 @@ const Signup = () => {
         emailRedirectTo: window.location.origin,
       },
     });
+
+    if (signUpError) {
+      setLoading(false);
+      toast({ title: "Signup failed", description: signUpError.message, variant: "destructive" });
+      return;
+    }
+
+    // Attempt to login immediately (works if email confirmation is disabled)
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
     setLoading(false);
 
-    if (error) {
-      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
-    } else {
+    if (signInError) {
+      // If login fails right after signup, it likely means email confirmation IS required
       toast({ title: "Check your email", description: "We sent you a confirmation link." });
       navigate("/login");
+    } else {
+      // Login succeeded, the ProtectedRoute logic will handle sending them to /select-plan
+      navigate("/select-plan");
     }
   };
 
