@@ -1,10 +1,16 @@
 -- Auto-confirm new users on signup (skip email verification)
--- This updates the existing handle_new_user trigger to also confirm the email
+-- Wraps auto-confirm in exception handler so profile creation still works
+-- even if the auth.users update fails due to permissions
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Auto-confirm email so users don't need to click a verification link
-  UPDATE auth.users SET email_confirmed_at = COALESCE(email_confirmed_at, now()) WHERE id = NEW.id;
+  -- Try to auto-confirm email (may fail if insufficient permissions on auth schema)
+  BEGIN
+    UPDATE auth.users SET email_confirmed_at = COALESCE(email_confirmed_at, now()) WHERE id = NEW.id;
+  EXCEPTION WHEN OTHERS THEN
+    -- Silently continue — email confirmation can be disabled in Supabase dashboard instead
+    NULL;
+  END;
 
   -- Create profile
   INSERT INTO public.profiles (id, email, full_name)

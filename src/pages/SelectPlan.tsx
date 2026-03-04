@@ -78,7 +78,29 @@ const SelectPlan = () => {
     const ensureCompany = async (): Promise<string | null> => {
         if (profile?.company_id) return profile.company_id;
 
-        // Auto-create company for new signups
+        // 1. Ensure profile exists (trigger should have created it, but be safe)
+        const { data: existingProfile } = await supabase
+            .from("profiles")
+            .select("id, company_id")
+            .eq("id", user!.id)
+            .maybeSingle();
+
+        if (existingProfile?.company_id) return existingProfile.company_id;
+
+        if (!existingProfile) {
+            // Profile missing — create it now (trigger may have failed)
+            const { error: profErr } = await supabase.from("profiles").insert({
+                id: user!.id,
+                email: user!.email!,
+                full_name: user?.user_metadata?.full_name || "",
+            });
+            if (profErr) {
+                console.error("Failed to create profile:", profErr.message);
+                return null;
+            }
+        }
+
+        // 2. Create company
         const fullName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "My Company";
         const { data: newCompany, error: compErr } = await supabase
             .from("companies")
@@ -91,13 +113,16 @@ const SelectPlan = () => {
             return null;
         }
 
-        // Link profile to company
+        // 3. Link profile to company
         await supabase.from("profiles").update({ company_id: newCompany.id }).eq("id", user!.id);
 
-        // Also add client role
-        await supabase.from("user_roles").insert({ user_id: user!.id, role: "client" as const });
+        // 4. Ensure client role exists (ignore duplicate errors)
+        await supabase.from("user_roles").upsert(
+            { user_id: user!.id, role: "client" as const },
+            { onConflict: "user_id,role" }
+        );
 
-        // Log signup activity
+        // 5. Log signup activity
         await supabase.from("activity_log").insert({
             company_id: newCompany.id,
             action: "user_signup",
