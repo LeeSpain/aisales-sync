@@ -30,7 +30,31 @@ const SIZE_OPTIONS = [
   { value: "enterprise", label: "Enterprise", desc: "500+ employees" },
 ];
 
-const REGIONS = ["United Kingdom", "Europe", "North America", "Asia Pacific", "Global", "Custom"];
+const GEO_SCOPES = [
+  { value: "local", label: "Local", desc: "Specific cities, towns, or postcodes", icon: "📍" },
+  { value: "regional", label: "Regional", desc: "Counties, states, or metro areas", icon: "🗺️" },
+  { value: "national", label: "National", desc: "One or more countries", icon: "🏳️" },
+  { value: "international", label: "International", desc: "Multiple countries or global", icon: "🌍" },
+];
+
+const COUNTRIES = [
+  "United Kingdom", "United States", "Canada", "Australia", "Germany",
+  "France", "Spain", "Italy", "Netherlands", "Ireland", "Sweden",
+  "Norway", "Denmark", "Switzerland", "Belgium", "Austria", "Portugal",
+  "New Zealand", "Singapore", "UAE", "India", "Japan", "South Korea",
+  "Brazil", "Mexico", "South Africa",
+];
+
+const UK_REGIONS = [
+  "London", "South East", "South West", "East of England", "West Midlands",
+  "East Midlands", "Yorkshire", "North West", "North East", "Scotland",
+  "Wales", "Northern Ireland",
+];
+
+const INTERNATIONAL_REGIONS = [
+  "Western Europe", "Eastern Europe", "Scandinavia", "North America",
+  "Latin America", "Middle East", "Asia Pacific", "Africa", "Global",
+];
 
 const CHANNELS = [
   { value: "email", label: "Email", icon: Mail, desc: "Personalized cold email sequences" },
@@ -102,8 +126,10 @@ const CampaignNew = () => {
   const [businessSize, setBusinessSize] = useState("small");
   const [idealClient, setIdealClient] = useState("");
   const [customKeywords, setCustomKeywords] = useState<string[]>([]);
-  const [geographicFocus, setGeographicFocus] = useState("");
-  const [customRegion, setCustomRegion] = useState("");
+  const [geoScope, setGeoScope] = useState("");
+  const [geoCountries, setGeoCountries] = useState<string[]>([]);
+  const [geoRegions, setGeoRegions] = useState<string[]>([]);
+  const [geoCities, setGeoCities] = useState<string[]>([]);
   const [channels, setChannels] = useState<string[]>(["email"]);
   const [tone, setTone] = useState("professional");
   const [minimumScore, setMinimumScore] = useState(3.5);
@@ -137,31 +163,67 @@ const CampaignNew = () => {
   const canNext = () => {
     switch (step) {
       case 0: return selectedIndustries.length > 0;
-      case 1: return geographicFocus.length > 0;
+      case 1: {
+        if (!geoScope) return false;
+        if (geoScope === "local") return geoCities.length > 0;
+        if (geoScope === "regional") return geoRegions.length > 0;
+        if (geoScope === "national") return geoCountries.length > 0;
+        return geoRegions.length > 0; // international
+      }
       case 2: return channels.length > 0;
       case 3: return true;
       default: return campaignName.trim().length > 0;
     }
   };
 
+  /** Build a human-readable geography summary */
+  const geoSummary = () => {
+    if (geoScope === "local") return geoCities.join(", ");
+    if (geoScope === "regional") return geoRegions.join(", ");
+    if (geoScope === "national") return geoCountries.join(", ");
+    if (geoScope === "international") return geoRegions.join(", ");
+    return "";
+  };
+
   const autoName = () => {
     if (campaignName) return;
     const ind = selectedIndustries[0] || "General";
-    const geo = geographicFocus === "Custom" ? customRegion : geographicFocus;
-    setCampaignName(`${ind} — ${geo || "Global"}`);
+    const geo = geoSummary().split(",")[0]?.trim() || "Global";
+    setCampaignName(`${ind} — ${geo}`);
+  };
+
+  const ensureCompany = async (): Promise<string | null> => {
+    if (profile?.company_id) return profile.company_id;
+    const fullName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "My Company";
+    const { data: newCompany, error: compErr } = await supabase
+      .from("companies")
+      .insert({ name: `${fullName}'s Company`, owner_id: user!.id, status: "active" })
+      .select("id")
+      .single();
+    if (compErr || !newCompany) return null;
+    await supabase.from("profiles").update({ company_id: newCompany.id }).eq("id", user!.id);
+    await supabase.from("user_roles").upsert({ user_id: user!.id, role: "client" as const }, { onConflict: "user_id,role" });
+    return newCompany.id;
   };
 
   const handleLaunch = async () => {
-    if (!user || !profile?.company_id) return;
+    if (!user) return;
     setSaving(true);
 
     try {
-      const geo = geographicFocus === "Custom" ? customRegion : geographicFocus;
+      const companyId = await ensureCompany();
+      if (!companyId) {
+        toast({ title: "Error", description: "Failed to set up your company. Please try again.", variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+
+      const geo = geoSummary();
 
       const { data: newCampaign, error: campErr } = await supabase
         .from("campaigns")
         .insert({
-          company_id: profile.company_id,
+          company_id: companyId,
           name: campaignName,
           target_description: idealClient || `${selectedIndustries.join(", ")} businesses (${businessSize})`,
           geographic_focus: geo,
@@ -172,6 +234,10 @@ const CampaignNew = () => {
             keywords: customKeywords,
             channels,
             tone,
+            geo_scope: geoScope,
+            geo_countries: geoCountries,
+            geo_regions: geoRegions,
+            geo_cities: geoCities,
           },
           status: "active",
         })
@@ -341,36 +407,185 @@ const CampaignNew = () => {
               <Card className="card-glow">
                 <CardHeader>
                   <CardTitle className="text-xl">Where should we look?</CardTitle>
-                  <CardDescription>Define the geographic area for lead discovery.</CardDescription>
+                  <CardDescription>Define exactly where your AI should find leads — from local streets to global markets.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
+                  {/* Scope selector */}
                   <div className="space-y-2">
-                    <Label>Region</Label>
-                    <Select value={geographicFocus} onValueChange={setGeographicFocus}>
-                      <SelectTrigger><SelectValue placeholder="Select a region" /></SelectTrigger>
-                      <SelectContent>
-                        {REGIONS.map((r) => (
-                          <SelectItem key={r} value={r}>{r}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Search scope</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {GEO_SCOPES.map((s) => (
+                        <button
+                          key={s.value}
+                          onClick={() => {
+                            setGeoScope(s.value);
+                            setGeoCountries([]);
+                            setGeoRegions([]);
+                            setGeoCities([]);
+                          }}
+                          className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${
+                            geoScope === s.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <span className="text-lg mt-0.5">{s.icon}</span>
+                          <div>
+                            <p className="text-sm font-medium">{s.label}</p>
+                            <p className="text-xs text-muted-foreground">{s.desc}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  {geographicFocus === "Custom" && (
+
+                  {/* LOCAL: Country + Cities/Towns/Postcodes */}
+                  {geoScope === "local" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Country</Label>
+                        <Select
+                          value={geoCountries[0] || ""}
+                          onValueChange={(v) => setGeoCountries([v])}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
+                          <SelectContent>
+                            {COUNTRIES.map((c) => (
+                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cities, towns, or postcodes</Label>
+                        <TagInput
+                          tags={geoCities}
+                          onAdd={(t) => setGeoCities([...geoCities, t])}
+                          onRemove={(i) => setGeoCities(geoCities.filter((_, idx) => idx !== i))}
+                          placeholder="e.g. Manchester, M1, Leeds City Centre, Sheffield S1"
+                        />
+                        <p className="text-xs text-muted-foreground">Add as many locations as you like. Your AI will search for businesses in each area.</p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* REGIONAL: Country + Regions */}
+                  {geoScope === "regional" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Country</Label>
+                        <Select
+                          value={geoCountries[0] || ""}
+                          onValueChange={(v) => setGeoCountries([v])}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
+                          <SelectContent>
+                            {COUNTRIES.map((c) => (
+                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {geoCountries[0] === "United Kingdom" ? (
+                        <div className="space-y-2">
+                          <Label>Regions</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {UK_REGIONS.map((r) => (
+                              <Badge
+                                key={r}
+                                variant={geoRegions.includes(r) ? "default" : "outline"}
+                                className={`cursor-pointer transition-all ${
+                                  geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
+                                }`}
+                                onClick={() =>
+                                  setGeoRegions((prev) =>
+                                    prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+                                  )
+                                }
+                              >
+                                {r}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label>Regions, states, or areas</Label>
+                          <TagInput
+                            tags={geoRegions}
+                            onAdd={(t) => setGeoRegions([...geoRegions, t])}
+                            onRemove={(i) => setGeoRegions(geoRegions.filter((_, idx) => idx !== i))}
+                            placeholder="e.g. California, Bavaria, New South Wales"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* NATIONAL: Multi-country select */}
+                  {geoScope === "national" && (
                     <div className="space-y-2">
-                      <Label htmlFor="customRegion">Specific cities or regions</Label>
-                      <Input
-                        id="customRegion"
-                        value={customRegion}
-                        onChange={(e) => setCustomRegion(e.target.value)}
-                        placeholder="e.g. London, Manchester, Leeds"
-                      />
+                      <Label>Countries</Label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {geoCountries.map((c, i) => (
+                          <Badge key={i} variant="secondary" className="gap-1 pr-1">
+                            {c}
+                            <button onClick={() => setGeoCountries(geoCountries.filter((_, idx) => idx !== i))} className="ml-1 hover:text-destructive">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                      <Select
+                        value=""
+                        onValueChange={(v) => {
+                          if (!geoCountries.includes(v)) setGeoCountries([...geoCountries, v]);
+                        }}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Add a country" /></SelectTrigger>
+                        <SelectContent>
+                          {COUNTRIES.filter((c) => !geoCountries.includes(c)).map((c) => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                   )}
-                  <div className="rounded-xl border border-border bg-card p-4">
-                    <p className="text-xs text-muted-foreground">
-                      Your AI will discover leads within this area. You can always create additional campaigns for other regions.
-                    </p>
-                  </div>
+
+                  {/* INTERNATIONAL: World regions */}
+                  {geoScope === "international" && (
+                    <div className="space-y-2">
+                      <Label>World regions</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {INTERNATIONAL_REGIONS.map((r) => (
+                          <Badge
+                            key={r}
+                            variant={geoRegions.includes(r) ? "default" : "outline"}
+                            className={`cursor-pointer transition-all ${
+                              geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
+                            }`}
+                            onClick={() =>
+                              setGeoRegions((prev) =>
+                                prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+                              )
+                            }
+                          >
+                            {r}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Info tip */}
+                  {geoScope && (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                      <p className="text-xs text-muted-foreground">
+                        {geoScope === "local" && "Perfect for targeting businesses on specific high streets, business parks, or neighbourhoods. Your AI will search Google Maps, directories, and social media for leads in these exact locations."}
+                        {geoScope === "regional" && "Great for covering larger areas like counties or metro regions. Your AI will find businesses across the entire region."}
+                        {geoScope === "national" && "Target businesses across entire countries. Best for products or services that aren't location-dependent."}
+                        {geoScope === "international" && "Go global. Your AI will adapt outreach language and approach for each market."}
+                      </p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -499,7 +714,8 @@ const CampaignNew = () => {
                     <ReviewRow label="Industries" value={selectedIndustries.join(", ")} onEdit={() => setStep(0)} />
                     <ReviewRow label="Business size" value={SIZE_OPTIONS.find(s => s.value === businessSize)?.label || businessSize} onEdit={() => setStep(0)} />
                     {idealClient && <ReviewRow label="Ideal client" value={idealClient} onEdit={() => setStep(0)} />}
-                    <ReviewRow label="Geography" value={geographicFocus === "Custom" ? customRegion : geographicFocus} onEdit={() => setStep(1)} />
+                    <ReviewRow label="Scope" value={GEO_SCOPES.find(s => s.value === geoScope)?.label || geoScope} onEdit={() => setStep(1)} />
+                    <ReviewRow label="Locations" value={geoSummary()} onEdit={() => setStep(1)} />
                     <ReviewRow label="Channels" value={channels.map(c => CHANNELS.find(ch => ch.value === c)?.label).join(", ")} onEdit={() => setStep(2)} />
                     <ReviewRow label="Tone" value={TONE_OPTIONS.find(t => t.value === tone)?.label || tone} onEdit={() => setStep(2)} />
                     <ReviewRow label="Min score" value={minimumScore.toFixed(1)} onEdit={() => setStep(3)} />
