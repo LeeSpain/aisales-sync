@@ -182,6 +182,42 @@ export type Database = {
           },
         ]
       }
+      invitations: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          mobile: string | null
+          channels: Json
+          status: string
+          invited_by: string | null
+          accepted_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          mobile?: string | null
+          channels?: Json
+          status?: string
+          invited_by?: string | null
+          accepted_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          mobile?: string | null
+          channels?: Json
+          status?: string
+          invited_by?: string | null
+          accepted_at?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           calls_made: number | null

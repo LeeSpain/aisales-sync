@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import {
   Key, Eye, EyeOff, Shield, Globe, CreditCard, Mail, Phone, Save,
   CheckCircle, AlertCircle, FlaskConical, User, Sun, Moon, Palette,
-  RotateCcw,
+  RotateCcw, MessageSquare,
 } from "lucide-react";
 
 // ─── API Key Config ───
@@ -38,6 +38,9 @@ const API_KEYS: ApiKeyConfig[] = [
   { id: "twilio_sid", label: "Twilio Account SID", envName: "TWILIO_ACCOUNT_SID", description: "For AI voice calls. Found in your Twilio Console dashboard.", icon: Phone, category: "Voice", docsUrl: "https://console.twilio.com" },
   { id: "twilio_auth", label: "Twilio Auth Token", envName: "TWILIO_AUTH_TOKEN", description: "Twilio authentication token, found alongside Account SID.", icon: Phone, category: "Voice", docsUrl: "https://console.twilio.com" },
   { id: "twilio_phone", label: "Twilio Phone Number", envName: "TWILIO_PHONE_NUMBER", description: "The Twilio phone number to make calls from (e.g. +1234567890).", icon: Phone, category: "Voice", docsUrl: "https://console.twilio.com/phone-numbers" },
+  { id: "whatsapp_api_id", label: "WhatsApp Business Account ID", envName: "WHATSAPP_BUSINESS_ACCOUNT_ID", description: "Your WhatsApp Business Account ID from Meta Business Suite.", icon: MessageSquare, category: "WhatsApp", docsUrl: "https://business.facebook.com/settings/whatsapp-business-accounts" },
+  { id: "whatsapp_phone_id", label: "WhatsApp Phone Number ID", envName: "WHATSAPP_PHONE_NUMBER_ID", description: "The phone number ID registered to your WhatsApp Business account.", icon: MessageSquare, category: "WhatsApp", docsUrl: "https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" },
+  { id: "whatsapp_token", label: "WhatsApp API Token", envName: "WHATSAPP_API_TOKEN", description: "Permanent access token for the WhatsApp Cloud API. Generate in Meta Developer Portal.", icon: MessageSquare, category: "WhatsApp", docsUrl: "https://developers.facebook.com/docs/whatsapp/cloud-api/get-started#set-up-developer-assets" },
 ];
 
 const AdminSettings = () => {
@@ -141,7 +144,7 @@ const AdminSettings = () => {
   const categories = [...new Set(API_KEYS.map((k) => k.category))];
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-8">
       <div className="flex items-center gap-3 mb-2">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
           <Shield className="h-5 w-5 text-primary" />
