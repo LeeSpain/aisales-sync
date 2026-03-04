@@ -41,18 +41,21 @@ const STEPS = [
 /** Reusable tag input component */
 function TagInput({ tags, onAdd, onRemove, placeholder, flushRef }: {
   tags: string[]; onAdd: (tag: string) => void; onRemove: (idx: number) => void; placeholder: string;
-  flushRef?: React.MutableRefObject<(() => void) | null>;
+  flushRef?: React.MutableRefObject<(() => string) | null>;
 }) {
   const [input, setInput] = useState("");
 
-  const commitInput = () => {
-    if (input.trim()) {
-      onAdd(input.trim());
+  /** Commit pending text, return the value that was added (or "") */
+  const commitInput = (): string => {
+    const val = input.trim();
+    if (val) {
+      onAdd(val);
       setInput("");
     }
+    return val;
   };
 
-  // Expose flush function so parent can commit pending text (e.g. on Next click)
+  // Expose flush function so parent can commit pending text on Next click
   useEffect(() => {
     if (flushRef) flushRef.current = commitInput;
     return () => { if (flushRef) flushRef.current = null; };
@@ -82,11 +85,10 @@ function TagInput({ tags, onAdd, onRemove, placeholder, flushRef }: {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKey}
-          onBlur={commitInput}
           placeholder={placeholder}
           className="flex-1"
         />
-        <Button type="button" variant="outline" size="sm" onClick={commitInput} disabled={!input.trim()}>
+        <Button type="button" variant="outline" size="sm" onClick={() => commitInput()} disabled={!input.trim()}>
           Add
         </Button>
       </div>
@@ -132,26 +134,46 @@ const Onboarding = () => {
   }, [profile]);
 
   // Refs to flush pending TagInput text before navigating
-  const servicesFlushRef = useRef<(() => void) | null>(null);
-  const marketsFlushRef = useRef<(() => void) | null>(null);
-  const uspsFlushRef = useRef<(() => void) | null>(null);
-
-  const flushCurrentStep = () => {
-    if (step === 2) servicesFlushRef.current?.();
-    if (step === 3) marketsFlushRef.current?.();
-    if (step === 4) uspsFlushRef.current?.();
-  };
+  const servicesFlushRef = useRef<(() => string) | null>(null);
+  const marketsFlushRef = useRef<(() => string) | null>(null);
+  const uspsFlushRef = useRef<(() => string) | null>(null);
 
   const totalSteps = STEPS.length;
   const progress = ((step + 1) / totalSteps) * 100;
 
+  /** Flush pending TagInput text, validate step, and advance — or show toast */
+  const handleNext = () => {
+    // Flush any pending text from the current TagInput (returns what was added)
+    let flushed = "";
+    if (step === 2) flushed = servicesFlushRef.current?.() ?? "";
+    else if (step === 3) flushed = marketsFlushRef.current?.() ?? "";
+    else if (step === 4) flushed = uspsFlushRef.current?.() ?? "";
+
+    // Validate — for TagInput steps, count flushed value as already added
+    let valid = true;
+    switch (step) {
+      case 0: valid = website.trim().length > 0; break;
+      case 1: valid = companyName.trim().length > 0 && industry.length > 0; break;
+      case 2: valid = services.length > 0 || flushed.length > 0; break;
+      case 3: valid = (targetMarkets.length > 0 || flushed.length > 0) && geographicRange.length > 0; break;
+      case 4: valid = sellingPoints.length > 0 || flushed.length > 0; break;
+    }
+
+    if (!valid) {
+      toast({ title: "Missing info", description: "Please complete the required fields before continuing.", variant: "destructive" });
+      return;
+    }
+
+    setStep((s) => s + 1);
+  };
+
+  /** Visual hint: is the current step complete enough to enable the Next button? */
   const canNext = () => {
     switch (step) {
       case 0: return website.trim().length > 0;
       case 1: return companyName.trim().length > 0 && industry.length > 0;
-      case 2: return services.length > 0;
-      case 3: return targetMarkets.length > 0 && geographicRange.length > 0;
-      case 4: return sellingPoints.length > 0;
+      // TagInput steps: button is always enabled (handleNext does flush + validate)
+      case 2: case 3: case 4: return true;
       default: return true;
     }
   };
@@ -482,7 +504,7 @@ const Onboarding = () => {
 
               {step < totalSteps - 1 ? (
                 <Button
-                  onClick={() => { flushCurrentStep(); setStep(step + 1); }}
+                  onClick={handleNext}
                   disabled={!canNext()}
                   className="gradient-primary border-0 text-white gap-1"
                 >
