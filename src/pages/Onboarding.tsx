@@ -155,7 +155,7 @@ const Onboarding = () => {
       case 0: valid = website.trim().length > 0; break;
       case 1: valid = companyName.trim().length > 0 && industry.length > 0; break;
       case 2: valid = services.length > 0 || flushed.length > 0; break;
-      case 3: valid = (targetMarkets.length > 0 || flushed.length > 0) && geographicRange.length > 0; break;
+      case 3: valid = (targetMarkets.length > 0 || flushed.length > 0) && geographicRange.length > 0 && (geographicRange !== "Custom" || customRegion.trim().length > 0); break;
       case 4: valid = sellingPoints.length > 0 || flushed.length > 0; break;
     }
 
@@ -179,7 +179,10 @@ const Onboarding = () => {
   };
 
   const handleLaunch = async () => {
-    if (!user || !profile?.company_id) return;
+    if (!user || !profile?.company_id) {
+      toast({ title: "Something went wrong", description: "We couldn't find your company profile. Please refresh and try again.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
 
     try {
@@ -203,13 +206,15 @@ const Onboarding = () => {
 
       if (updateErr) throw updateErr;
 
-      await supabase
+      const { error: profileErr } = await supabase
         .from("profiles")
         .update({ onboarding_completed: true })
         .eq("id", user.id);
 
-      // Log onboarding completion
-      await supabase.from("activity_log").insert({
+      if (profileErr) throw profileErr;
+
+      // Log onboarding completion (non-blocking)
+      supabase.from("activity_log").insert({
         company_id: profile.company_id,
         action: "onboarding_completed",
         description: `${companyName} completed onboarding — ${industry}, targeting ${targetMarkets.join(", ")}`,
