@@ -123,7 +123,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   });
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground dark">
+    <div className="flex min-h-screen bg-background text-foreground">
       {/* Sidebar */}
       <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-card">
         <div className="flex h-16 items-center gap-2 border-b border-border px-6 cursor-pointer" onClick={() => navigate(isOnAdminRoute ? "/admin" : "/dashboard")}>
