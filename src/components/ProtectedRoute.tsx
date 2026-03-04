@@ -21,9 +21,6 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    // Reset to loading when route changes so we re-check flow state
-    setFlowState((prev) => ({ ...prev, loading: true }));
-
     async function checkFlowState() {
       if (!user) {
         if (mounted) setFlowState((prev) => ({ ...prev, loading: false }));
@@ -85,7 +82,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return () => {
       mounted = false;
     };
-  }, [user, authLoading, location.pathname]);
+  }, [user, authLoading]);
 
   if (authLoading || flowState.loading) {
     return (

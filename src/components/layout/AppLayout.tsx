@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useAIChat } from "@/hooks/useAIChat";
@@ -93,24 +93,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const isOnAdminRoute = location.pathname.startsWith("/admin");
   const activeNavItems = isOnAdminRoute ? adminNavItems : clientNavItems;
 
-  /* ─── Onboarding guard: redirect incomplete users ─── */
-  useEffect(() => {
-    // Wait for data to load
-    if (!profile || roles === undefined) return;
-    // Admins on admin routes skip guard
-    if (isAdmin && isOnAdminRoute) return;
-    // Non-admin client checks
-    if (!isOnAdminRoute) {
-      if (!profile.company_id) {
-        navigate("/select-plan", { replace: true });
-        return;
-      }
-      if (!profile.onboarding_completed) {
-        navigate("/onboarding", { replace: true });
-        return;
-      }
-    }
-  }, [profile, roles, isAdmin, isOnAdminRoute, navigate]);
+  /* Onboarding/subscription guards are handled by ProtectedRoute */
 
   const { isTestMode } = useTestMode();
   const { isKilled: isDeadSwitchActive } = useDeadSwitch();
