@@ -8,8 +8,9 @@ import ChatPanel from "@/components/chat/ChatPanel";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Target, Users, Mail, Phone, Settings,
-  LogOut, Zap, MessageCircle, CreditCard, FileText, BarChart3, Columns3, Shield,
+  LogOut, Zap, MessageCircle, CreditCard, FileText, BarChart3, Columns3, Shield, FlaskConical,
 } from "lucide-react";
+import { useTestMode } from "@/hooks/useTestMode";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -72,6 +73,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     enabled: !!profile?.company_id,
   });
 
+  const { isTestMode } = useTestMode();
   const isTrial = subscription?.status === "trial";
   const daysLeft = subscription?.current_period_end
     ? Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
@@ -146,6 +148,12 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         </nav>
 
         <div className="border-t border-border p-3 space-y-1">
+          {isAdmin && isTestMode && (
+            <div className="mb-2 px-3 py-2 text-xs font-medium text-emerald-400 flex items-center gap-2 bg-emerald-500/10 rounded-lg">
+              <FlaskConical className="h-3 w-3" />
+              Test Mode Active
+            </div>
+          )}
           {isTrial && (
             <div className="mb-2 px-3 py-2 text-xs font-medium text-warning flex items-center gap-2 bg-warning/10 rounded-lg">
               <span className="relative flex h-2 w-2">

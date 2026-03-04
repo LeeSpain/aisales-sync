@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Check, Zap, Sparkles, FlaskConical } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTestMode } from "@/hooks/useTestMode";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -57,6 +58,7 @@ const SelectPlan = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();
+    const { isTestMode } = useTestMode();
     const [activating, setActivating] = useState<string | null>(null);
 
     // Get profile to find company_id
@@ -73,7 +75,7 @@ const SelectPlan = () => {
         enabled: !!user,
     });
 
-    const startTrial = async (plan: string) => {
+    const activateSubscription = async (plan: string, mode: "trial" | "paid") => {
         if (!user || !profile?.company_id) {
             toast({
                 title: "Error",
@@ -85,8 +87,19 @@ const SelectPlan = () => {
 
         setActivating(plan);
 
+        const isTrial = mode === "trial";
+        const subscriptionData = {
+            plan,
+            status: isTrial ? "trial" : "active",
+            monthly_amount: plan === "starter" ? 750 : plan === "growth" ? 1250 : 0,
+            setup_fee_paid: !isTrial, // paid in full when not trial
+            current_period_start: new Date().toISOString(),
+            current_period_end: new Date(
+                Date.now() + (isTrial ? 14 : 30) * 24 * 60 * 60 * 1000
+            ).toISOString(),
+        };
+
         try {
-            // Check if subscription already exists
             const { data: existing } = await supabase
                 .from("subscriptions")
                 .select("id")
@@ -94,45 +107,34 @@ const SelectPlan = () => {
                 .maybeSingle();
 
             if (existing) {
-                // Update existing
                 await supabase
                     .from("subscriptions")
-                    .update({
-                        plan,
-                        status: "trial",
-                        monthly_amount: plan === "starter" ? 750 : plan === "growth" ? 1250 : 0,
-                        setup_fee_paid: false,
-                        current_period_start: new Date().toISOString(),
-                        current_period_end: new Date(
-                            Date.now() + 14 * 24 * 60 * 60 * 1000
-                        ).toISOString(),
-                    })
+                    .update(subscriptionData)
                     .eq("id", existing.id);
             } else {
-                // Create new trial subscription
                 await supabase.from("subscriptions").insert({
                     company_id: profile.company_id,
-                    plan,
-                    status: "trial",
-                    monthly_amount: plan === "starter" ? 750 : plan === "growth" ? 1250 : 0,
-                    setup_fee_paid: false,
-                    current_period_start: new Date().toISOString(),
-                    current_period_end: new Date(
-                        Date.now() + 14 * 24 * 60 * 60 * 1000
-                    ).toISOString(),
+                    ...subscriptionData,
                 });
             }
 
-            toast({
-                title: "🧪 Trial activated!",
-                description: `You're on the ${plan} plan (14-day trial). Let's set up your AI sales team.`,
-            });
+            if (isTrial) {
+                toast({
+                    title: "Trial activated!",
+                    description: `You're on the ${plan} plan (14-day trial). Let's set up your AI sales team.`,
+                });
+            } else {
+                toast({
+                    title: "Subscription activated!",
+                    description: `You're on the ${plan} plan (test mode — no payment taken). Let's set up your AI sales team.`,
+                });
+            }
 
             navigate("/onboarding");
         } catch (err) {
             toast({
                 title: "Error",
-                description: "Failed to activate trial. Please try again.",
+                description: "Failed to activate. Please try again.",
                 variant: "destructive",
             });
         } finally {
@@ -142,6 +144,12 @@ const SelectPlan = () => {
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 py-12">
+            {isTestMode && (
+                <div className="mb-6 flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 text-sm text-emerald-400">
+                    <FlaskConical className="h-4 w-4" />
+                    Test Mode — Subscribe will simulate full payment (no charge)
+                </div>
+            )}
             <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl gradient-primary">
                 <Zap className="h-6 w-6 text-white" />
             </div>
@@ -205,21 +213,25 @@ const SelectPlan = () => {
                                         variant={tier.popular ? "default" : "outline"}
                                         disabled={activating !== null}
                                         onClick={() => {
-                                            toast({
-                                                title: "Stripe checkout",
-                                                description:
-                                                    "Payment integration coming soon. Use 'Start Free Trial' below.",
-                                            });
+                                            if (isTestMode) {
+                                                activateSubscription(tier.plan, "paid");
+                                            } else {
+                                                toast({
+                                                    title: "Stripe checkout",
+                                                    description:
+                                                        "Payment integration coming soon. Use 'Start Free Trial' below.",
+                                                });
+                                            }
                                         }}
                                     >
                                         <Sparkles className="h-3.5 w-3.5" />
-                                        Subscribe
+                                        {isTestMode ? "Subscribe (Test Mode)" : "Subscribe"}
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         className="w-full gap-1.5 text-xs text-muted-foreground hover:text-primary"
                                         disabled={activating !== null}
-                                        onClick={() => startTrial(tier.plan)}
+                                        onClick={() => activateSubscription(tier.plan, "trial")}
                                     >
                                         <FlaskConical className="h-3.5 w-3.5" />
                                         {activating === tier.plan

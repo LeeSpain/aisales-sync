@@ -15,6 +15,7 @@ import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
+import Setup from "./pages/Setup";
 
 // Protected pages
 import SelectPlan from "./pages/SelectPlan";
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/setup" element={<Setup />} />
 
             {/* Protected - Full screen (no layout) */}
             <Route path="/select-plan" element={<ProtectedRoute><SelectPlan /></ProtectedRoute>} />

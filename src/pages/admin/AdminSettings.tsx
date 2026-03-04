@@ -6,7 +6,8 @@ import { Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Key, Eye, EyeOff, Shield, Globe, CreditCard, Mail, Phone, Save, CheckCircle, AlertCircle } from "lucide-react";
+import { useTestMode } from "@/hooks/useTestMode";
+import { Key, Eye, EyeOff, Shield, Globe, CreditCard, Mail, Phone, Save, CheckCircle, AlertCircle, FlaskConical } from "lucide-react";
 
 interface ApiKeyConfig {
   id: string;
@@ -115,6 +116,7 @@ const AdminSettings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isTestMode, isToggling, toggle: toggleTestMode } = useTestMode();
   const [values, setValues] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -200,6 +202,46 @@ const AdminSettings = () => {
       <p className="text-muted-foreground mb-8">
         Manage API keys and integrations. Keys are stored securely as backend secrets.
       </p>
+
+      {/* Test Mode Toggle */}
+      <div className={`rounded-xl border p-5 mb-8 transition-colors ${isTestMode ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-card"}`}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${isTestMode ? "bg-emerald-500/10" : "bg-muted"}`}>
+              <FlaskConical className={`h-5 w-5 ${isTestMode ? "text-emerald-400" : "text-muted-foreground"}`} />
+            </div>
+            <div>
+              <p className="font-medium">Test Mode</p>
+              <p className="text-xs text-muted-foreground">
+                When enabled, new signups skip real payment and are activated as fully paid. The entire registration and onboarding flow still runs normally.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isTestMode}
+            disabled={isToggling}
+            onClick={() => {
+              toggleTestMode(!isTestMode);
+              toast({
+                title: isTestMode ? "Test Mode disabled" : "Test Mode enabled",
+                description: isTestMode
+                  ? "New signups will now require real payment via Stripe."
+                  : "New signups will simulate full payment — no money charged.",
+              });
+            }}
+            className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors disabled:opacity-50 ${isTestMode ? "bg-emerald-500" : "bg-muted"}`}
+          >
+            <span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${isTestMode ? "translate-x-6" : "translate-x-1"}`} />
+          </button>
+        </div>
+        {isTestMode && (
+          <div className="mt-3 rounded-lg bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300">
+            Test Mode is ON — new registrations will be marked as fully paid (status: active, setup fee: paid) without charging any money.
+          </div>
+        )}
+      </div>
 
       <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 mb-8">
         <p className="text-sm text-amber-200">
