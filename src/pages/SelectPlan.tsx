@@ -76,59 +76,65 @@ const SelectPlan = () => {
     });
 
     const ensureCompany = async (): Promise<string | null> => {
+        // The DB trigger creates profile + company on signup.
+        // Just fetch the latest profile to get company_id.
         if (profile?.company_id) return profile.company_id;
 
-        // 1. Ensure profile exists (trigger should have created it, but be safe)
-        const { data: existingProfile } = await supabase
+        // Re-fetch in case React Query cache is stale
+        const { data: freshProfile } = await supabase
             .from("profiles")
-            .select("id, company_id")
+            .select("company_id")
             .eq("id", user!.id)
             .maybeSingle();
 
-        if (existingProfile?.company_id) return existingProfile.company_id;
+        if (freshProfile?.company_id) return freshProfile.company_id;
 
-        if (!existingProfile) {
-            // Profile missing — create it now (trigger may have failed)
-            const { error: profErr } = await supabase.from("profiles").insert({
+        // Fallback: trigger may not have created the company yet.
+        // Create profile if missing, then company.
+        if (!freshProfile) {
+            await supabase.from("profiles").insert({
                 id: user!.id,
                 email: user!.email!,
                 full_name: user?.user_metadata?.full_name || "",
             });
-            if (profErr) {
-                console.error("Failed to create profile:", profErr.message);
-                return null;
-            }
         }
 
-        // 2. Create company
+        // Create company — use .insert() without .select() to avoid RLS SELECT issue,
+        // then query it back using owner_id
         const fullName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "My Company";
-        const { data: newCompany, error: compErr } = await supabase
+        const { error: compErr } = await supabase
             .from("companies")
-            .insert({ name: `${fullName}'s Company`, owner_id: user!.id, status: "active" })
-            .select("id")
-            .single();
+            .insert({ name: `${fullName}'s Company`, owner_id: user!.id, status: "active" });
 
-        if (compErr || !newCompany) {
-            console.error("Failed to create company:", compErr?.message);
+        if (compErr) {
+            console.error("Failed to create company:", compErr.message);
             return null;
         }
 
-        // 3. Link profile to company
+        // Fetch the company we just created by owner_id
+        const { data: newCompany } = await supabase
+            .from("companies")
+            .select("id")
+            .eq("owner_id", user!.id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .single();
+
+        if (!newCompany) {
+            console.error("Company created but could not be retrieved");
+            return null;
+        }
+
+        // Link profile to company
         await supabase.from("profiles").update({ company_id: newCompany.id }).eq("id", user!.id);
 
-        // 4. Ensure client role exists (ignore duplicate errors)
-        await supabase.from("user_roles").upsert(
-            { user_id: user!.id, role: "client" as const },
-            { onConflict: "user_id,role" }
-        );
-
-        // 5. Log signup activity
+        // Log signup activity (ignore errors)
         await supabase.from("activity_log").insert({
             company_id: newCompany.id,
             action: "user_signup",
             description: `New user signed up: ${user?.email}`,
             metadata: { user_id: user!.id, email: user?.email },
-        });
+        }).then(() => {}, () => {});
 
         return newCompany.id;
     };
