@@ -1,4 +1,4 @@
-import { useState, useCallback, KeyboardEvent } from "react";
+import { useState, useEffect, useRef, KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,17 +39,32 @@ const STEPS = [
 ];
 
 /** Reusable tag input component */
-function TagInput({ tags, onAdd, onRemove, placeholder }: {
+function TagInput({ tags, onAdd, onRemove, placeholder, flushRef }: {
   tags: string[]; onAdd: (tag: string) => void; onRemove: (idx: number) => void; placeholder: string;
+  flushRef?: React.MutableRefObject<(() => void) | null>;
 }) {
   const [input, setInput] = useState("");
-  const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if ((e.key === "Enter" || e.key === ",") && input.trim()) {
-      e.preventDefault();
+
+  const commitInput = () => {
+    if (input.trim()) {
       onAdd(input.trim());
       setInput("");
     }
   };
+
+  // Expose flush function so parent can commit pending text (e.g. on Next click)
+  useEffect(() => {
+    if (flushRef) flushRef.current = commitInput;
+    return () => { if (flushRef) flushRef.current = null; };
+  });
+
+  const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
+    if ((e.key === "Enter" || e.key === ",") && input.trim()) {
+      e.preventDefault();
+      commitInput();
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-wrap gap-2 mb-2">
@@ -62,13 +77,20 @@ function TagInput({ tags, onAdd, onRemove, placeholder }: {
           </Badge>
         ))}
       </div>
-      <Input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={handleKey}
-        placeholder={placeholder}
-      />
-      <p className="text-xs text-muted-foreground mt-1">Press Enter to add</p>
+      <div className="flex gap-2">
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKey}
+          onBlur={commitInput}
+          placeholder={placeholder}
+          className="flex-1"
+        />
+        <Button type="button" variant="outline" size="sm" onClick={commitInput} disabled={!input.trim()}>
+          Add
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">Press Enter or click Add</p>
     </div>
   );
 }
@@ -103,11 +125,22 @@ const Onboarding = () => {
   });
 
   // Pre-fill company name from profile
-  useState(() => {
+  useEffect(() => {
     if (profile?.companies && typeof profile.companies === "object" && "name" in profile.companies) {
       setCompanyName((profile.companies as { name: string }).name || "");
     }
-  });
+  }, [profile]);
+
+  // Refs to flush pending TagInput text before navigating
+  const servicesFlushRef = useRef<(() => void) | null>(null);
+  const marketsFlushRef = useRef<(() => void) | null>(null);
+  const uspsFlushRef = useRef<(() => void) | null>(null);
+
+  const flushCurrentStep = () => {
+    if (step === 2) servicesFlushRef.current?.();
+    if (step === 3) marketsFlushRef.current?.();
+    if (step === 4) uspsFlushRef.current?.();
+  };
 
   const totalSteps = STEPS.length;
   const progress = ((step + 1) / totalSteps) * 100;
@@ -311,6 +344,7 @@ const Onboarding = () => {
                       onAdd={(t) => setServices([...services, t])}
                       onRemove={(i) => setServices(services.filter((_, idx) => idx !== i))}
                       placeholder="e.g. Web Design, SEO, PPC Management"
+                      flushRef={servicesFlushRef}
                     />
                   </div>
                   <div className="space-y-2">
@@ -342,6 +376,7 @@ const Onboarding = () => {
                       onAdd={(t) => setTargetMarkets([...targetMarkets, t])}
                       onRemove={(i) => setTargetMarkets(targetMarkets.filter((_, idx) => idx !== i))}
                       placeholder="e.g. E-commerce startups, SaaS founders, Restaurant owners"
+                      flushRef={marketsFlushRef}
                     />
                   </div>
                   <div className="space-y-2">
@@ -385,6 +420,7 @@ const Onboarding = () => {
                       onAdd={(t) => setSellingPoints([...sellingPoints, t])}
                       onRemove={(i) => setSellingPoints(sellingPoints.filter((_, idx) => idx !== i))}
                       placeholder="e.g. 10+ years experience, Award-winning team, 98% client retention"
+                      flushRef={uspsFlushRef}
                     />
                   </div>
                   <div className="space-y-2">
@@ -446,7 +482,7 @@ const Onboarding = () => {
 
               {step < totalSteps - 1 ? (
                 <Button
-                  onClick={() => setStep(step + 1)}
+                  onClick={() => { flushCurrentStep(); setStep(step + 1); }}
                   disabled={!canNext()}
                   className="gradient-primary border-0 text-white gap-1"
                 >
