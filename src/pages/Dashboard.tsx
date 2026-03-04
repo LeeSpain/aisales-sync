@@ -2,20 +2,38 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Zap, UserCheck, MailOpen, TrendingUp, PhoneCall, Users, Target, CalendarCheck, FileText, Handshake } from "lucide-react";
+import { Zap, UserCheck, MailOpen, TrendingUp, PhoneCall, Users, Target, CalendarCheck, FileText, Handshake, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 const stats = [
-  { label: "Leads Found", key: "leads", icon: UserCheck, color: "text-primary" },
-  { label: "Qualified", key: "qualified", icon: Target, color: "text-primary" },
-  { label: "Messages Sent", key: "messages", icon: MailOpen, color: "text-accent" },
-  { label: "Replies", key: "replies", icon: TrendingUp, color: "text-success" },
-  { label: "Meetings", key: "meetings", icon: CalendarCheck, color: "text-warning" },
-  { label: "Proposals", key: "proposals", icon: FileText, color: "text-accent" },
-  { label: "Deals Won", key: "deals", icon: Handshake, color: "text-success" },
-  { label: "Calls Made", key: "calls", icon: PhoneCall, color: "text-warning" },
+  { label: "Leads Found", key: "leads", icon: UserCheck, color: "text-primary", bg: "bg-primary/15" },
+  { label: "Qualified", key: "qualified", icon: Target, color: "text-primary", bg: "bg-primary/15" },
+  { label: "Messages Sent", key: "messages", icon: MailOpen, color: "text-accent", bg: "bg-accent/15" },
+  { label: "Replies", key: "replies", icon: TrendingUp, color: "text-success", bg: "bg-success/15" },
+  { label: "Meetings", key: "meetings", icon: CalendarCheck, color: "text-warning", bg: "bg-warning/15" },
+  { label: "Proposals", key: "proposals", icon: FileText, color: "text-accent", bg: "bg-accent/15" },
+  { label: "Deals Won", key: "deals", icon: Handshake, color: "text-success", bg: "bg-success/15" },
+  { label: "Calls Made", key: "calls", icon: PhoneCall, color: "text-warning", bg: "bg-warning/15" },
 ];
+
+const statusChartColors: Record<string, string> = {
+  discovered: "hsl(240 10% 40%)",
+  researched: "hsl(240 10% 50%)",
+  scored: "hsl(234 89% 74%)",
+  qualified: "hsl(160 84% 39%)",
+  sequence_active: "hsl(187 92% 69%)",
+  contacted: "hsl(239 84% 67%)",
+  replied: "hsl(187 92% 69%)",
+  in_conversation: "hsl(187 92% 60%)",
+  meeting_booked: "hsl(38 92% 50%)",
+  proposal_sent: "hsl(239 84% 67%)",
+  negotiating: "hsl(38 92% 60%)",
+  converted: "hsl(160 84% 39%)",
+  rejected: "hsl(0 84% 60%)",
+  unresponsive: "hsl(240 10% 35%)",
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -72,6 +90,23 @@ const Dashboard = () => {
     enabled: !!profile?.company_id,
   });
 
+  const { data: allLeadStatuses } = useQuery({
+    queryKey: ["lead-all-statuses", profile?.company_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("leads")
+        .select("status")
+        .eq("company_id", profile!.company_id!);
+      const counts: Record<string, number> = {};
+      data?.forEach((l) => {
+        const s = l.status || "unknown";
+        counts[s] = (counts[s] || 0) + 1;
+      });
+      return counts;
+    },
+    enabled: !!profile?.company_id,
+  });
+
   const totals = {
     leads: campaigns?.reduce((s, c) => s + (c.leads_found || 0), 0) || 0,
     qualified: campaigns?.reduce((s, c) => s + (c.leads_qualified || 0), 0) || 0,
@@ -100,34 +135,54 @@ const Dashboard = () => {
     unresponsive: "text-muted-foreground bg-muted",
   };
 
+  const pipelineChartData = allLeadStatuses
+    ? Object.entries(allLeadStatuses).map(([status, count]) => ({
+        status: status.replace(/_/g, " "),
+        rawStatus: status,
+        count,
+      }))
+    : [];
+
   return (
     <div className="p-8">
-      <h1 className="mb-2 text-2xl font-bold">Dashboard</h1>
-      <p className="text-muted-foreground">
-        Welcome back{user?.email ? `, ${user.email}` : ""}
-      </p>
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">
+          Welcome back
+          {profile?.full_name ? (
+            <span className="gradient-text">{`, ${profile.full_name}`}</span>
+          ) : user?.email ? (
+            <span className="text-muted-foreground text-xl font-normal ml-2">({user.email})</span>
+          ) : null}
+        </h1>
+        <p className="mt-1 text-muted-foreground">Here's your sales pipeline at a glance</p>
+      </div>
 
       {/* Stats */}
-      <div className="mt-8 grid gap-4 grid-cols-2 md:grid-cols-4 xl:grid-cols-8">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
         {stats.map((stat) => (
-          <div key={stat.label} className="rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/30">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{stat.label}</span>
-              <stat.icon className={cn("h-4 w-4", stat.color)} />
+          <div key={stat.label} className="card-glow rounded-xl p-5 group">
+            <div className="flex items-center gap-3">
+              <div className={cn("icon-bg rounded-xl", stat.bg)}>
+                <stat.icon className={cn("h-5 w-5", stat.color)} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs text-muted-foreground truncate">{stat.label}</p>
+                <p className="text-2xl font-bold mt-0.5">{totals[stat.key as keyof typeof totals]}</p>
+              </div>
             </div>
-            <p className="mt-2 text-2xl font-bold">{totals[stat.key as keyof typeof totals]}</p>
           </div>
         ))}
       </div>
 
       {/* AI Briefing */}
-      <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-6">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg gradient-primary">
+      <div className="mt-8 glass-card rounded-xl p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary shadow-lg">
             <Zap className="h-5 w-5 text-white" />
           </div>
           <div>
-            <p className="font-semibold">AI Briefing</p>
+            <p className="font-semibold text-base">AI Briefing</p>
             <p className="text-xs text-muted-foreground">Updated just now</p>
           </div>
         </div>
@@ -140,36 +195,88 @@ const Dashboard = () => {
           <Button size="sm" className="gradient-primary border-0 text-white hover:opacity-90" onClick={() => navigate("/campaigns")}>
             {campaigns && campaigns.length > 0 ? "View Campaigns" : "Create Campaign"}
           </Button>
-          <Button size="sm" variant="outline" onClick={() => navigate("/leads")}>
+          <Button size="sm" variant="outline" className="border-border/50 hover:bg-muted/50" onClick={() => navigate("/leads")}>
             View Leads
           </Button>
-          <Button size="sm" variant="outline" onClick={() => navigate("/pipeline")}>
+          <Button size="sm" variant="outline" className="border-border/50 hover:bg-muted/50" onClick={() => navigate("/pipeline")}>
             View Pipeline
           </Button>
         </div>
       </div>
 
+      {/* Pipeline Chart */}
+      <div className="mt-8 glass-card rounded-xl p-6">
+        <h3 className="font-semibold mb-4 section-header-line">Lead Pipeline</h3>
+        {pipelineChartData.length > 0 ? (
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={pipelineChartData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 14% 18%)" />
+                <XAxis
+                  dataKey="status"
+                  tick={{ fill: "hsl(240 10% 60%)", fontSize: 11 }}
+                  axisLine={{ stroke: "hsl(240 14% 18%)" }}
+                  tickLine={false}
+                  angle={-35}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis
+                  tick={{ fill: "hsl(240 10% 60%)", fontSize: 11 }}
+                  axisLine={{ stroke: "hsl(240 14% 18%)" }}
+                  tickLine={false}
+                  allowDecimals={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(240 17% 8%)",
+                    border: "1px solid hsl(240 14% 18%)",
+                    borderRadius: "0.75rem",
+                    color: "hsl(240 10% 96%)",
+                    fontSize: 12,
+                  }}
+                />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                  {pipelineChartData.map((entry) => (
+                    <Cell key={entry.rawStatus} fill={statusChartColors[entry.rawStatus] || "hsl(239 84% 67%)"} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center py-12 text-center">
+            <BarChart3 className="h-8 w-8 text-muted-foreground/40 mb-3" />
+            <p className="text-sm text-muted-foreground">No lead data yet</p>
+          </div>
+        )}
+      </div>
+
       {/* Content Grid */}
       <div className="mt-8 grid gap-8 lg:grid-cols-2">
         {/* Top Leads */}
-        <div className="rounded-xl border border-border bg-card p-6">
+        <div className="glass-card rounded-xl p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Top Leads</h3>
-            <button onClick={() => navigate("/leads")} className="text-xs text-primary hover:underline">View all</button>
+            <h3 className="font-semibold section-header-line">Top Leads</h3>
+            <button onClick={() => navigate("/leads")} className="text-xs text-primary hover:text-primary-light transition-colors">View all &rarr;</button>
           </div>
           {recentLeads && recentLeads.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-2">
               {recentLeads.map((lead) => (
-                <div key={lead.id} className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/50 cursor-pointer" onClick={() => navigate(`/leads/${lead.id}`)}>
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
-                    {lead.score?.toFixed(1) || "—"}
+                <div
+                  key={lead.id}
+                  className="flex items-center gap-3 rounded-lg p-3 hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-border/50"
+                  onClick={() => navigate(`/leads/${lead.id}`)}
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-xs font-bold text-primary">
+                    {lead.score?.toFixed(1) || "--"}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{lead.business_name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{lead.industry} • {lead.city}</p>
+                    <p className="text-xs text-muted-foreground truncate">{lead.industry}{lead.city ? ` \u00B7 ${lead.city}` : ""}</p>
                   </div>
-                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium capitalize", statusColor[lead.status] || "text-muted-foreground bg-muted")}>
-                    {lead.status}
+                  <span className={cn("rounded-full px-2.5 py-1 text-[10px] font-medium capitalize whitespace-nowrap", statusColor[lead.status] || "text-muted-foreground bg-muted")}>
+                    {lead.status?.replace(/_/g, " ")}
                   </span>
                 </div>
               ))}
@@ -183,16 +290,21 @@ const Dashboard = () => {
         </div>
 
         {/* Activity Feed */}
-        <div className="rounded-xl border border-border bg-card p-6">
-          <h3 className="font-semibold mb-4">Recent Activity</h3>
+        <div className="glass-card rounded-xl p-6">
+          <h3 className="font-semibold mb-4 section-header-line">Recent Activity</h3>
           {recentActivity && recentActivity.length > 0 ? (
-            <div className="space-y-3">
-              {recentActivity.map((item) => (
-                <div key={item.id} className="flex gap-3">
-                  <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                  <div>
+            <div className="space-y-0">
+              {recentActivity.map((item, index) => (
+                <div key={item.id} className="flex gap-3 group">
+                  <div className="flex flex-col items-center">
+                    <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full gradient-primary" />
+                    {index < recentActivity.length - 1 && (
+                      <div className="w-px flex-1 bg-border/50 mt-1" />
+                    )}
+                  </div>
+                  <div className="pb-4">
                     <p className="text-sm">{item.description || item.action}</p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       {new Date(item.created_at).toLocaleString()}
                     </p>
                   </div>

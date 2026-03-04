@@ -81,6 +81,11 @@
 }
 
 @layer base {
+  html {
+    @apply dark;
+    color-scheme: dark;
+  }
+
   * {
     @apply border-border;
   }
@@ -126,6 +131,57 @@
     border: 1px solid hsl(240 14% 30% / 0.4);
     box-shadow: 0 8px 32px hsl(0 0% 0% / 0.3),
       inset 0 1px 0 hsl(240 14% 40% / 0.2);
+  }
+
+  .card-glow {
+    position: relative;
+    background: hsl(240 17% 8%);
+    border: 1px solid hsl(240 14% 18%);
+    transition: all 0.3s ease;
+  }
+  .card-glow::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, hsl(239 84% 67% / 0.3), hsl(187 92% 69% / 0.1));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+  .card-glow:hover::before {
+    opacity: 1;
+  }
+  .card-glow:hover {
+    box-shadow: 0 0 20px hsl(239 84% 67% / 0.1);
+  }
+
+  .icon-bg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.75rem;
+  }
+
+  .section-header-line {
+    position: relative;
+    padding-left: 1rem;
+  }
+  .section-header-line::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.125rem;
+    bottom: 0.125rem;
+    width: 3px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, hsl(239 84% 67%), hsl(187 92% 69%));
   }
 
   .hero-grid-floor {
