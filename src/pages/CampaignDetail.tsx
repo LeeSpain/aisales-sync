@@ -147,17 +147,17 @@ const CampaignDetail = () => {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <button onClick={() => navigate("/campaigns")} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ArrowLeft className="h-4 w-4" /> Back to Campaigns
       </button>
 
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">{campaign.name}</h1>
-          <p className="text-muted-foreground">{campaign.target_description}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6 md:mb-8">
+        <div className="min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold truncate">{campaign.name}</h1>
+          <p className="text-muted-foreground text-sm">{campaign.target_description}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary uppercase">{campaign.status}</span>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/campaigns/${id}/sequence`)}>
             <Workflow className="h-3.5 w-3.5" />
@@ -249,7 +249,7 @@ const CampaignDetail = () => {
                       <>
                         <Button
                           size="sm"
-                          className="h-6 px-2 text-[10px] gradient-primary border-0 text-white"
+                          className="h-8 px-2.5 text-xs gradient-primary border-0 text-white"
                           onClick={() => handleApprove(email.id)}
                         >
                           <Check className="h-3 w-3 mr-0.5" /> Approve
@@ -257,7 +257,7 @@ const CampaignDetail = () => {
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-6 px-1.5 text-muted-foreground hover:text-destructive"
+                          className="h-8 px-2 text-muted-foreground hover:text-destructive"
                           onClick={() => handleReject(email.id)}
                         >
                           <X className="h-3 w-3" />

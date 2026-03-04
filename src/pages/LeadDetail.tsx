@@ -111,15 +111,15 @@ const LeadDetail = () => {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ArrowLeft className="h-4 w-4" /> Back
       </button>
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold">{lead.business_name}</h1>
+      <div className="flex items-start justify-between mb-6 md:mb-8">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl md:text-2xl font-bold truncate">{lead.business_name}</h1>
           <p className="text-muted-foreground">{lead.industry} · {lead.city}, {lead.country}</p>
         </div>
         <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">

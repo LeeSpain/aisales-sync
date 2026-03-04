@@ -66,11 +66,11 @@ const Pipeline = () => {
     const wonCount = getStageLeads("won").length;
 
     return (
-        <div className="p-8">
+        <div className="p-4 md:p-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
-                    <h1 className="text-2xl font-bold">Deal Pipeline</h1>
+                    <h1 className="text-xl md:text-2xl font-bold">Deal Pipeline</h1>
                     <p className="text-muted-foreground text-sm">
                         Track leads through your sales pipeline · Active: {pipelineLeads.length} leads · Won: {wonCount}
                     </p>
@@ -85,7 +85,7 @@ const Pipeline = () => {
                     return (
                         <div
                             key={stage.key}
-                            className="flex-shrink-0 w-[280px]"
+                            className="flex-shrink-0 w-[260px] sm:w-[280px]"
                         >
                             {/* Column header */}
                             <div className={cn(

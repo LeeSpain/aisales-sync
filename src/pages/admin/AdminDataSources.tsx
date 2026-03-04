@@ -115,7 +115,7 @@ const AdminDataSources = () => {
     const categories = [...new Set(dataSources.map((ds) => ds.category))];
 
     return (
-        <div className="p-8 max-w-5xl mx-auto">
+        <div className="p-4 md:p-8">
             <div className="flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-2xl font-bold">Data Sources</h1>

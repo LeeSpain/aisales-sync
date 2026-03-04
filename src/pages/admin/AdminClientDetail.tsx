@@ -142,22 +142,22 @@ const AdminClientDetail = () => {
     ];
 
     return (
-        <div className="p-8 max-w-5xl mx-auto">
+        <div className="p-4 md:p-8">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-8">
-                <Button variant="ghost" size="icon" asChild>
+            <div className="flex flex-wrap items-center gap-3 mb-6 md:mb-8">
+                <Button variant="ghost" size="icon" asChild className="shrink-0">
                     <Link to="/admin/clients">
                         <ArrowLeft className="h-4 w-4" />
                     </Link>
                 </Button>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                             <Building2 className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
-                            <h1 className="text-2xl font-bold">{company.name}</h1>
-                            <p className="text-sm text-muted-foreground">
+                        <div className="min-w-0">
+                            <h1 className="text-xl md:text-2xl font-bold truncate">{company.name}</h1>
+                            <p className="text-sm text-muted-foreground truncate">
                                 {company.industry ?? "Unknown industry"} · {company.website ?? "No website"}
                             </p>
                         </div>

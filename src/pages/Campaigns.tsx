@@ -39,8 +39,8 @@ const Campaigns = () => {
   });
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 md:mb-8">
         <div>
           <h1 className="text-2xl font-bold">Campaigns</h1>
           <p className="text-muted-foreground">Manage your lead discovery and outreach campaigns</p>

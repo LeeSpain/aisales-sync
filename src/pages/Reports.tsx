@@ -121,7 +121,7 @@ const Reports = () => {
     ];
 
     return (
-        <div className="p-8">
+        <div className="p-4 md:p-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
@@ -137,7 +137,7 @@ const Reports = () => {
                     return (
                         <div key={stat.label} className="rounded-xl border border-border bg-card p-3 text-center">
                             <Icon className={cn("h-4 w-4 mx-auto mb-1", stat.color)} />
-                            <p className="text-lg font-bold text-white">{stat.value}</p>
+                            <p className="text-lg font-bold text-foreground">{stat.value}</p>
                             <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</p>
                         </div>
                     );
@@ -170,7 +170,7 @@ const Reports = () => {
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
-                                            <h3 className="text-sm font-semibold text-white">{suggestion.title}</h3>
+                                            <h3 className="text-sm font-semibold text-foreground">{suggestion.title}</h3>
                                             <Badge variant="outline" className={cn(
                                                 "text-[9px] uppercase",
                                                 suggestion.impact === "high" ? "text-emerald-400 border-emerald-500/30" : "text-amber-400 border-amber-500/30"
@@ -198,7 +198,7 @@ const Reports = () => {
                                 >
                                     <div className="flex items-center justify-between mb-3">
                                         <div>
-                                            <h3 className="font-semibold text-white">{campaign.name}</h3>
+                                            <h3 className="font-semibold text-foreground">{campaign.name}</h3>
                                             <p className="text-xs text-muted-foreground capitalize">{campaign.status || "draft"} · {campaign.geographic_focus || "Global"}</p>
                                         </div>
                                         <Badge variant="secondary" className="text-xs capitalize">{campaign.status || "draft"}</Badge>

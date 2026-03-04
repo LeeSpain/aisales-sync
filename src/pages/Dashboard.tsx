@@ -144,10 +144,10 @@ const Dashboard = () => {
     : [];
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-2xl md:text-3xl font-bold">
           Welcome back
           {profile?.full_name ? (
             <span className="gradient-text">{`, ${profile.full_name}`}</span>
@@ -191,7 +191,7 @@ const Dashboard = () => {
             ? `You have ${campaigns.length} campaign${campaigns.length > 1 ? "s" : ""} running with ${totals.leads} leads found. ${totals.replies > 0 ? `${totals.replies} replies need attention.` : "Start outreach to begin receiving replies."}`
             : "Your AI sales team is ready. Create your first campaign to start finding clients and building your pipeline."}
         </p>
-        <div className="mt-4 flex gap-2">
+        <div className="mt-4 flex flex-wrap gap-2">
           <Button size="sm" className="gradient-primary border-0 text-white hover:opacity-90" onClick={() => navigate("/campaigns")}>
             {campaigns && campaigns.length > 0 ? "View Campaigns" : "Create Campaign"}
           </Button>

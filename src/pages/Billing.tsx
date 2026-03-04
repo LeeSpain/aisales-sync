@@ -34,13 +34,13 @@ const Billing = () => {
   ];
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-2">Billing</h1>
+    <div className="p-4 md:p-8">
+      <h1 className="text-xl md:text-2xl font-bold mb-2">Billing</h1>
       <p className="text-muted-foreground mb-8">Manage your subscription and payment details</p>
 
       {/* Current plan */}
       <div className="rounded-xl border border-border bg-card p-6 mb-8">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-muted-foreground">Current Plan</p>
             <p className="text-xl font-bold capitalize">{subscription?.plan || "No active plan"}</p>

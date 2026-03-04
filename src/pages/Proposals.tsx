@@ -127,7 +127,7 @@ const Proposals = () => {
     );
 
     return (
-        <div className="p-8">
+        <div className="p-4 md:p-8">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>
@@ -139,7 +139,7 @@ const Proposals = () => {
             </div>
 
             {/* Stats row */}
-            <div className="grid gap-3 mb-6" style={{ gridTemplateColumns: `repeat(${visibleStatuses.length}, 1fr)` }}>
+            <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
                 {visibleStatuses.map((key) => {
                     const config = statusConfig[key];
                     if (!config) return null;
@@ -172,9 +172,9 @@ const Proposals = () => {
             )}
 
             {/* Table */}
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="rounded-xl border border-border bg-card overflow-x-auto">
                 {proposals && proposals.length > 0 ? (
-                    <table className="w-full">
+                    <table className="w-full min-w-[700px]">
                         <thead>
                             <tr className="border-b border-border bg-muted/30">
                                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Subject</th>
@@ -232,7 +232,7 @@ const Proposals = () => {
                                                     <>
                                                         <Button
                                                             size="sm"
-                                                            className="h-7 px-2.5 text-xs gradient-primary border-0 text-white"
+                                                            className="h-8 px-2.5 text-xs gradient-primary border-0 text-white"
                                                             onClick={(e) => { e.stopPropagation(); handleApprove(email.id); }}
                                                         >
                                                             <Check className="h-3 w-3 mr-1" />
@@ -241,7 +241,7 @@ const Proposals = () => {
                                                         <Button
                                                             size="sm"
                                                             variant="ghost"
-                                                            className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                                                            className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
                                                             onClick={(e) => { e.stopPropagation(); handleReject(email.id); }}
                                                         >
                                                             <X className="h-3 w-3" />

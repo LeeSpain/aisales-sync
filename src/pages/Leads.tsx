@@ -51,8 +51,8 @@ const Leads = () => {
   const statuses = ["all", "discovered", "scored", "qualified", "contacted", "replied", "converted", "rejected"];
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-2">Leads</h1>
+    <div className="p-4 md:p-8">
+      <h1 className="text-xl md:text-2xl font-bold mb-2">Leads</h1>
       <p className="text-muted-foreground mb-6">All discovered leads across campaigns</p>
 
       {/* Filters */}
@@ -61,7 +61,7 @@ const Leads = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search leads..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {statuses.map((s) => (
             <button key={s} onClick={() => setStatusFilter(s)} className={cn(
               "rounded-full px-3 py-1.5 text-xs font-medium capitalize transition-colors",
@@ -76,8 +76,8 @@ const Leads = () => {
       {isLoading ? (
         <div className="flex justify-center py-12"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>
       ) : filtered.length > 0 ? (
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
-          <table className="w-full">
+        <div className="rounded-xl border border-border bg-card overflow-x-auto">
+          <table className="w-full min-w-[500px]">
             <thead>
               <tr className="border-b border-border bg-muted/30">
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Score</th>

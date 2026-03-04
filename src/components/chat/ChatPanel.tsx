@@ -58,7 +58,7 @@ const ChatPanel = ({
         "flex flex-col bg-card border border-border",
         fullScreen
           ? "h-full rounded-none"
-          : "rounded-2xl shadow-xl w-[400px] h-[560px]",
+          : "shadow-xl w-full h-[100dvh] sm:w-[400px] sm:h-[560px] sm:rounded-2xl",
         className
       )}
     >

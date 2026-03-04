@@ -31,8 +31,8 @@ const AdminAIConfig = () => {
   });
 
   return (
-    <div className="p-8 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-2">AI Configuration</h1>
+    <div className="p-4 md:p-8">
+      <h1 className="text-xl md:text-2xl font-bold mb-2">AI Configuration</h1>
       <p className="text-muted-foreground mb-8">Manage AI providers, models, and budgets</p>
 
       <div className="rounded-xl border border-primary/20 bg-primary/5 p-6 mb-8">
@@ -55,7 +55,7 @@ const AdminAIConfig = () => {
                   {config.is_active ? "Active" : "Inactive"}
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                 <div><span className="text-muted-foreground">Temperature:</span> {config.temperature}</div>
                 <div><span className="text-muted-foreground">Max Tokens:</span> {config.max_tokens}</div>
                 <div><span className="text-muted-foreground">Budget:</span> €{config.monthly_budget_cap || "—"} (Spent: €{config.current_month_spend})</div>

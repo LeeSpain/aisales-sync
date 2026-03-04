@@ -118,21 +118,21 @@ const SequenceDesigner = () => {
     };
 
     return (
-        <div className="p-8 max-w-4xl mx-auto">
+        <div className="p-4 md:p-8">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-8">
-                <Button variant="ghost" size="icon" asChild>
+            <div className="flex flex-wrap items-center gap-3 mb-6 md:mb-8">
+                <Button variant="ghost" size="icon" asChild className="shrink-0">
                     <Link to={id ? `/campaigns/${id}` : "/campaigns"}>
                         <ArrowLeft className="h-4 w-4" />
                     </Link>
                 </Button>
-                <div>
-                    <h1 className="text-2xl font-bold">Sequence Designer</h1>
-                    <p className="text-muted-foreground text-sm">
+                <div className="flex-1 min-w-0">
+                    <h1 className="text-xl md:text-2xl font-bold">Sequence Designer</h1>
+                    <p className="text-muted-foreground text-sm truncate">
                         {campaign?.name ?? "Campaign"} — Multi-channel outreach sequence
                     </p>
                 </div>
-                <div className="ml-auto flex gap-2">
+                <div className="flex gap-2 shrink-0">
                     <Button variant="outline" size="sm" className="gap-1.5">
                         <Sparkles className="h-3.5 w-3.5" />
                         AI Build
@@ -203,7 +203,7 @@ const SequenceDesigner = () => {
             </div>
 
             {/* Add step buttons */}
-            <div className="mt-6 flex items-center gap-3 pl-[72px]">
+            <div className="mt-6 flex flex-wrap items-center gap-2 sm:gap-3 pl-16 sm:pl-[72px]">
                 <span className="text-xs text-muted-foreground mr-1">Add step:</span>
                 {(Object.keys(channelConfig) as Array<keyof typeof channelConfig>).map((ch) => {
                     const config = channelConfig[ch];

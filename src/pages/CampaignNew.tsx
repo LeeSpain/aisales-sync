@@ -625,7 +625,7 @@ const CampaignNew = () => {
 
                   <div className="space-y-2">
                     <Label>Communication tone</Label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {TONE_OPTIONS.map((t) => (
                         <button
                           key={t.value}

@@ -62,7 +62,7 @@ const Pricing = () => {
             <motion.div
               key={tier.plan}
               className={cn(
-                "relative rounded-2xl border p-8 transition-all hover:-translate-y-1",
+                "relative rounded-2xl border p-5 md:p-8 transition-all hover:-translate-y-1",
                 tier.popular
                   ? "border-primary bg-primary/5 shadow-lg glow-primary"
                   : "border-border bg-card"

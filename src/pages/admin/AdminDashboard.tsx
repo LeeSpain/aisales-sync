@@ -127,15 +127,15 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-6 md:mb-8">
         <div className="flex items-center gap-3 mb-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary shadow-lg">
             <Shield className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold">
+            <h1 className="text-2xl md:text-3xl font-bold">
               <span className="gradient-text">Super Admin</span>
             </h1>
             <p className="text-sm text-muted-foreground">Platform overview and management</p>
@@ -165,7 +165,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Quick Navigation */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-8">
         {navItems.map((item) => (
           <button
             key={item.label}

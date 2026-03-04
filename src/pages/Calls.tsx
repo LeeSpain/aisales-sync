@@ -36,8 +36,8 @@ const Calls = () => {
   });
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-2">Calls</h1>
+    <div className="p-4 md:p-8">
+      <h1 className="text-xl md:text-2xl font-bold mb-2">Calls</h1>
       <p className="text-muted-foreground mb-6">AI voice calls and scheduled calls</p>
 
       {isLoading ? (

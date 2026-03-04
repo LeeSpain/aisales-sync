@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Target, Users, Mail, Phone, Settings,
   LogOut, Zap, MessageCircle, CreditCard, FileText, BarChart3, Columns3, Shield, FlaskConical, Bot,
-  Building2, Clock, Database, ArrowLeft,
+  Building2, Clock, Database, ArrowLeft, Menu, X,
 } from "lucide-react";
 import { useTestMode } from "@/hooks/useTestMode";
 import { useDeadSwitch } from "@/hooks/useDeadSwitch";
@@ -52,6 +52,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [chatOpen, setChatOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Get profile with company to check subscription status + pass to AI
   const { data: profile } = useQuery({
@@ -122,106 +123,167 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     companyProfile: profile?.companies as Record<string, unknown> | null,
   });
 
+  const handleNav = (path: string) => {
+    navigate(path);
+    setSidebarOpen(false);
+  };
+
+  /* ─── Sidebar content (shared between desktop & mobile) ─── */
+  const sidebarContent = (
+    <>
+      <div className="flex h-16 items-center gap-2 border-b border-border px-6 cursor-pointer" onClick={() => handleNav(isOnAdminRoute ? "/admin" : "/dashboard")}>
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
+          <Zap className="h-4 w-4 text-white" />
+        </div>
+        <span className="font-bold truncate">AI Sales Sync</span>
+        {/* Close button — mobile only */}
+        <button
+          onClick={(e) => { e.stopPropagation(); setSidebarOpen(false); }}
+          className="ml-auto p-1.5 rounded-lg text-muted-foreground hover:bg-muted md:hidden"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <nav className="flex-1 space-y-1 p-3 overflow-y-auto">
+        {activeNavItems.map((item) => {
+          const active = item.path === "/admin"
+            ? location.pathname === "/admin"
+            : location.pathname.startsWith(item.path);
+          return (
+            <button
+              key={item.label}
+              onClick={() => handleNav(item.path)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                active
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          );
+        })}
+
+        <div className="my-2 border-t border-border" />
+        {isAdmin && !isOnAdminRoute && (
+          <button
+            onClick={() => handleNav("/admin")}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <Shield className="h-4 w-4" />
+            Super Admin
+          </button>
+        )}
+        {isOnAdminRoute && (
+          <button
+            onClick={() => handleNav("/dashboard")}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </button>
+        )}
+      </nav>
+
+      <div className="border-t border-border p-3 space-y-1">
+        {isAdmin && isDeadSwitchActive && (
+          <div className="mb-2 px-3 py-2 text-xs font-bold text-red-400 flex items-center gap-2 bg-red-500/10 rounded-lg animate-pulse cursor-pointer" onClick={() => handleNav("/admin/ai-agents")}>
+            <Bot className="h-3 w-3" />
+            AI KILLED
+          </div>
+        )}
+        {isAdmin && isTestMode && (
+          <div className="mb-2 px-3 py-2 text-xs font-medium text-emerald-400 flex items-center gap-2 bg-emerald-500/10 rounded-lg">
+            <FlaskConical className="h-3 w-3" />
+            Test Mode Active
+          </div>
+        )}
+        {isTrial && (
+          <div className="mb-2 px-3 py-2 text-xs font-medium text-warning flex items-center gap-2 bg-warning/10 rounded-lg">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-warning"></span>
+            </span>
+            Trial: {daysLeft} days left
+          </div>
+        )}
+        <div className="px-3 py-2 text-xs text-muted-foreground truncate">
+          {user?.email}
+        </div>
+        <button
+          onClick={signOut}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <LogOut className="h-4 w-4" />
+          Sign out
+        </button>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex min-h-screen bg-background text-foreground">
-      {/* Sidebar */}
-      <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-card">
-        <div className="flex h-16 items-center gap-2 border-b border-border px-6 cursor-pointer" onClick={() => navigate(isOnAdminRoute ? "/admin" : "/dashboard")}>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
-            <Zap className="h-4 w-4 text-white" />
-          </div>
-          <span className="font-bold">AI Sales Sync</span>
-        </div>
-
-        <nav className="flex-1 space-y-1 p-3">
-          {activeNavItems.map((item) => {
-            const active = item.path === "/admin"
-              ? location.pathname === "/admin"
-              : location.pathname.startsWith(item.path);
-            return (
-              <button
-                key={item.label}
-                onClick={() => navigate(item.path)}
-                className={cn(
-                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            );
-          })}
-
-          <div className="my-2 border-t border-border" />
-          {isAdmin && !isOnAdminRoute && (
-            <button
-              onClick={() => navigate("/admin")}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <Shield className="h-4 w-4" />
-              Super Admin
-            </button>
-          )}
-          {isOnAdminRoute && (
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
-            </button>
-          )}
-        </nav>
-
-        <div className="border-t border-border p-3 space-y-1">
-          {isAdmin && isDeadSwitchActive && (
-            <div className="mb-2 px-3 py-2 text-xs font-bold text-red-400 flex items-center gap-2 bg-red-500/10 rounded-lg animate-pulse cursor-pointer" onClick={() => navigate("/admin/ai-agents")}>
-              <Bot className="h-3 w-3" />
-              AI KILLED
-            </div>
-          )}
-          {isAdmin && isTestMode && (
-            <div className="mb-2 px-3 py-2 text-xs font-medium text-emerald-400 flex items-center gap-2 bg-emerald-500/10 rounded-lg">
-              <FlaskConical className="h-3 w-3" />
-              Test Mode Active
-            </div>
-          )}
-          {isTrial && (
-            <div className="mb-2 px-3 py-2 text-xs font-medium text-warning flex items-center gap-2 bg-warning/10 rounded-lg">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warning opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-warning"></span>
-              </span>
-              Trial: {daysLeft} days left
-            </div>
-          )}
-          <div className="px-3 py-2 text-xs text-muted-foreground truncate">
-            {user?.email}
-          </div>
-          <button
-            onClick={signOut}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign out
-          </button>
-        </div>
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-card">
+        {sidebarContent}
       </aside>
 
+      {/* Mobile sidebar overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-40 bg-black/60 md:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: -280 }}
+              animate={{ x: 0 }}
+              exit={{ x: -280 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="fixed inset-y-0 left-0 z-50 flex w-[280px] flex-col border-r border-border bg-card md:hidden"
+            >
+              {sidebarContent}
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Main */}
-      <main className="flex-1 overflow-auto">
-        {children}
-      </main>
+      <div className="flex flex-1 flex-col min-w-0">
+        {/* Mobile top bar */}
+        <div className="flex h-14 items-center gap-3 border-b border-border px-4 md:hidden">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg gradient-primary">
+              <Zap className="h-3.5 w-3.5 text-white" />
+            </div>
+            <span className="font-bold text-sm">AI Sales Sync</span>
+          </div>
+        </div>
+
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
+      </div>
 
       {/* Floating chat */}
       {!chatOpen && (
         <motion.button
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="fixed bottom-6 right-6 flex h-14 w-14 items-center justify-center rounded-2xl gradient-primary shadow-lg glow-primary z-50"
+          className="fixed bottom-6 right-4 md:right-6 flex h-14 w-14 items-center justify-center rounded-2xl gradient-primary shadow-lg glow-primary z-30"
           onClick={() => setChatOpen(true)}
         >
           <MessageCircle className="h-6 w-6 text-white" />
@@ -234,7 +296,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50"
+            className="fixed bottom-0 right-0 z-50 w-full sm:bottom-6 sm:right-4 md:right-6 sm:w-[400px]"
           >
             <ChatPanel
               messages={messages}

@@ -371,13 +371,13 @@ const AdminAIAgentCenter = () => {
   // RENDER
   // ═══════════════════════════════════════════════════════════════════
   return (
-    <div className="p-8 max-w-5xl">
+    <div className="p-4 md:p-8">
       {/* Header */}
       <div className="flex items-center gap-3 mb-2">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
           <Bot className="h-5 w-5 text-primary" />
         </div>
-        <h1 className="text-2xl font-bold">AI Agent Command Center</h1>
+        <h1 className="text-xl md:text-2xl font-bold">AI Agent Command Center</h1>
       </div>
       <p className="text-muted-foreground mb-8">
         Full control over every AI agent — training, memory, instructions, budgets, and the dead switch.
@@ -439,7 +439,7 @@ const AdminAIAgentCenter = () => {
               )}
             </Button>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-red-400 font-medium mr-2">Are you sure?</span>
               <Button
                 variant="destructive"
@@ -649,7 +649,7 @@ const AdminAIAgentCenter = () => {
                       </Button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div>
                       <label className="text-[11px] text-muted-foreground block mb-1">Model</label>
                       <Input

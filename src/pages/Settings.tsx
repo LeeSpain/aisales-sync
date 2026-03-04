@@ -9,8 +9,9 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Globe, Briefcase, MessageSquare, SlidersHorizontal, MapPin, Save,
   Building2, FileText, ShieldCheck, Mail, Send, FileCheck, X, Pencil,
-  Check, Lightbulb, Plus,
+  Check, Lightbulb, Plus, Sun, Moon, Palette,
 } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
 
 // ─── Tag input helper ───
@@ -138,6 +139,7 @@ const SettingsPage = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { theme, setTheme } = useTheme();
   const [notes, setNotes] = useState("");
   const [notesLoaded, setNotesLoaded] = useState(false);
   const [savingNotes, setSavingNotes] = useState(false);
@@ -232,7 +234,7 @@ const SettingsPage = () => {
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-4 md:p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl gradient-primary shadow-lg">
@@ -250,6 +252,103 @@ const SettingsPage = () => {
         )}>
           {company.status ?? "setup"}
         </Badge>
+      </div>
+
+      {/* Theme Picker */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center gap-2 mb-3">
+          {theme === "dark" ? <Moon className="h-4 w-4 text-primary" /> : theme === "brand" ? <Palette className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}
+          <h3 className="text-sm font-semibold">Dashboard Theme</h3>
+          <p className="text-xs text-muted-foreground ml-1">— saved locally to your browser</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Light */}
+          <button
+            onClick={() => setTheme("light")}
+            className={cn(
+              "rounded-xl border-2 p-4 text-left transition-all",
+              theme === "light"
+                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                : "border-border hover:border-muted-foreground/30"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100">
+                <Sun className="h-3.5 w-3.5 text-amber-600" />
+              </div>
+              {theme === "light" && <span className="ml-auto text-[10px] font-semibold text-primary uppercase tracking-wide">Active</span>}
+            </div>
+            <p className="text-sm font-semibold">Light</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Clean, bright interface</p>
+            <div className="mt-2 rounded-lg border border-gray-200 overflow-hidden">
+              <div className="h-1.5 bg-gray-100" />
+              <div className="flex">
+                <div className="w-5 bg-gray-50 h-6" />
+                <div className="flex-1 bg-white h-6 p-1">
+                  <div className="h-1 w-6 bg-gray-200 rounded" />
+                </div>
+              </div>
+            </div>
+          </button>
+
+          {/* Dark */}
+          <button
+            onClick={() => setTheme("dark")}
+            className={cn(
+              "rounded-xl border-2 p-4 text-left transition-all",
+              theme === "dark"
+                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                : "border-border hover:border-muted-foreground/30"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-800">
+                <Moon className="h-3.5 w-3.5 text-slate-300" />
+              </div>
+              {theme === "dark" && <span className="ml-auto text-[10px] font-semibold text-primary uppercase tracking-wide">Active</span>}
+            </div>
+            <p className="text-sm font-semibold">Dark</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Easy on the eyes</p>
+            <div className="mt-2 rounded-lg border border-gray-700 overflow-hidden">
+              <div className="h-1.5 bg-gray-900" />
+              <div className="flex">
+                <div className="w-5 bg-gray-800 h-6" />
+                <div className="flex-1 bg-gray-900 h-6 p-1">
+                  <div className="h-1 w-6 bg-gray-700 rounded" />
+                </div>
+              </div>
+            </div>
+          </button>
+
+          {/* Brand */}
+          <button
+            onClick={() => setTheme("brand")}
+            className={cn(
+              "rounded-xl border-2 p-4 text-left transition-all",
+              theme === "brand"
+                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                : "border-border hover:border-muted-foreground/30"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg gradient-primary">
+                <Palette className="h-3.5 w-3.5 text-white" />
+              </div>
+              {theme === "brand" && <span className="ml-auto text-[10px] font-semibold text-primary uppercase tracking-wide">Active</span>}
+            </div>
+            <p className="text-sm font-semibold">Brand</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Tinted with your colours</p>
+            <div className="mt-2 rounded-lg border border-primary/30 overflow-hidden">
+              <div className="h-1.5 bg-primary/20" />
+              <div className="flex">
+                <div className="w-5 bg-primary/10 h-6" />
+                <div className="flex-1 bg-primary/5 h-6 p-1">
+                  <div className="h-1 w-6 bg-primary/20 rounded" />
+                </div>
+              </div>
+            </div>
+          </button>
+        </div>
       </div>
 
       {/* Top grid: Company Info + AI Config */}
@@ -276,7 +375,7 @@ const SettingsPage = () => {
               <MessageSquare className="h-4 w-4 text-muted-foreground" />
               <p className="text-xs text-muted-foreground">Communication Tone</p>
             </div>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {TONE_OPTIONS.map((t) => (
                 <button
                   key={t.value}

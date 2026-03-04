@@ -10,6 +10,7 @@ import AppLayout from "@/components/layout/AppLayout";
 // Public pages
 import Index from "./pages/Index";
 import PricingPage from "./pages/PricingPage";
+import HowItWorksPage from "./pages/HowItWorksPage";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -67,6 +68,7 @@ const App = () => (
             {/* Public */}
             <Route path="/" element={<Index />} />
             <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />

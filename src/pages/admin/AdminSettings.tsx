@@ -144,7 +144,7 @@ const AdminSettings = () => {
   const categories = [...new Set(API_KEYS.map((k) => k.category))];
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center gap-3 mb-2">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
           <Shield className="h-5 w-5 text-primary" />
@@ -225,7 +225,7 @@ const AdminSettings = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Light */}
           <button
             onClick={() => setTheme("light")}

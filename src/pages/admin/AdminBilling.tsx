@@ -32,8 +32,8 @@ const AdminBilling = () => {
   const activeCount = subscriptions?.filter((s) => s.status === "active").length || 0;
 
   return (
-    <div className="p-8 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-2">Billing Overview</h1>
+    <div className="p-4 md:p-8">
+      <h1 className="text-xl md:text-2xl font-bold mb-2">Billing Overview</h1>
       <p className="text-muted-foreground mb-8">Platform revenue and subscription management</p>
 
       <div className="grid gap-4 sm:grid-cols-3 mb-8">
@@ -67,9 +67,9 @@ const AdminBilling = () => {
         {subscriptions && subscriptions.length > 0 ? (
           <div className="divide-y divide-border">
             {subscriptions.map((sub: any) => (
-              <div key={sub.id} className="flex items-center justify-between px-6 py-4">
-                <div>
-                  <p className="font-medium text-sm">{sub.companies?.name || "Unknown"}</p>
+              <div key={sub.id} className="flex items-center justify-between px-4 md:px-6 py-4">
+                <div className="min-w-0 flex-1 mr-3">
+                  <p className="font-medium text-sm truncate">{sub.companies?.name || "Unknown"}</p>
                   <p className="text-xs text-muted-foreground capitalize">{sub.plan || "—"} • {sub.status}</p>
                 </div>
                 <span className="font-semibold">€{sub.monthly_amount || 0}/mo</span>

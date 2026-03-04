@@ -32,7 +32,7 @@ const AdminEmailConfig = () => {
   });
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-4 md:p-8">
       <div className="flex items-center gap-3 mb-2">
         <Mail className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-bold">Email Configuration</h1>
@@ -56,7 +56,7 @@ const AdminEmailConfig = () => {
                   {config.warmup_status || "warming"}
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
                 <div><span className="text-muted-foreground">Domain:</span> {config.sending_domain || "—"}</div>
                 <div><span className="text-muted-foreground">Daily Limit:</span> {config.daily_send_limit}</div>
                 <div><span className="text-muted-foreground">Sender:</span> {config.sender_name || "—"}</div>

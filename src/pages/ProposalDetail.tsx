@@ -113,16 +113,16 @@ const ProposalDetail = () => {
     };
 
     return (
-        <div className="p-8 max-w-4xl mx-auto">
+        <div className="p-4 md:p-8">
             {/* Header */}
-            <div className="flex items-center gap-4 mb-8">
-                <Button variant="ghost" size="icon" asChild>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center gap-4 mb-6 md:mb-8">
+                <Button variant="ghost" size="icon" asChild className="shrink-0 self-start">
                     <Link to="/proposals">
                         <ArrowLeft className="h-4 w-4" />
                     </Link>
                 </Button>
-                <div className="flex-1">
-                    <h1 className="text-2xl font-bold">{email.subject}</h1>
+                <div className="flex-1 min-w-0">
+                    <h1 className="text-xl md:text-2xl font-bold truncate">{email.subject}</h1>
                     <p className="text-muted-foreground text-sm">
                         To {lead?.business_name || "Unknown"}
                     </p>
@@ -136,9 +136,9 @@ const ProposalDetail = () => {
             {/* Approval banner for pending items */}
             {isPending && (
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5 mb-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-3">
-                            <Clock className="h-5 w-5 text-amber-400" />
+                            <Clock className="h-5 w-5 text-amber-400 shrink-0" />
                             <div>
                                 <p className="text-sm font-semibold text-amber-400">Awaiting Your Approval</p>
                                 <p className="text-xs text-muted-foreground">
@@ -146,7 +146,7 @@ const ProposalDetail = () => {
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                             <Button
                                 size="sm"
                                 className="gradient-primary border-0 text-white gap-1.5"

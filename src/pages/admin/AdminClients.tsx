@@ -165,8 +165,8 @@ const AdminClients = () => {
   const pendingInvites = invites?.filter((i) => i.status === "pending") || [];
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 md:p-8">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6 md:mb-8">
         <div>
           <h1 className="text-2xl font-bold">Clients</h1>
           <p className="text-muted-foreground">{companies?.length || 0} total clients</p>
@@ -217,8 +217,8 @@ const AdminClients = () => {
         />
       </div>
 
-      <div className="rounded-xl border border-border bg-card">
-        <div className="grid grid-cols-5 gap-4 border-b border-border px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      <div className="rounded-xl border border-border bg-card overflow-x-auto">
+        <div className="grid grid-cols-5 gap-4 border-b border-border px-4 md:px-6 py-3 text-xs font-medium text-muted-foreground uppercase tracking-wider min-w-[600px]">
           <span>Company</span>
           <span>Industry</span>
           <span>Plan</span>
@@ -232,7 +232,7 @@ const AdminClients = () => {
               return (
                 <div
                   key={company.id}
-                  className="grid grid-cols-5 gap-4 px-6 py-4 hover:bg-muted/30 cursor-pointer transition-colors"
+                  className="grid grid-cols-5 gap-4 px-4 md:px-6 py-4 hover:bg-muted/30 cursor-pointer transition-colors min-w-[600px]"
                   onClick={() => navigate(`/admin/clients/${company.id}`)}
                 >
                   <div>

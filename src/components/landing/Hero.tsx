@@ -91,11 +91,11 @@ const Pipeline3D = () => {
       ref={ref}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
-      className="relative w-full h-full flex items-center justify-center"
+      className="relative w-full h-full flex items-center justify-center overflow-hidden"
       style={{ perspective: "1100px" }}
     >
-      {/* Orbital rings */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      {/* Orbital rings — hidden on small screens */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none hidden sm:flex">
         <div
           className="w-[300px] h-[300px] rounded-full border border-white/[0.04]"
           style={{ animation: "orbit 22s linear infinite", transform: "rotateX(65deg)" }}
@@ -123,10 +123,10 @@ const Pipeline3D = () => {
         />
       ))}
 
-      {/* 3D motion container */}
+      {/* 3D motion container — scales down on small screens */}
       <motion.div
         style={{ rotateX: rx, rotateY: ry, transformStyle: "preserve-3d" }}
-        className="relative"
+        className="relative origin-center scale-[0.6] sm:scale-75 md:scale-90 lg:scale-100"
       >
         {/* Shared coordinate scene */}
         <div className="relative" style={{ width: SCENE_W, height: SCENE_H }}>
@@ -335,7 +335,7 @@ const Hero = () => {
 
           {/* Right — 3D Pipeline */}
           <motion.div
-            className="relative h-[500px] sm:h-[560px] lg:h-[600px] flex items-center justify-center"
+            className="relative h-[360px] sm:h-[460px] md:h-[520px] lg:h-[600px] flex items-center justify-center"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}

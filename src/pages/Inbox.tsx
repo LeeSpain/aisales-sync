@@ -46,8 +46,8 @@ const Inbox = () => {
   };
 
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold mb-2">Inbox</h1>
+    <div className="p-4 md:p-8">
+      <h1 className="text-xl md:text-2xl font-bold mb-2">Inbox</h1>
       <p className="text-muted-foreground mb-6">Review lead replies and AI-drafted responses</p>
 
       {isLoading ? (
