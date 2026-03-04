@@ -231,43 +231,22 @@ const SelectPlan = () => {
 
                         <div className="space-y-2">
                             {tier.plan !== "enterprise" ? (
-                                <>
-                                    <Button
-                                        className={cn(
-                                            "w-full gap-1.5",
-                                            tier.popular
-                                                ? "gradient-primary border-0 text-white hover:opacity-90"
-                                                : ""
-                                        )}
-                                        variant={tier.popular ? "default" : "outline"}
-                                        disabled={activating !== null}
-                                        onClick={() => {
-                                            if (isTestMode) {
-                                                activateSubscription(tier.plan, "paid");
-                                            } else {
-                                                toast({
-                                                    title: "Stripe checkout",
-                                                    description:
-                                                        "Payment integration coming soon. Use 'Start Free Trial' below.",
-                                                });
-                                            }
-                                        }}
-                                    >
-                                        <Sparkles className="h-3.5 w-3.5" />
-                                        {isTestMode ? "Subscribe (Test Mode)" : "Subscribe"}
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        className="w-full gap-1.5 text-xs text-muted-foreground hover:text-primary"
-                                        disabled={activating !== null}
-                                        onClick={() => activateSubscription(tier.plan, "trial")}
-                                    >
-                                        <FlaskConical className="h-3.5 w-3.5" />
-                                        {activating === tier.plan
-                                            ? "Activating..."
-                                            : "Start Free Trial (14 days)"}
-                                    </Button>
-                                </>
+                                <Button
+                                    className={cn(
+                                        "w-full gap-1.5",
+                                        tier.popular
+                                            ? "gradient-primary border-0 text-white hover:opacity-90"
+                                            : ""
+                                    )}
+                                    variant={tier.popular ? "default" : "outline"}
+                                    disabled={activating !== null}
+                                    onClick={() => activateSubscription(tier.plan, "trial")}
+                                >
+                                    <Sparkles className="h-3.5 w-3.5" />
+                                    {activating === tier.plan
+                                        ? "Activating..."
+                                        : "Start 14-Day Free Trial"}
+                                </Button>
                             ) : (
                                 <Button variant="outline" className="w-full" disabled>
                                     Contact Us
