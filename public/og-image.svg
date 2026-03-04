@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f0a1e"/>
+      <stop offset="50%" style="stop-color:#1a1035"/>
+      <stop offset="100%" style="stop-color:#0f0a1e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7c3aed"/>
+      <stop offset="100%" style="stop-color:#6366f1"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="20" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <!-- Gradient blurs -->
+  <circle cx="200" cy="315" r="250" fill="#7c3aed" opacity="0.08"/>
+  <circle cx="1000" cy="315" r="250" fill="#6366f1" opacity="0.08"/>
+  <!-- Icon -->
+  <rect x="475" y="120" width="72" height="72" rx="16" fill="url(#accent)" filter="url(#glow)"/>
+  <path d="M519 132l-18 32h14l-4 20 22-34h-16l2-18z" fill="white" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+  <!-- Divider after icon -->
+  <rect x="555" y="140" width="2" height="36" fill="#7c3aed" opacity="0.5" rx="1"/>
+  <!-- Title next to icon -->
+  <text x="570" y="167" font-family="system-ui,-apple-system,sans-serif" font-size="32" font-weight="700" fill="white">AI Sales Sync</text>
+  <!-- Main headline -->
+  <text x="600" y="295" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="52" font-weight="800" fill="white">Your AI Sales Team</text>
+  <text x="600" y="360" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="52" font-weight="800" fill="url(#accent)">From Lead to Close</text>
+  <!-- Subtitle -->
+  <text x="600" y="420" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="22" fill="#a1a1aa">Find clients. Write outreach. Handle replies. Generate proposals. Close deals.</text>
+  <!-- Bottom bar -->
+  <rect x="0" y="600" width="1200" height="30" fill="url(#accent)" opacity="0.3"/>
+  <text x="600" y="560" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="18" fill="#7c3aed">aisales-sync.com</text>
+</svg>
