@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Navigate } from "react-router-dom";
-import { Users, Target, DollarSign, Activity, Building2, Settings, Mail, CreditCard, Clock, Shield, Zap, ClipboardList, Plus, Pencil, Trash2, Check, X } from "lucide-react";
+import { Users, Target, DollarSign, Activity, Building2, Settings, Mail, CreditCard, Clock, Shield, Zap, ClipboardList, Plus, Pencil, Trash2, Check, X, ChevronDown, StickyNote, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import {
@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 interface AdminTodo {
   id: string;
   text: string;
+  notes: string;
   done: boolean;
   createdAt: number;
 }
@@ -49,21 +50,27 @@ const AdminDashboard = () => {
   const [newTask, setNewTask] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const editRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => { saveTodos(todos); }, [todos]);
   useEffect(() => { if (editingId && editRef.current) editRef.current.focus(); }, [editingId]);
+  useEffect(() => { if (expandedId && notesRef.current) notesRef.current.focus(); }, [expandedId]);
 
   const addTodo = () => {
     const text = newTask.trim();
     if (!text) return;
-    setTodos((prev) => [{ id: crypto.randomUUID(), text, done: false, createdAt: Date.now() }, ...prev]);
+    setTodos((prev) => [{ id: crypto.randomUUID(), text, notes: "", done: false, createdAt: Date.now() }, ...prev]);
     setNewTask("");
   };
 
   const toggleTodo = (id: string) => setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
 
-  const deleteTodo = (id: string) => setTodos((prev) => prev.filter((t) => t.id !== id));
+  const deleteTodo = (id: string) => {
+    setTodos((prev) => prev.filter((t) => t.id !== id));
+    if (expandedId === id) setExpandedId(null);
+  };
 
   const startEdit = (todo: AdminTodo) => { setEditingId(todo.id); setEditText(todo.text); };
 
@@ -76,6 +83,14 @@ const AdminDashboard = () => {
   };
 
   const cancelEdit = () => { setEditingId(null); setEditText(""); };
+
+  const updateNotes = (id: string, notes: string) => {
+    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, notes } : t)));
+  };
+
+  const toggleExpanded = (id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
 
   const pendingCount = todos.filter((t) => !t.done).length;
 
@@ -347,125 +362,177 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* ─── To Do List Dialog ─── */}
-      <Dialog open={todoOpen} onOpenChange={setTodoOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[85vh] flex flex-col gap-0 p-0 border-border">
-          <DialogHeader className="px-5 pt-5 pb-4 border-b border-border">
-            <DialogTitle className="flex items-center gap-2 text-lg">
-              <ClipboardList className="h-5 w-5 text-primary" />
+      {/* ─── To Do List Dialog (large) ─── */}
+      <Dialog open={todoOpen} onOpenChange={(open) => { setTodoOpen(open); if (!open) { setExpandedId(null); setEditingId(null); } }}>
+        <DialogContent className="sm:max-w-3xl w-[95vw] h-[90vh] sm:h-[85vh] flex flex-col gap-0 p-0 border-border">
+          {/* Header */}
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-border shrink-0">
+            <DialogTitle className="flex items-center gap-3 text-xl">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-primary">
+                <ClipboardList className="h-5 w-5 text-white" />
+              </div>
               Admin To Do List
               {pendingCount > 0 && (
-                <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">
+                <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-primary px-2 text-xs font-bold text-white">
                   {pendingCount}
                 </span>
               )}
             </DialogTitle>
-            <DialogDescription>Track tasks, ideas, and action items for your platform.</DialogDescription>
+            <DialogDescription>Track tasks, ideas, and action items. Click any task to add notes.</DialogDescription>
           </DialogHeader>
 
           {/* Add new task */}
-          <div className="flex gap-2 px-5 py-3 border-b border-border bg-muted/30">
+          <div className="flex gap-3 px-6 py-4 border-b border-border bg-muted/30 shrink-0">
             <input
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addTodo()}
-              placeholder="Add a new task..."
-              className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
+              placeholder="What needs to be done?"
+              className="flex-1 rounded-xl border border-border bg-background px-4 py-3 text-sm placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all"
             />
-            <Button size="sm" onClick={addTodo} disabled={!newTask.trim()} className="gap-1.5 gradient-primary border-0 text-white hover:opacity-90">
+            <Button onClick={addTodo} disabled={!newTask.trim()} className="gap-2 px-5 gradient-primary border-0 text-white hover:opacity-90">
               <Plus className="h-4 w-4" />
-              Add
+              Add Task
             </Button>
           </div>
 
           {/* Task list */}
-          <div className="flex-1 overflow-y-auto px-5 py-3 space-y-1 min-h-0">
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2 min-h-0">
             {todos.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <ClipboardList className="h-10 w-10 text-muted-foreground/30 mb-3" />
-                <p className="text-sm text-muted-foreground">No tasks yet</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">Add your first task above to get started</p>
+              <div className="flex flex-col items-center justify-center h-full text-center py-16">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 mb-4">
+                  <ClipboardList className="h-8 w-8 text-primary/40" />
+                </div>
+                <p className="text-base font-medium text-muted-foreground mb-1">No tasks yet</p>
+                <p className="text-sm text-muted-foreground/60">Add your first task above to get started</p>
               </div>
             ) : (
               <>
                 {/* Pending tasks first, then completed */}
-                {[...todos.filter((t) => !t.done), ...todos.filter((t) => t.done)].map((todo) => (
-                  <div
-                    key={todo.id}
-                    className={cn(
-                      "group flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted/50",
-                      todo.done && "opacity-50"
-                    )}
-                  >
-                    {/* Checkbox */}
-                    <button
-                      onClick={() => toggleTodo(todo.id)}
+                {[...todos.filter((t) => !t.done), ...todos.filter((t) => t.done)].map((todo) => {
+                  const isExpanded = expandedId === todo.id;
+                  return (
+                    <div
+                      key={todo.id}
                       className={cn(
-                        "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition-colors",
-                        todo.done
-                          ? "border-primary bg-primary text-white"
-                          : "border-muted-foreground/40 hover:border-primary"
+                        "rounded-xl border transition-all",
+                        isExpanded ? "border-primary/30 bg-primary/[0.03]" : "border-border hover:border-primary/20",
+                        todo.done && "opacity-50"
                       )}
                     >
-                      {todo.done && <Check className="h-3 w-3" />}
-                    </button>
+                      {/* Main row */}
+                      <div className="group flex items-center gap-3 px-4 py-3.5">
+                        {/* Checkbox */}
+                        <button
+                          onClick={() => toggleTodo(todo.id)}
+                          className={cn(
+                            "flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors",
+                            todo.done
+                              ? "border-primary bg-primary text-white"
+                              : "border-muted-foreground/30 hover:border-primary"
+                          )}
+                        >
+                          {todo.done && <Check className="h-3.5 w-3.5" />}
+                        </button>
 
-                    {/* Text or edit input */}
-                    {editingId === todo.id ? (
-                      <div className="flex flex-1 gap-2">
-                        <input
-                          ref={editRef}
-                          value={editText}
-                          onChange={(e) => setEditText(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") saveEdit();
-                            if (e.key === "Escape") cancelEdit();
-                          }}
-                          className="flex-1 rounded-md border border-primary bg-background px-2 py-1 text-sm outline-none"
-                        />
-                        <button onClick={saveEdit} className="rounded-md p-1.5 text-primary hover:bg-primary/10">
-                          <Check className="h-4 w-4" />
-                        </button>
-                        <button onClick={cancelEdit} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted">
-                          <X className="h-4 w-4" />
-                        </button>
+                        {/* Text or edit input */}
+                        {editingId === todo.id ? (
+                          <div className="flex flex-1 gap-2">
+                            <input
+                              ref={editRef}
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveEdit();
+                                if (e.key === "Escape") cancelEdit();
+                              }}
+                              className="flex-1 rounded-lg border border-primary bg-background px-3 py-1.5 text-sm outline-none"
+                            />
+                            <button onClick={saveEdit} className="rounded-lg p-2 text-primary hover:bg-primary/10">
+                              <Check className="h-4 w-4" />
+                            </button>
+                            <button onClick={cancelEdit} className="rounded-lg p-2 text-muted-foreground hover:bg-muted">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            {/* Clickable text area — expands notes */}
+                            <button
+                              onClick={() => toggleExpanded(todo.id)}
+                              className="flex flex-1 items-center gap-2 text-left min-w-0"
+                            >
+                              <span className={cn("flex-1 text-sm font-medium leading-relaxed", todo.done && "line-through")}>
+                                {todo.text}
+                              </span>
+                              {todo.notes && (
+                                <StickyNote className="h-3.5 w-3.5 shrink-0 text-primary/50" />
+                              )}
+                              <ChevronDown className={cn(
+                                "h-4 w-4 shrink-0 text-muted-foreground/40 transition-transform",
+                                isExpanded && "rotate-180"
+                              )} />
+                            </button>
+
+                            {/* Action buttons */}
+                            <div className="flex shrink-0 gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => startEdit(todo)}
+                                className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
+                                title="Edit title"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => deleteTodo(todo.id)}
+                                className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                title="Delete task"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </>
+                        )}
                       </div>
-                    ) : (
-                      <>
-                        <span className={cn("flex-1 text-sm leading-relaxed", todo.done && "line-through")}>
-                          {todo.text}
-                        </span>
-                        {/* Action buttons (visible on hover / always on touch) */}
-                        <div className="flex shrink-0 gap-1 opacity-0 group-hover:opacity-100 transition-opacity sm:opacity-0 [.group:active_&]:opacity-100">
-                          <button
-                            onClick={() => startEdit(todo)}
-                            className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => deleteTodo(todo.id)}
-                            className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+
+                      {/* Expanded notes area */}
+                      {isExpanded && editingId !== todo.id && (
+                        <div className="px-4 pb-4 pt-0">
+                          <div className="ml-9 space-y-2">
+                            <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                              <StickyNote className="h-3 w-3" />
+                              Notes
+                            </label>
+                            <textarea
+                              ref={expandedId === todo.id ? notesRef : undefined}
+                              value={todo.notes || ""}
+                              onChange={(e) => updateNotes(todo.id, e.target.value)}
+                              placeholder="Add notes, details, links..."
+                              rows={4}
+                              className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm placeholder:text-muted-foreground outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all resize-y min-h-[100px]"
+                            />
+                            <div className="flex items-center gap-3 text-[11px] text-muted-foreground/50">
+                              <Calendar className="h-3 w-3" />
+                              Created {new Date(todo.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                            </div>
+                          </div>
                         </div>
-                      </>
-                    )}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
               </>
             )}
           </div>
 
           {/* Footer stats */}
           {todos.length > 0 && (
-            <div className="flex items-center justify-between px-5 py-3 border-t border-border text-xs text-muted-foreground">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-border text-sm text-muted-foreground shrink-0">
               <span>{todos.filter((t) => t.done).length} of {todos.length} completed</span>
               {todos.some((t) => t.done) && (
                 <button
                   onClick={() => setTodos((prev) => prev.filter((t) => !t.done))}
-                  className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  className="text-sm text-muted-foreground hover:text-destructive transition-colors"
                 >
                   Clear completed
                 </button>
