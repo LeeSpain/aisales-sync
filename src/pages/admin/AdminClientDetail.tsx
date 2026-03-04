@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/hooks/use-toast";
 import {
     ArrowLeft,
     Building2,
@@ -12,11 +14,20 @@ import {
     BarChart3,
     CreditCard,
     Calendar,
+    Save,
+    FileText,
+    ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const AdminClientDetail = () => {
     const { id } = useParams<{ id: string }>();
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
+    const [clientNotes, setClientNotes] = useState("");
+    const [adminNotes, setAdminNotes] = useState("");
+    const [notesLoaded, setNotesLoaded] = useState(false);
+    const [savingNotes, setSavingNotes] = useState(false);
 
     // Fetch company
     const { data: company, isLoading } = useQuery({
@@ -28,10 +39,33 @@ const AdminClientDetail = () => {
                 .eq("id", id!)
                 .single();
             if (error) throw error;
+            if (data && !notesLoaded) {
+                const aiProfile = (data.ai_profile as Record<string, unknown>) || {};
+                setClientNotes((aiProfile.notes as string) || "");
+                setAdminNotes((aiProfile.admin_notes as string) || "");
+                setNotesLoaded(true);
+            }
             return data;
         },
         enabled: !!id,
     });
+
+    const saveNotes = async () => {
+        if (!company) return;
+        setSavingNotes(true);
+        const currentProfile = (company.ai_profile as Record<string, unknown>) || {};
+        const { error: err } = await supabase
+            .from("companies")
+            .update({ ai_profile: { ...currentProfile, notes: clientNotes, admin_notes: adminNotes } })
+            .eq("id", company.id);
+        setSavingNotes(false);
+        if (err) {
+            toast({ title: "Error", description: "Failed to save notes.", variant: "destructive" });
+        } else {
+            toast({ title: "Saved", description: "Notes updated successfully." });
+            queryClient.invalidateQueries({ queryKey: ["admin-company", id] });
+        }
+    };
 
     // Fetch company campaigns
     const { data: campaigns } = useQuery({
@@ -238,6 +272,49 @@ const AdminClientDetail = () => {
                 ) : (
                     <p className="text-sm text-muted-foreground">No campaigns yet</p>
                 )}
+            </div>
+
+            {/* Notes */}
+            <div className="grid lg:grid-cols-2 gap-6 mt-8">
+                <div className="glass-card rounded-xl p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                        <FileText className="h-4 w-4 text-primary" />
+                        <h3 className="text-lg font-semibold">Client Notes</h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">Shared with the client. The AI uses these as context for outreach and proposals.</p>
+                    <textarea
+                        className="w-full rounded-lg bg-background/50 border border-border/50 p-3 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
+                        rows={5}
+                        placeholder="Notes visible to client and AI..."
+                        value={clientNotes}
+                        onChange={(e) => setClientNotes(e.target.value)}
+                    />
+                </div>
+
+                <div className="glass-card rounded-xl p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                        <ShieldAlert className="h-4 w-4 text-warning" />
+                        <h3 className="text-lg font-semibold">Admin Notes</h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-3">Only visible to super admins. Internal notes about this client.</p>
+                    <textarea
+                        className="w-full rounded-lg bg-background/50 border border-border/50 p-3 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none"
+                        rows={5}
+                        placeholder="Internal admin notes..."
+                        value={adminNotes}
+                        onChange={(e) => setAdminNotes(e.target.value)}
+                    />
+                </div>
+            </div>
+            <div className="mt-4">
+                <Button
+                    className="gradient-primary border-0 text-white hover:opacity-90 gap-1.5"
+                    onClick={saveNotes}
+                    disabled={savingNotes}
+                >
+                    <Save className="h-4 w-4" />
+                    {savingNotes ? "Saving..." : "Save Notes"}
+                </Button>
             </div>
         </div>
     );
