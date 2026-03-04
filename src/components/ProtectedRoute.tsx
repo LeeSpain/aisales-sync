@@ -10,10 +10,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     loading: boolean;
     hasSubscription: boolean;
     onboardingCompleted: boolean;
+    isAdmin: boolean;
   }>({
     loading: true,
     hasSubscription: false,
     onboardingCompleted: false,
+    isAdmin: false,
   });
 
   useEffect(() => {
@@ -26,7 +28,20 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       }
 
       try {
-        // 1. Check profile for company_id and onboarding status
+        // 1. Check if user is admin
+        const { data: roles } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", user.id);
+        const isAdmin = roles?.some((r) => r.role === "admin") || false;
+
+        // Admins skip subscription/onboarding checks
+        if (isAdmin) {
+          if (mounted) setFlowState({ loading: false, hasSubscription: true, onboardingCompleted: true, isAdmin: true });
+          return;
+        }
+
+        // 2. Check profile for company_id and onboarding status
         const { data: profile } = await supabase
           .from("profiles")
           .select("company_id, onboarding_completed")
@@ -34,11 +49,11 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           .single();
 
         if (!profile?.company_id) {
-          if (mounted) setFlowState({ loading: false, hasSubscription: false, onboardingCompleted: false });
+          if (mounted) setFlowState({ loading: false, hasSubscription: false, onboardingCompleted: false, isAdmin: false });
           return;
         }
 
-        // 2. Check for active/trial subscription
+        // 3. Check for active/trial subscription
         const { data: sub } = await supabase
           .from("subscriptions")
           .select("id, status")
@@ -51,6 +66,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
             loading: false,
             hasSubscription: !!sub,
             onboardingCompleted: !!profile.onboarding_completed,
+            isAdmin: false,
           });
         }
       } catch (error) {
@@ -80,7 +96,12 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Handle flow gating
+  // Admins bypass subscription/onboarding flow entirely
+  if (flowState.isAdmin) {
+    return <>{children}</>;
+  }
+
+  // Handle flow gating for regular users
   const isSelectPlanRoute = location.pathname === "/select-plan";
   const isOnboardingRoute = location.pathname === "/onboarding";
 
