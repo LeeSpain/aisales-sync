@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { useTestMode } from "@/hooks/useTestMode";
 import { useDeadSwitch } from "@/hooks/useDeadSwitch";
+import { useTheme } from "@/hooks/useTheme";
+import { useBrandColors } from "@/hooks/useBrandColors";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -92,6 +94,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   const { isTestMode } = useTestMode();
   const { isKilled: isDeadSwitchActive } = useDeadSwitch();
+  // Initialize theme & brand colours on app load (reads from localStorage)
+  useTheme();
+  useBrandColors();
   const isTrial = subscription?.status === "trialing" || subscription?.status === "trial";
   const daysLeft = subscription?.current_period_end
     ? Math.max(0, Math.ceil((new Date(subscription.current_period_end).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))

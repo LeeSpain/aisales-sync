@@ -261,8 +261,8 @@ const CampaignNew = () => {
         </div>
 
         {/* Step content */}
-        <div className="flex-1 flex items-start justify-center px-4 pb-8 lg:px-8 lg:items-center">
-          <div className="w-full max-w-xl space-y-6">
+        <div className="flex-1 flex items-start justify-center px-4 pb-8 lg:px-8">
+          <div className="w-full max-w-3xl space-y-6">
 
             {/* Step 0: Target Audience */}
             {step === 0 && (

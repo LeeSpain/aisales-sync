@@ -7,8 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useTestMode } from "@/hooks/useTestMode";
-import { Key, Eye, EyeOff, Shield, Globe, CreditCard, Mail, Phone, Save, CheckCircle, AlertCircle, FlaskConical } from "lucide-react";
+import { useTheme } from "@/hooks/useTheme";
+import { useBrandColors } from "@/hooks/useBrandColors";
+import { cn } from "@/lib/utils";
+import {
+  Key, Eye, EyeOff, Shield, Globe, CreditCard, Mail, Phone, Save,
+  CheckCircle, AlertCircle, FlaskConical, User, Sun, Moon, Palette,
+  RotateCcw,
+} from "lucide-react";
 
+// ─── API Key Config ───
 interface ApiKeyConfig {
   id: string;
   label: string;
@@ -20,96 +28,16 @@ interface ApiKeyConfig {
 }
 
 const API_KEYS: ApiKeyConfig[] = [
-  {
-    id: "stripe_secret",
-    label: "Stripe Secret Key",
-    envName: "STRIPE_SECRET_KEY",
-    description: "For subscription payments & billing portal. Get it from dashboard.stripe.com/apikeys",
-    icon: CreditCard,
-    category: "Payments",
-    docsUrl: "https://dashboard.stripe.com/apikeys",
-  },
-  {
-    id: "stripe_webhook",
-    label: "Stripe Webhook Secret",
-    envName: "STRIPE_WEBHOOK_SECRET",
-    description: "For receiving Stripe webhook events. Found in your Stripe webhook endpoint settings.",
-    icon: CreditCard,
-    category: "Payments",
-    docsUrl: "https://dashboard.stripe.com/webhooks",
-  },
-  {
-    id: "google_places",
-    label: "Google Places API Key",
-    envName: "GOOGLE_PLACES_API_KEY",
-    description: "For real lead discovery via Google Maps/Places. Enable Places API in Google Cloud Console.",
-    icon: Globe,
-    category: "Lead Discovery",
-    docsUrl: "https://console.cloud.google.com/apis/credentials",
-  },
-  {
-    id: "serp_api",
-    label: "SerpAPI Key",
-    envName: "SERP_API_KEY",
-    description: "For enriching lead data with search results. Get it from serpapi.com/dashboard",
-    icon: Globe,
-    category: "Lead Discovery",
-    docsUrl: "https://serpapi.com/dashboard",
-  },
-  {
-    id: "apollo_api",
-    label: "Apollo API Key",
-    envName: "APOLLO_API_KEY",
-    description: "For B2B prospect discovery and enrichment. Get it from your Apollo.io settings.",
-    icon: Globe,
-    category: "Lead Discovery",
-    docsUrl: "https://apollo.io/settings/api",
-  },
-  {
-    id: "linkedin_cookie",
-    label: "LinkedIn session cookie (li_at)",
-    envName: "LINKEDIN_SESSION_COOKIE",
-    description: "For LinkedIn out-bound sequences and search. Grab 'li_at' cookie from browser.",
-    icon: Globe,
-    category: "Lead Discovery",
-    docsUrl: "https://linkedin.com",
-  },
-  {
-    id: "sendgrid",
-    label: "SendGrid API Key",
-    envName: "SENDGRID_API_KEY",
-    description: "For sending outreach emails. Create one at app.sendgrid.com/settings/api_keys",
-    icon: Mail,
-    category: "Email",
-    docsUrl: "https://app.sendgrid.com/settings/api_keys",
-  },
-  {
-    id: "twilio_sid",
-    label: "Twilio Account SID",
-    envName: "TWILIO_ACCOUNT_SID",
-    description: "For AI voice calls. Found in your Twilio Console dashboard.",
-    icon: Phone,
-    category: "Voice",
-    docsUrl: "https://console.twilio.com",
-  },
-  {
-    id: "twilio_auth",
-    label: "Twilio Auth Token",
-    envName: "TWILIO_AUTH_TOKEN",
-    description: "Twilio authentication token, found alongside Account SID.",
-    icon: Phone,
-    category: "Voice",
-    docsUrl: "https://console.twilio.com",
-  },
-  {
-    id: "twilio_phone",
-    label: "Twilio Phone Number",
-    envName: "TWILIO_PHONE_NUMBER",
-    description: "The Twilio phone number to make calls from (e.g. +1234567890).",
-    icon: Phone,
-    category: "Voice",
-    docsUrl: "https://console.twilio.com/phone-numbers",
-  },
+  { id: "stripe_secret", label: "Stripe Secret Key", envName: "STRIPE_SECRET_KEY", description: "For subscription payments & billing portal. Get it from dashboard.stripe.com/apikeys", icon: CreditCard, category: "Payments", docsUrl: "https://dashboard.stripe.com/apikeys" },
+  { id: "stripe_webhook", label: "Stripe Webhook Secret", envName: "STRIPE_WEBHOOK_SECRET", description: "For receiving Stripe webhook events. Found in your Stripe webhook endpoint settings.", icon: CreditCard, category: "Payments", docsUrl: "https://dashboard.stripe.com/webhooks" },
+  { id: "google_places", label: "Google Places API Key", envName: "GOOGLE_PLACES_API_KEY", description: "For real lead discovery via Google Maps/Places. Enable Places API in Google Cloud Console.", icon: Globe, category: "Lead Discovery", docsUrl: "https://console.cloud.google.com/apis/credentials" },
+  { id: "serp_api", label: "SerpAPI Key", envName: "SERP_API_KEY", description: "For enriching lead data with search results. Get it from serpapi.com/dashboard", icon: Globe, category: "Lead Discovery", docsUrl: "https://serpapi.com/dashboard" },
+  { id: "apollo_api", label: "Apollo API Key", envName: "APOLLO_API_KEY", description: "For B2B prospect discovery and enrichment. Get it from your Apollo.io settings.", icon: Globe, category: "Lead Discovery", docsUrl: "https://apollo.io/settings/api" },
+  { id: "linkedin_cookie", label: "LinkedIn session cookie (li_at)", envName: "LINKEDIN_SESSION_COOKIE", description: "For LinkedIn out-bound sequences and search. Grab 'li_at' cookie from browser.", icon: Globe, category: "Lead Discovery", docsUrl: "https://linkedin.com" },
+  { id: "sendgrid", label: "SendGrid API Key", envName: "SENDGRID_API_KEY", description: "For sending outreach emails. Create one at app.sendgrid.com/settings/api_keys", icon: Mail, category: "Email", docsUrl: "https://app.sendgrid.com/settings/api_keys" },
+  { id: "twilio_sid", label: "Twilio Account SID", envName: "TWILIO_ACCOUNT_SID", description: "For AI voice calls. Found in your Twilio Console dashboard.", icon: Phone, category: "Voice", docsUrl: "https://console.twilio.com" },
+  { id: "twilio_auth", label: "Twilio Auth Token", envName: "TWILIO_AUTH_TOKEN", description: "Twilio authentication token, found alongside Account SID.", icon: Phone, category: "Voice", docsUrl: "https://console.twilio.com" },
+  { id: "twilio_phone", label: "Twilio Phone Number", envName: "TWILIO_PHONE_NUMBER", description: "The Twilio phone number to make calls from (e.g. +1234567890).", icon: Phone, category: "Voice", docsUrl: "https://console.twilio.com/phone-numbers" },
 ];
 
 const AdminSettings = () => {
@@ -117,10 +45,13 @@ const AdminSettings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isTestMode, isToggling, toggle: toggleTestMode } = useTestMode();
+  const { theme, toggle: toggleTheme } = useTheme();
+  const { colors, setColors, reset: resetColors, defaults } = useBrandColors();
   const [values, setValues] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
 
+  // ─── Auth guard ───
   const { data: roles } = useQuery({
     queryKey: ["user-roles", user?.id],
     queryFn: async () => {
@@ -129,26 +60,59 @@ const AdminSettings = () => {
     },
     enabled: !!user,
   });
-
   const isAdmin = roles?.some((r) => r.role === "admin");
   if (roles && !isAdmin) return <Navigate to="/dashboard" replace />;
 
-  // Load stored keys from ai_config (we use the purpose field to store key status)
+  // ─── Owner profile ───
+  const { data: profile } = useQuery({
+    queryKey: ["admin-profile", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("*").eq("id", user!.id).single();
+      return data;
+    },
+    enabled: !!user && isAdmin,
+  });
+
+  const [profileEdits, setProfileEdits] = useState<{ full_name?: string; avatar_url?: string }>({});
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+    try {
+      const updates: Record<string, string> = {};
+      if (profileEdits.full_name !== undefined) updates.full_name = profileEdits.full_name;
+      if (profileEdits.avatar_url !== undefined) updates.avatar_url = profileEdits.avatar_url;
+
+      if (Object.keys(updates).length === 0) {
+        toast({ title: "No changes", description: "Nothing to save." });
+        setSavingProfile(false);
+        return;
+      }
+
+      await supabase.from("profiles").update(updates).eq("id", user.id);
+      queryClient.invalidateQueries({ queryKey: ["admin-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      toast({ title: "Saved", description: "Your profile has been updated." });
+      setProfileEdits({});
+    } catch {
+      toast({ title: "Error", description: "Failed to save profile", variant: "destructive" });
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  // ─── API keys ───
   const { data: storedKeys } = useQuery({
     queryKey: ["admin-api-keys"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("ai_config")
-        .select("*")
-        .eq("purpose", "api_key_store");
+      const { data } = await supabase.from("ai_config").select("*").eq("purpose", "api_key_store");
       return data || [];
     },
     enabled: isAdmin,
   });
 
-  const isKeyConfigured = (envName: string) => {
-    return storedKeys?.some((k) => k.provider === envName && k.is_active);
-  };
+  const isKeyConfigured = (envName: string) => storedKeys?.some((k) => k.provider === envName && k.is_active);
 
   const handleSave = async (config: ApiKeyConfig) => {
     const value = values[config.id];
@@ -156,33 +120,18 @@ const AdminSettings = () => {
       toast({ title: "Error", description: "Please enter a value", variant: "destructive" });
       return;
     }
-
     setSaving((p) => ({ ...p, [config.id]: true }));
-
     try {
-      // Store reference in ai_config table
       const existing = storedKeys?.find((k) => k.provider === config.envName);
       if (existing) {
-        await supabase
-          .from("ai_config")
-          .update({ api_key_encrypted: "configured", is_active: true, model: config.label })
-          .eq("id", existing.id);
+        await supabase.from("ai_config").update({ api_key_encrypted: "configured", is_active: true, model: config.label }).eq("id", existing.id);
       } else {
-        await supabase.from("ai_config").insert({
-          provider: config.envName,
-          purpose: "api_key_store",
-          model: config.label,
-          api_key_encrypted: "configured",
-          is_active: true,
-        });
+        await supabase.from("ai_config").insert({ provider: config.envName, purpose: "api_key_store", model: config.label, api_key_encrypted: "configured", is_active: true });
       }
-
-      // Store actual secret via edge function would go here
-      // For now we track that the key has been configured
       toast({ title: "Saved", description: `${config.label} has been saved. Add it as a backend secret named ${config.envName} to activate.` });
       setValues((p) => ({ ...p, [config.id]: "" }));
       queryClient.invalidateQueries({ queryKey: ["admin-api-keys"] });
-    } catch (e) {
+    } catch {
       toast({ title: "Error", description: "Failed to save", variant: "destructive" });
     } finally {
       setSaving((p) => ({ ...p, [config.id]: false }));
@@ -200,10 +149,177 @@ const AdminSettings = () => {
         <h1 className="text-2xl font-bold">Admin Settings</h1>
       </div>
       <p className="text-muted-foreground mb-8">
-        Manage API keys and integrations. Keys are stored securely as backend secrets.
+        Your profile, appearance, API keys, and platform configuration.
       </p>
 
-      {/* Test Mode Toggle */}
+      {/* ═══ OWNER PROFILE ═══ */}
+      <div className="rounded-xl border border-border bg-card p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            <User className="h-4 w-4 text-primary" />
+          </div>
+          <h2 className="font-semibold">Owner Profile</h2>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">Full Name</label>
+            <Input
+              value={profileEdits.full_name ?? profile?.full_name ?? ""}
+              onChange={(e) => setProfileEdits((p) => ({ ...p, full_name: e.target.value }))}
+              placeholder="Your full name"
+              className="bg-background"
+            />
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground block mb-1">Email</label>
+            <Input value={user?.email || ""} disabled className="bg-background opacity-60" />
+            <p className="text-[10px] text-muted-foreground mt-1">Email is tied to your auth account and cannot be changed here.</p>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="text-xs text-muted-foreground block mb-1">Avatar URL</label>
+            <div className="flex gap-3 items-center">
+              {(profileEdits.avatar_url ?? profile?.avatar_url) && (
+                <img
+                  src={profileEdits.avatar_url ?? profile?.avatar_url ?? ""}
+                  alt="Avatar"
+                  className="h-10 w-10 rounded-full object-cover border border-border"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                />
+              )}
+              <Input
+                value={profileEdits.avatar_url ?? profile?.avatar_url ?? ""}
+                onChange={(e) => setProfileEdits((p) => ({ ...p, avatar_url: e.target.value }))}
+                placeholder="https://example.com/avatar.jpg"
+                className="bg-background flex-1"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex justify-end">
+          <Button
+            onClick={handleSaveProfile}
+            disabled={savingProfile || Object.keys(profileEdits).length === 0}
+            className="gap-1.5"
+          >
+            <Save className="h-3.5 w-3.5" /> Save Profile
+          </Button>
+        </div>
+      </div>
+
+      {/* ═══ THEME TOGGLE ═══ */}
+      <div className="rounded-xl border border-border bg-card p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+            {theme === "dark" ? <Moon className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}
+          </div>
+          <h2 className="font-semibold">Appearance</h2>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium">Theme</p>
+            <p className="text-xs text-muted-foreground">
+              Switch between dark and light mode. Your preference is saved locally.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className={cn("text-xs font-medium", theme === "light" ? "text-foreground" : "text-muted-foreground")}>
+              <Sun className="h-3.5 w-3.5 inline mr-1" />Light
+            </span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={theme === "dark"}
+              onClick={toggleTheme}
+              className={cn(
+                "relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors",
+                theme === "dark" ? "bg-primary" : "bg-muted"
+              )}
+            >
+              <span className={cn(
+                "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+                theme === "dark" ? "translate-x-6" : "translate-x-1"
+              )} />
+            </button>
+            <span className={cn("text-xs font-medium", theme === "dark" ? "text-foreground" : "text-muted-foreground")}>
+              <Moon className="h-3.5 w-3.5 inline mr-1" />Dark
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ BRAND COLOURS ═══ */}
+      <div className="rounded-xl border border-border bg-card p-6 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+              <Palette className="h-4 w-4 text-primary" />
+            </div>
+            <h2 className="font-semibold">Brand Colours</h2>
+          </div>
+          <Button variant="ghost" size="sm" onClick={resetColors} className="gap-1 text-xs h-7">
+            <RotateCcw className="h-3 w-3" /> Reset Defaults
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">
+          Customise the platform colours. Changes are applied instantly and saved locally. Affects buttons, accents, badges, and gradients across the entire UI.
+        </p>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {([
+            { key: "primary" as const, label: "Primary", desc: "Buttons, links, active states" },
+            { key: "accent" as const, label: "Accent", desc: "Gradients, highlights" },
+            { key: "success" as const, label: "Success", desc: "Active badges, positive states" },
+            { key: "warning" as const, label: "Warning", desc: "Alerts, trial warnings" },
+          ]).map(({ key, label, desc }) => (
+            <div key={key} className="rounded-lg border border-border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <input
+                  type="color"
+                  value={colors[key]}
+                  onChange={(e) => setColors({ [key]: e.target.value })}
+                  className="h-8 w-8 rounded cursor-pointer border-0 p-0 bg-transparent"
+                />
+                <div>
+                  <p className="text-sm font-medium">{label}</p>
+                  <p className="text-[10px] text-muted-foreground">{desc}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={colors[key]}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (/^#[0-9a-fA-F]{6}$/.test(v)) setColors({ [key]: v });
+                  }}
+                  placeholder="#000000"
+                  className="text-xs h-7 bg-background font-mono"
+                />
+              </div>
+              {colors[key] !== defaults[key] && (
+                <p className="text-[10px] text-amber-400 mt-1">Modified (default: {defaults[key]})</p>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Live preview */}
+        <div className="mt-4 rounded-lg border border-border p-4">
+          <p className="text-xs text-muted-foreground mb-2">Live Preview</p>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Button size="sm" className="gradient-primary border-0 text-white">Primary Button</Button>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Primary Badge</span>
+            <span className="rounded-full bg-success/10 px-2 py-0.5 text-xs font-medium text-success">Success Badge</span>
+            <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-medium text-warning">Warning Badge</span>
+            <span className="rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">Accent Badge</span>
+            <span className="text-sm font-bold gradient-text">Gradient Text</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ TEST MODE ═══ */}
       <div className={`rounded-xl border p-5 mb-8 transition-colors ${isTestMode ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-card"}`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -213,7 +329,7 @@ const AdminSettings = () => {
             <div>
               <p className="font-medium">Test Mode</p>
               <p className="text-xs text-muted-foreground">
-                When enabled, new signups skip real payment and are activated as fully paid. The entire registration and onboarding flow still runs normally.
+                When enabled, new signups skip real payment and are activated as fully paid.
               </p>
             </div>
           </div>
@@ -243,6 +359,7 @@ const AdminSettings = () => {
         )}
       </div>
 
+      {/* ═══ API KEYS ═══ */}
       <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 mb-8">
         <p className="text-sm text-amber-200">
           <strong>Important:</strong> After entering a key here, you also need to add it as a backend secret with the exact name shown.
@@ -308,12 +425,7 @@ const AdminSettings = () => {
                   </div>
 
                   <div className="mt-2">
-                    <a
-                      href={config.docsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary hover:underline"
-                    >
+                    <a href={config.docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
                       Where to find this key →
                     </a>
                     <span className="text-xs text-muted-foreground ml-3">
