@@ -223,51 +223,72 @@ export type Database = {
           calls_made: number | null
           company_id: string
           created_at: string
+          deals_won: number | null
           emails_sent: number | null
+          estimated_deal_value: number | null
           geographic_focus: string | null
           id: string
           leads_found: number | null
           leads_qualified: number | null
+          meetings_booked: number | null
           minimum_score: number | null
           name: string
+          proposals_sent: number | null
           replies_received: number | null
           status: string | null
+          target_closings_per_month: number | null
           target_criteria: Json | null
           target_description: string | null
+          target_meetings_per_week: number | null
+          target_proposals_per_week: number | null
           updated_at: string
         }
         Insert: {
           calls_made?: number | null
           company_id: string
           created_at?: string
+          deals_won?: number | null
           emails_sent?: number | null
+          estimated_deal_value?: number | null
           geographic_focus?: string | null
           id?: string
           leads_found?: number | null
           leads_qualified?: number | null
+          meetings_booked?: number | null
           minimum_score?: number | null
           name: string
+          proposals_sent?: number | null
           replies_received?: number | null
           status?: string | null
+          target_closings_per_month?: number | null
           target_criteria?: Json | null
           target_description?: string | null
+          target_meetings_per_week?: number | null
+          target_proposals_per_week?: number | null
           updated_at?: string
         }
         Update: {
           calls_made?: number | null
           company_id?: string
           created_at?: string
+          deals_won?: number | null
           emails_sent?: number | null
+          estimated_deal_value?: number | null
           geographic_focus?: string | null
           id?: string
           leads_found?: number | null
           leads_qualified?: number | null
+          meetings_booked?: number | null
           minimum_score?: number | null
           name?: string
+          proposals_sent?: number | null
           replies_received?: number | null
           status?: string | null
+          target_closings_per_month?: number | null
           target_criteria?: Json | null
           target_description?: string | null
+          target_meetings_per_week?: number | null
+          target_proposals_per_week?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -525,6 +546,7 @@ export type Database = {
           city: string | null
           company_id: string
           contact_email: string | null
+          contact_linkedin_url: string | null
           contact_name: string | null
           contact_phone: string | null
           contact_role: string | null
@@ -532,6 +554,7 @@ export type Database = {
           created_at: string
           description: string | null
           email: string | null
+          enrichment_source: string | null
           id: string
           industry: string | null
           phone: string | null
@@ -554,6 +577,7 @@ export type Database = {
           city?: string | null
           company_id: string
           contact_email?: string | null
+          contact_linkedin_url?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_role?: string | null
@@ -561,6 +585,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
+          enrichment_source?: string | null
           id?: string
           industry?: string | null
           phone?: string | null
@@ -583,6 +608,7 @@ export type Database = {
           city?: string | null
           company_id?: string
           contact_email?: string | null
+          contact_linkedin_url?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_role?: string | null
@@ -590,6 +616,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
+          enrichment_source?: string | null
           id?: string
           industry?: string | null
           phone?: string | null
@@ -622,11 +649,12 @@ export type Database = {
           },
         ]
       }
-      outreach_emails: {
+      outreach_messages: {
         Row: {
           ai_model_used: string | null
           body: string
           campaign_id: string | null
+          channel: string | null
           clicked_at: string | null
           company_id: string
           created_at: string
@@ -636,6 +664,7 @@ export type Database = {
           opened_at: string | null
           replied_at: string | null
           sent_at: string | null
+          sequence_step_id: string | null
           status: string | null
           subject: string
         }
@@ -643,6 +672,7 @@ export type Database = {
           ai_model_used?: string | null
           body: string
           campaign_id?: string | null
+          channel?: string | null
           clicked_at?: string | null
           company_id: string
           created_at?: string
@@ -652,6 +682,7 @@ export type Database = {
           opened_at?: string | null
           replied_at?: string | null
           sent_at?: string | null
+          sequence_step_id?: string | null
           status?: string | null
           subject: string
         }
@@ -659,6 +690,7 @@ export type Database = {
           ai_model_used?: string | null
           body?: string
           campaign_id?: string | null
+          channel?: string | null
           clicked_at?: string | null
           company_id?: string
           created_at?: string
@@ -668,6 +700,7 @@ export type Database = {
           opened_at?: string | null
           replied_at?: string | null
           sent_at?: string | null
+          sequence_step_id?: string | null
           status?: string | null
           subject?: string
         }

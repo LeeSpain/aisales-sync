@@ -73,23 +73,23 @@ const Campaigns = () => {
               )}
               <div className="grid grid-cols-5 gap-2 text-center">
                 <div>
-                  <p className="text-lg font-bold">{campaign.leads_found}</p>
+                  <p className="text-lg font-bold">{campaign.leads_found ?? 0}</p>
                   <p className="text-[10px] text-muted-foreground">Leads</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold">{campaign.emails_sent}</p>
+                  <p className="text-lg font-bold">{campaign.emails_sent ?? 0}</p>
                   <p className="text-[10px] text-muted-foreground">Sent</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold">{campaign.replies_received}</p>
+                  <p className="text-lg font-bold">{campaign.replies_received ?? 0}</p>
                   <p className="text-[10px] text-muted-foreground">Replies</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold">{campaign.meetings_booked || 0}</p>
+                  <p className="text-lg font-bold">{campaign.meetings_booked ?? 0}</p>
                   <p className="text-[10px] text-muted-foreground">Meetings</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold">{campaign.deals_won || 0}</p>
+                  <p className="text-lg font-bold">{campaign.deals_won ?? 0}</p>
                   <p className="text-[10px] text-muted-foreground">Deals</p>
                 </div>
               </div>

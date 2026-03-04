@@ -1,9 +1,10 @@
-import { useState, KeyboardEvent } from "react";
+import { useState, KeyboardEvent, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { useCampaignPipeline } from "@/hooks/useCampaignPipeline";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Target, Users, Globe, MessageSquare, BarChart3, Rocket,
   ChevronRight, ChevronLeft, X, Check, Mail, Linkedin, Phone, MessageCircle,
+  Loader2, CheckCircle2, Search, Sparkles, AlertCircle,
 } from "lucide-react";
 
 const INDUSTRY_TAGS = [
@@ -84,6 +86,7 @@ const STEPS = [
   { icon: MessageSquare, label: "Outreach" },
   { icon: BarChart3, label: "Scoring" },
   { icon: Rocket, label: "Launch" },
+  { icon: Sparkles, label: "AI Running" },
 ];
 
 /** Tag input component */
@@ -120,6 +123,8 @@ const CampaignNew = () => {
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null);
+  const pipeline = useCampaignPipeline();
 
   // Form state
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
@@ -146,7 +151,7 @@ const CampaignNew = () => {
 
   const company = profile?.companies as Record<string, unknown> | null;
   const totalSteps = STEPS.length;
-  const progress = ((step + 1) / totalSteps) * 100;
+  const progress = step >= 5 ? 100 : ((step + 1) / (totalSteps - 1)) * 100;
 
   const toggleIndustry = (ind: string) => {
     setSelectedIndustries((prev) =>
@@ -219,6 +224,17 @@ const CampaignNew = () => {
       }
 
       const geo = geoSummary();
+      const criteria = {
+        industries: selectedIndustries,
+        business_size: businessSize,
+        keywords: customKeywords,
+        channels,
+        tone,
+        geo_scope: geoScope,
+        geo_countries: geoCountries,
+        geo_regions: geoRegions,
+        geo_cities: geoCities,
+      };
 
       const { data: newCampaign, error: campErr } = await supabase
         .from("campaigns")
@@ -228,30 +244,31 @@ const CampaignNew = () => {
           target_description: idealClient || `${selectedIndustries.join(", ")} businesses (${businessSize})`,
           geographic_focus: geo,
           minimum_score: minimumScore,
-          target_criteria: {
-            industries: selectedIndustries,
-            business_size: businessSize,
-            keywords: customKeywords,
-            channels,
-            tone,
-            geo_scope: geoScope,
-            geo_countries: geoCountries,
-            geo_regions: geoRegions,
-            geo_cities: geoCities,
-          },
-          status: "active",
+          target_criteria: criteria,
+          status: "setup",
         })
         .select("id")
         .single();
 
       if (campErr) throw campErr;
 
-      toast({ title: "Campaign launched!", description: `"${campaignName}" is now active. Your AI is starting lead discovery.` });
-      navigate(`/campaigns/${newCampaign.id}`);
+      // Move to pipeline step
+      setCreatedCampaignId(newCampaign.id);
+      setStep(5);
+      setSaving(false);
+
+      // Run the AI pipeline
+      pipeline.runPipeline({
+        campaignId: newCampaign.id,
+        companyId,
+        targetCriteria: criteria,
+        geographicFocus: geo,
+        minimumScore,
+        tone,
+      });
     } catch (e) {
       console.error("Campaign create error:", e);
       toast({ title: "Error", description: "Could not create campaign. Please try again.", variant: "destructive" });
-    } finally {
       setSaving(false);
     }
   };
@@ -273,22 +290,27 @@ const CampaignNew = () => {
               const Icon = s.icon;
               const isActive = i === step;
               const isDone = i < step;
+              const isPipelineStep = i === 5;
+              const pipelineLocked = step >= 5; // Can't go back once pipeline starts
               return (
                 <button
                   key={s.label}
-                  onClick={() => i < step && setStep(i)}
+                  onClick={() => !pipelineLocked && i < step && setStep(i)}
                   className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
                     isActive ? "bg-primary/10 text-primary font-medium" :
                     isDone ? "text-foreground cursor-pointer hover:bg-muted/50" :
                     "text-muted-foreground cursor-default"
-                  }`}
+                  } ${pipelineLocked && !isActive ? "opacity-50 cursor-default" : ""}`}
                 >
                   <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                    isActive && isPipelineStep ? "gradient-primary" :
                     isActive ? "gradient-primary" :
                     isDone ? "bg-success/20" :
                     "bg-muted/30"
                   }`}>
-                    {isDone ? <Check className="h-4 w-4 text-success" /> : <Icon className={`h-4 w-4 ${isActive ? "text-white" : ""}`} />}
+                    {isDone ? <Check className="h-4 w-4 text-success" /> :
+                     isActive && isPipelineStep ? <Loader2 className={`h-4 w-4 text-white ${pipeline.stage !== "done" && pipeline.stage !== "error" ? "animate-spin" : ""}`} /> :
+                     <Icon className={`h-4 w-4 ${isActive ? "text-white" : ""}`} />}
                   </div>
                   {s.label}
                 </button>
@@ -724,38 +746,136 @@ const CampaignNew = () => {
               </Card>
             )}
 
-            {/* Navigation */}
-            <div className="flex items-center justify-between pt-2">
-              <Button
-                variant="ghost"
-                onClick={() => step === 0 ? navigate("/campaigns") : setStep(step - 1)}
-                className="gap-1"
-              >
-                <ChevronLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
-              </Button>
+            {/* Step 5: AI Pipeline Running */}
+            {step === 5 && (
+              <Card className="card-glow">
+                <CardHeader>
+                  <CardTitle className="text-xl flex items-center gap-2">
+                    {pipeline.stage === "done" ? (
+                      <><CheckCircle2 className="h-5 w-5 text-success" /> Campaign Ready</>
+                    ) : pipeline.stage === "error" ? (
+                      <><AlertCircle className="h-5 w-5 text-destructive" /> Pipeline Error</>
+                    ) : (
+                      <><Loader2 className="h-5 w-5 animate-spin text-primary" /> AI Pipeline Running</>
+                    )}
+                  </CardTitle>
+                  <CardDescription>{pipeline.progress || "Starting pipeline..."}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Pipeline stages */}
+                  <div className="space-y-3">
+                    {[
+                      { key: "discovering", label: "Discovering leads", icon: Search },
+                      { key: "scoring", label: "Scoring & qualifying", icon: BarChart3 },
+                      { key: "saving_leads", label: "Saving leads to pipeline", icon: Users },
+                      { key: "generating_outreach", label: "Writing outreach messages", icon: MessageSquare },
+                      { key: "finalizing", label: "Finalising campaign", icon: Rocket },
+                    ].map((s) => {
+                      const stageOrder = ["idle", "discovering", "scoring", "saving_leads", "generating_outreach", "finalizing", "done"];
+                      const currentIdx = stageOrder.indexOf(pipeline.stage === "error" ? "done" : pipeline.stage);
+                      const thisIdx = stageOrder.indexOf(s.key);
+                      const isActive = pipeline.stage === s.key;
+                      const isDone = currentIdx > thisIdx || pipeline.stage === "done";
+                      const Icon = s.icon;
+                      return (
+                        <div key={s.key} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
+                          isActive ? "bg-primary/10 text-primary font-medium" :
+                          isDone ? "text-foreground" :
+                          "text-muted-foreground"
+                        }`}>
+                          <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                            isActive ? "gradient-primary" :
+                            isDone ? "bg-success/20" :
+                            "bg-muted/30"
+                          }`}>
+                            {isActive ? (
+                              <Loader2 className="h-4 w-4 text-white animate-spin" />
+                            ) : isDone ? (
+                              <Check className="h-4 w-4 text-success" />
+                            ) : (
+                              <Icon className="h-4 w-4" />
+                            )}
+                          </div>
+                          {s.label}
+                        </div>
+                      );
+                    })}
+                  </div>
 
-              {step < totalSteps - 1 ? (
+                  {/* Stats */}
+                  {(pipeline.leadsFound > 0 || pipeline.stage === "done") && (
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="rounded-xl border border-border bg-card p-3 text-center">
+                        <p className="text-2xl font-bold">{pipeline.leadsFound}</p>
+                        <p className="text-[10px] text-muted-foreground">Leads Found</p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-card p-3 text-center">
+                        <p className="text-2xl font-bold">{pipeline.leadsQualified}</p>
+                        <p className="text-[10px] text-muted-foreground">Qualified</p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-card p-3 text-center">
+                        <p className="text-2xl font-bold">{pipeline.messagesGenerated}</p>
+                        <p className="text-[10px] text-muted-foreground">Messages</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {pipeline.stage === "error" && (
+                    <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
+                      <p className="text-sm text-destructive">{pipeline.error}</p>
+                      <p className="text-xs text-muted-foreground mt-1">The campaign was created. You can view it and retry later.</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Navigation */}
+            {step <= 4 && (
+              <div className="flex items-center justify-between pt-2">
                 <Button
-                  onClick={() => setStep(step + 1)}
-                  disabled={!canNext()}
-                  className="gradient-primary border-0 text-white gap-1"
+                  variant="ghost"
+                  onClick={() => step === 0 ? navigate("/campaigns") : setStep(step - 1)}
+                  className="gap-1"
                 >
-                  Next <ChevronRight className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
                 </Button>
-              ) : (
+
+                {step < 4 ? (
+                  <Button
+                    onClick={() => setStep(step + 1)}
+                    disabled={!canNext()}
+                    className="gradient-primary border-0 text-white gap-1"
+                  >
+                    Next <ChevronRight className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleLaunch}
+                    disabled={saving || !campaignName.trim()}
+                    className="gradient-primary border-0 text-white gap-2"
+                  >
+                    {saving ? "Launching..." : (
+                      <>
+                        <Rocket className="h-4 w-4" /> Launch Campaign
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Pipeline done/error navigation */}
+            {step === 5 && (pipeline.stage === "done" || pipeline.stage === "error") && (
+              <div className="flex items-center justify-end pt-2">
                 <Button
-                  onClick={handleLaunch}
-                  disabled={saving || !campaignName.trim()}
+                  onClick={() => navigate(`/campaigns/${createdCampaignId}`)}
                   className="gradient-primary border-0 text-white gap-2"
                 >
-                  {saving ? "Launching..." : (
-                    <>
-                      <Rocket className="h-4 w-4" /> Launch Campaign
-                    </>
-                  )}
+                  View Campaign <ChevronRight className="h-4 w-4" />
                 </Button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

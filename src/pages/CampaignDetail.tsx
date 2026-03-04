@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +45,8 @@ const CampaignDetail = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
+
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
@@ -88,7 +91,7 @@ const CampaignDetail = () => {
     queryKey: ["campaign-messages", id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("outreach_emails")
+        .from("outreach_messages")
         .select("*, leads(business_name, contact_name)")
         .eq("campaign_id", id!)
         .order("created_at", { ascending: false });
@@ -108,7 +111,7 @@ const CampaignDetail = () => {
   };
 
   const handleApprove = async (emailId: string) => {
-    const { error } = await supabase.from("outreach_emails").update({ status: "approved" }).eq("id", emailId);
+    const { error } = await supabase.from("outreach_messages").update({ status: "approved" }).eq("id", emailId);
     if (error) {
       toast({ title: "Error", description: "Failed to approve", variant: "destructive" });
     } else {
@@ -118,7 +121,7 @@ const CampaignDetail = () => {
   };
 
   const handleReject = async (emailId: string) => {
-    const { error } = await supabase.from("outreach_emails").update({ status: "rejected" }).eq("id", emailId);
+    const { error } = await supabase.from("outreach_messages").update({ status: "rejected" }).eq("id", emailId);
     if (error) {
       toast({ title: "Error", description: "Failed to reject", variant: "destructive" });
     } else {
@@ -131,7 +134,7 @@ const CampaignDetail = () => {
     const pending = messages?.filter((m) => getEmailStatus(m) === "pending_approval") || [];
     if (pending.length === 0) return;
     const ids = pending.map((m) => m.id);
-    const { error } = await supabase.from("outreach_emails").update({ status: "approved" }).in("id", ids);
+    const { error } = await supabase.from("outreach_messages").update({ status: "approved" }).in("id", ids);
     if (error) {
       toast({ title: "Error", description: "Failed to approve all", variant: "destructive" });
     } else {
@@ -169,13 +172,13 @@ const CampaignDetail = () => {
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 mb-8">
         {[
-          { label: "Leads Found", value: campaign.leads_found, icon: Users },
-          { label: "Qualified", value: campaign.leads_qualified, icon: Target },
-          { label: "Messages Sent", value: campaign.emails_sent, icon: Mail },
-          { label: "Replies", value: campaign.replies_received, icon: MessageSquare },
-          { label: "Meetings", value: (campaign as any).meetings_booked || 0, icon: Target },
-          { label: "Proposals", value: (campaign as any).proposals_sent || 0, icon: Target },
-          { label: "Deals Won", value: (campaign as any).deals_won || 0, icon: Target },
+          { label: "Leads Found", value: campaign.leads_found ?? 0, icon: Users },
+          { label: "Qualified", value: campaign.leads_qualified ?? 0, icon: Target },
+          { label: "Messages Sent", value: campaign.emails_sent ?? 0, icon: Mail },
+          { label: "Replies", value: campaign.replies_received ?? 0, icon: MessageSquare },
+          { label: "Meetings", value: campaign.meetings_booked ?? 0, icon: Target },
+          { label: "Proposals", value: campaign.proposals_sent ?? 0, icon: Target },
+          { label: "Deals Won", value: campaign.deals_won ?? 0, icon: Target },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-border bg-card p-4">
             <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -222,55 +225,65 @@ const CampaignDetail = () => {
               const st = emailStatusConfig[statusKey] || emailStatusConfig.draft;
               const StIcon = st.icon;
               const isPending = statusKey === "pending_approval";
+              const isExpanded = expandedMessage === email.id;
               return (
-                <div
-                  key={email.id}
-                  className={cn(
-                    "px-6 py-3 flex items-center gap-4",
-                    isPending ? "bg-amber-500/[0.02]" : ""
-                  )}
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{email.subject}</p>
-                    <p className="text-xs text-muted-foreground truncate">
-                      To {email.leads?.business_name || "Unknown"}
-                      {email.leads?.contact_name && ` · ${email.leads.contact_name}`}
-                    </p>
-                  </div>
-                  <Badge className={cn("text-[10px] gap-1 shrink-0", st.color)}>
-                    <StIcon className="h-3 w-3" />
-                    {st.label}
-                  </Badge>
-                  <span className="text-[10px] text-muted-foreground shrink-0 w-16 text-right">
-                    {new Date(email.created_at).toLocaleDateString()}
-                  </span>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {isPending && (
-                      <>
-                        <Button
-                          size="sm"
-                          className="h-8 px-2.5 text-xs gradient-primary border-0 text-white"
-                          onClick={() => handleApprove(email.id)}
-                        >
-                          <Check className="h-3 w-3 mr-0.5" /> Approve
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleReject(email.id)}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
-                      </>
+                <div key={email.id}>
+                  <div
+                    className={cn(
+                      "px-6 py-3 flex items-center gap-4",
+                      isPending ? "bg-amber-500/[0.02]" : ""
                     )}
-                    <button
-                      onClick={() => navigate(`/proposals/${email.id}`)}
-                      className="text-muted-foreground hover:text-primary ml-1"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                    </button>
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{email.subject}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        To {email.leads?.business_name || "Unknown"}
+                        {email.leads?.contact_name && ` · ${email.leads.contact_name}`}
+                      </p>
+                    </div>
+                    <Badge className={cn("text-[10px] gap-1 shrink-0", st.color)}>
+                      <StIcon className="h-3 w-3" />
+                      {st.label}
+                    </Badge>
+                    <span className="text-[10px] text-muted-foreground shrink-0 w-16 text-right">
+                      {new Date(email.created_at).toLocaleDateString()}
+                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isPending && (
+                        <>
+                          <Button
+                            size="sm"
+                            className="h-8 px-2.5 text-xs gradient-primary border-0 text-white"
+                            onClick={() => handleApprove(email.id)}
+                          >
+                            <Check className="h-3 w-3 mr-0.5" /> Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                            onClick={() => handleReject(email.id)}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </>
+                      )}
+                      <button
+                        onClick={() => setExpandedMessage(isExpanded ? null : email.id)}
+                        className="text-muted-foreground hover:text-primary ml-1"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
+                  {isExpanded && (
+                    <div className="px-6 py-4 bg-muted/20 border-t border-border/50">
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Subject</p>
+                      <p className="text-sm font-medium mb-3">{email.subject}</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Body</p>
+                      <div className="text-sm whitespace-pre-wrap bg-card rounded-lg border border-border p-4">{email.body}</div>
+                    </div>
+                  )}
                 </div>
               );
             })}

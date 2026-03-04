@@ -61,7 +61,7 @@ const LeadDetail = () => {
   const { data: outreachMessages } = useQuery({
     queryKey: ["lead-outreach", id],
     queryFn: async () => {
-      const { data } = await supabase.from("outreach_emails").select("*").eq("lead_id", id!).order("created_at", { ascending: false });
+      const { data } = await supabase.from("outreach_messages").select("*").eq("lead_id", id!).order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!id,
@@ -87,7 +87,7 @@ const LeadDetail = () => {
   };
 
   const handleApprove = async (emailId: string) => {
-    const { error } = await supabase.from("outreach_emails").update({ status: "approved" }).eq("id", emailId);
+    const { error } = await supabase.from("outreach_messages").update({ status: "approved" }).eq("id", emailId);
     if (error) {
       toast({ title: "Error", description: "Failed to approve", variant: "destructive" });
     } else {
@@ -97,7 +97,7 @@ const LeadDetail = () => {
   };
 
   const handleReject = async (emailId: string) => {
-    const { error } = await supabase.from("outreach_emails").update({ status: "rejected" }).eq("id", emailId);
+    const { error } = await supabase.from("outreach_messages").update({ status: "rejected" }).eq("id", emailId);
     if (error) {
       toast({ title: "Error", description: "Failed to reject", variant: "destructive" });
     } else {
