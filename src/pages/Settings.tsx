@@ -232,7 +232,7 @@ const SettingsPage = () => {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
+    <div className="p-8 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl gradient-primary shadow-lg">

@@ -34,7 +34,7 @@ const Billing = () => {
   ];
 
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-8">
       <h1 className="text-2xl font-bold mb-2">Billing</h1>
       <p className="text-muted-foreground mb-8">Manage your subscription and payment details</p>
 
