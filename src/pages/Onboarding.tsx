@@ -117,13 +117,15 @@ const Onboarding = () => {
   const [sellingPoints, setSellingPoints] = useState<string[]>([]);
   const [tonePreference, setTonePreference] = useState("professional");
 
-  const { data: profile } = useQuery({
+  const { data: profile, refetch: refetchProfile } = useQuery({
     queryKey: ["profile-onboarding", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("company_id, companies(name)").eq("id", user!.id).single();
+      const { data, error } = await supabase.from("profiles").select("company_id, companies(name)").eq("id", user!.id).single();
+      if (error) throw error;
       return data;
     },
     enabled: !!user,
+    retry: 3,
   });
 
   // Pre-fill company name from profile
@@ -179,7 +181,19 @@ const Onboarding = () => {
   };
 
   const handleLaunch = async () => {
-    if (!user || !profile?.company_id) {
+    let companyId = profile?.company_id;
+
+    // Fallback: if cached profile is missing company_id, try a fresh fetch
+    if (!user) {
+      toast({ title: "Not authenticated", description: "Please log in and try again.", variant: "destructive" });
+      return;
+    }
+    if (!companyId) {
+      const { data: fresh } = await supabase.from("profiles").select("company_id").eq("id", user.id).single();
+      companyId = fresh?.company_id;
+      if (companyId) refetchProfile(); // update the cache for next time
+    }
+    if (!companyId) {
       toast({ title: "Something went wrong", description: "We couldn't find your company profile. Please refresh and try again.", variant: "destructive" });
       return;
     }
@@ -202,7 +216,7 @@ const Onboarding = () => {
           pricing_summary: pricingSummary || null,
           tone_preference: tonePreference,
         })
-        .eq("id", profile.company_id);
+        .eq("id", companyId);
 
       if (updateErr) throw updateErr;
 
@@ -215,7 +229,7 @@ const Onboarding = () => {
 
       // Log onboarding completion (non-blocking)
       supabase.from("activity_log").insert({
-        company_id: profile.company_id,
+        company_id: companyId,
         action: "onboarding_completed",
         description: `${companyName} completed onboarding — ${industry}, targeting ${targetMarkets.join(", ")}`,
         metadata: { company_name: companyName, industry, services, target_markets: targetMarkets, geographic_range: geo },
