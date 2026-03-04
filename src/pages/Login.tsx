@@ -23,13 +23,23 @@ const Login = () => {
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     } else if (authData.user) {
-      // Check if user has admin role → redirect to Super Admin dashboard
-      const { data: roles } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", authData.user.id);
+      // Check role + onboarding status to send user to the right place
+      const [{ data: roles }, { data: prof }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", authData.user.id),
+        supabase.from("profiles").select("company_id, onboarding_completed").eq("id", authData.user.id).single(),
+      ]);
+
       const isAdmin = roles?.some((r) => r.role === "admin");
-      navigate(isAdmin ? "/admin" : "/dashboard");
+
+      if (isAdmin) {
+        navigate("/admin");
+      } else if (!prof?.company_id) {
+        navigate("/select-plan");
+      } else if (!prof?.onboarding_completed) {
+        navigate("/onboarding");
+      } else {
+        navigate("/dashboard");
+      }
     }
   };
 
