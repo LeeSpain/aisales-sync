@@ -195,7 +195,7 @@ const AdminClientDetail = () => {
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Monthly</span>
-                                <span className="text-white">£{subscription.monthly_amount ?? 0}</span>
+                                <span className="text-white">€{subscription.monthly_amount ?? 0}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span className="text-muted-foreground">Status</span>

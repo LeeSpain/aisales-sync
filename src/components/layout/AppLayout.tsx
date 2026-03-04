@@ -8,7 +8,7 @@ import ChatPanel from "@/components/chat/ChatPanel";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard, Target, Users, Mail, Phone, Settings,
-  LogOut, Zap, MessageCircle, CreditCard, FileText, BarChart3, Columns3,
+  LogOut, Zap, MessageCircle, CreditCard, FileText, BarChart3, Columns3, Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
@@ -45,6 +45,17 @@ const AppLayout = ({ children }: AppLayoutProps) => {
     },
     enabled: !!user,
   });
+
+  // Check if user is admin
+  const { data: roles } = useQuery({
+    queryKey: ["user-roles", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase.from("user_roles").select("role").eq("user_id", user!.id);
+      return data || [];
+    },
+    enabled: !!user,
+  });
+  const isAdmin = roles?.some((r) => r.role === "admin");
 
   const { data: subscription } = useQuery({
     queryKey: ["subscription", profile?.company_id],
@@ -115,6 +126,23 @@ const AppLayout = ({ children }: AppLayoutProps) => {
               </button>
             );
           })}
+          {isAdmin && (
+            <>
+              <div className="my-2 border-t border-border" />
+              <button
+                onClick={() => navigate("/admin")}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  location.pathname.startsWith("/admin")
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Shield className="h-4 w-4" />
+                Super Admin
+              </button>
+            </>
+          )}
         </nav>
 
         <div className="border-t border-border p-3 space-y-1">

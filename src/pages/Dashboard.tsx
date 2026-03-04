@@ -57,14 +57,29 @@ const Dashboard = () => {
     enabled: !!profile?.company_id,
   });
 
+  const { data: leadStatusCounts } = useQuery({
+    queryKey: ["lead-status-counts", profile?.company_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("leads")
+        .select("status")
+        .eq("company_id", profile!.company_id!);
+      const meetingBooked = data?.filter((l) => l.status === "meeting_booked").length || 0;
+      const proposalSent = data?.filter((l) => l.status === "proposal_sent").length || 0;
+      const converted = data?.filter((l) => l.status === "converted").length || 0;
+      return { meetingBooked, proposalSent, converted };
+    },
+    enabled: !!profile?.company_id,
+  });
+
   const totals = {
     leads: campaigns?.reduce((s, c) => s + (c.leads_found || 0), 0) || 0,
     qualified: campaigns?.reduce((s, c) => s + (c.leads_qualified || 0), 0) || 0,
     messages: campaigns?.reduce((s, c) => s + (c.emails_sent || 0), 0) || 0,
     replies: campaigns?.reduce((s, c) => s + (c.replies_received || 0), 0) || 0,
-    meetings: campaigns?.reduce((s, c) => s + ((c as any).meetings_booked || 0), 0) || 0,
-    proposals: campaigns?.reduce((s, c) => s + ((c as any).proposals_sent || 0), 0) || 0,
-    deals: campaigns?.reduce((s, c) => s + ((c as any).deals_won || 0), 0) || 0,
+    meetings: leadStatusCounts?.meetingBooked || 0,
+    proposals: leadStatusCounts?.proposalSent || 0,
+    deals: leadStatusCounts?.converted || 0,
     calls: campaigns?.reduce((s, c) => s + (c.calls_made || 0), 0) || 0,
   };
 

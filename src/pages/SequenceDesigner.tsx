@@ -15,8 +15,9 @@ import {
     Sparkles,
     Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 /* ─── Types ─── */
 interface SequenceStep {
@@ -36,8 +37,7 @@ const channelConfig = {
     wait: { icon: Clock, label: "Wait", color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
 };
 
-/* ─── Demo sequence data (will be replaced by Supabase query when tables exist) ─── */
-const demoSteps: SequenceStep[] = [
+const defaultSteps: SequenceStep[] = [
     { id: "1", order: 1, channel: "email", subject: "Introduction Email", body: "AI-personalised intro based on lead research", delay_days: 0, status: "active" },
     { id: "2", order: 2, channel: "wait", delay_days: 2, status: "active" },
     { id: "3", order: 3, channel: "linkedin", subject: "LinkedIn Connection Request", body: "Personalised note referencing their company", delay_days: 0, status: "active" },
@@ -50,7 +50,9 @@ const demoSteps: SequenceStep[] = [
 const SequenceDesigner = () => {
     const { id } = useParams<{ id: string }>();
     const { user } = useAuth();
-    const [steps, setSteps] = useState<SequenceStep[]>(demoSteps);
+    const { toast } = useToast();
+    const [steps, setSteps] = useState<SequenceStep[]>(defaultSteps);
+    const [saving, setSaving] = useState(false);
 
     // Fetch campaign info
     const { data: campaign } = useQuery({
@@ -66,6 +68,37 @@ const SequenceDesigner = () => {
         },
         enabled: !!id,
     });
+
+    // Load saved sequence from campaign.target_criteria
+    useEffect(() => {
+        if (campaign?.target_criteria) {
+            const criteria = campaign.target_criteria as any;
+            if (criteria.sequence_steps && Array.isArray(criteria.sequence_steps)) {
+                setSteps(criteria.sequence_steps);
+            }
+        }
+    }, [campaign]);
+
+    const handleSave = async () => {
+        if (!id) return;
+        setSaving(true);
+        try {
+            const existingCriteria = (campaign?.target_criteria as any) || {};
+            const { error } = await supabase
+                .from("campaigns")
+                .update({
+                    target_criteria: { ...existingCriteria, sequence_steps: steps },
+                })
+                .eq("id", id);
+
+            if (error) throw error;
+            toast({ title: "Saved", description: "Sequence saved successfully." });
+        } catch (e) {
+            toast({ title: "Error", description: "Failed to save sequence.", variant: "destructive" });
+        } finally {
+            setSaving(false);
+        }
+    };
 
     const addStep = (channel: SequenceStep["channel"]) => {
         const newStep: SequenceStep = {
@@ -104,9 +137,9 @@ const SequenceDesigner = () => {
                         <Sparkles className="h-3.5 w-3.5" />
                         AI Build
                     </Button>
-                    <Button size="sm" className="gap-1.5 gradient-primary text-white border-0">
+                    <Button size="sm" className="gap-1.5 gradient-primary text-white border-0" onClick={handleSave} disabled={saving}>
                         <Zap className="h-3.5 w-3.5" />
-                        Save & Activate
+                        {saving ? "Saving..." : "Save & Activate"}
                     </Button>
                 </div>
             </div>

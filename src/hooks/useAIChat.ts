@@ -33,7 +33,9 @@ export function useAIChat({ context, companyProfile, initialMessages = [] }: Use
           role: "user",
           content: input.trim(),
           context,
-        }).then(() => {});
+        }).then(({ error: dbErr }) => {
+          if (dbErr) console.error("Failed to save user message:", dbErr.message);
+        });
       }
 
       let assistantContent = "";
@@ -68,7 +70,9 @@ export function useAIChat({ context, companyProfile, initialMessages = [] }: Use
                 role: "assistant",
                 content: assistantContent,
                 context,
-              }).then(() => {});
+              }).then(({ error: dbErr }) => {
+                if (dbErr) console.error("Failed to save assistant message:", dbErr.message);
+              });
             }
           },
           onError: (err) => {

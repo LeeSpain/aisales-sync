@@ -3,9 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { CreditCard, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const Billing = () => {
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
@@ -44,7 +46,7 @@ const Billing = () => {
             <p className="text-xl font-bold capitalize">{subscription?.plan || "No active plan"}</p>
             {subscription && <p className="text-sm text-muted-foreground capitalize">Status: {subscription.status}</p>}
           </div>
-          <Button variant="outline">
+          <Button variant="outline" onClick={() => toast({ title: "Stripe integration", description: "Stripe billing portal will be connected in the next update." })}>
             <ExternalLink className="h-4 w-4 mr-2" /> Manage in Stripe
           </Button>
         </div>

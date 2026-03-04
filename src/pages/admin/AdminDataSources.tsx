@@ -1,3 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { Navigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,27 +12,21 @@ import {
     Mail,
     CheckCircle2,
     XCircle,
-    RefreshCw,
-    Settings2,
     ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/* ─── Types ─── */
 interface DataSource {
     id: string;
     name: string;
     description: string;
     icon: typeof Database;
     category: "discovery" | "enrichment" | "verification";
-    status: "connected" | "disconnected" | "error";
-    apiKeySet: boolean;
-    usage: { current: number; limit: number; period: string };
-    lastChecked?: string;
+    envName: string;
     url: string;
+    usage: { limit: number; period: string };
 }
 
-/* ─── Demo data (will be replaced by Supabase data_sources table) ─── */
 const dataSources: DataSource[] = [
     {
         id: "google-places",
@@ -36,11 +34,9 @@ const dataSources: DataSource[] = [
         description: "Discover local businesses by location and category",
         icon: Globe,
         category: "discovery",
-        status: "connected",
-        apiKeySet: true,
-        usage: { current: 1240, limit: 5000, period: "Monthly" },
-        lastChecked: "2 min ago",
+        envName: "GOOGLE_PLACES_API_KEY",
         url: "https://console.cloud.google.com/apis/library/places-backend.googleapis.com",
+        usage: { limit: 5000, period: "Monthly" },
     },
     {
         id: "serpapi",
@@ -48,23 +44,19 @@ const dataSources: DataSource[] = [
         description: "Search engine results for lead research and discovery",
         icon: Search,
         category: "discovery",
-        status: "connected",
-        apiKeySet: true,
-        usage: { current: 820, limit: 2500, period: "Monthly" },
-        lastChecked: "5 min ago",
+        envName: "SERP_API_KEY",
         url: "https://serpapi.com/dashboard",
+        usage: { limit: 2500, period: "Monthly" },
     },
     {
         id: "apollo",
         name: "Apollo.io",
-        description: "Contact enrichment — LinkedIn profiles, direct dials, verified emails, company data",
+        description: "Contact enrichment — LinkedIn profiles, direct dials, verified emails",
         icon: UserCheck,
         category: "enrichment",
-        status: "connected",
-        apiKeySet: true,
-        usage: { current: 450, limit: 1000, period: "Monthly" },
-        lastChecked: "1 min ago",
+        envName: "APOLLO_API_KEY",
         url: "https://app.apollo.io/#/settings/integrations/api",
+        usage: { limit: 1000, period: "Monthly" },
     },
     {
         id: "hunter",
@@ -72,10 +64,9 @@ const dataSources: DataSource[] = [
         description: "Email verification and pattern detection",
         icon: Mail,
         category: "verification",
-        status: "disconnected",
-        apiKeySet: false,
-        usage: { current: 0, limit: 500, period: "Monthly" },
+        envName: "HUNTER_API_KEY",
         url: "https://hunter.io/api-keys",
+        usage: { limit: 500, period: "Monthly" },
     },
 ];
 
@@ -85,13 +76,42 @@ const categoryLabels: Record<string, string> = {
     verification: "Email Verification",
 };
 
-const statusConfig: Record<string, { label: string; color: string; icon: typeof CheckCircle2 }> = {
+const statusConfig = {
     connected: { label: "Connected", color: "bg-emerald-500/10 text-emerald-400", icon: CheckCircle2 },
     disconnected: { label: "Not Connected", color: "bg-muted text-muted-foreground", icon: XCircle },
-    error: { label: "Error", color: "bg-destructive/10 text-destructive", icon: XCircle },
 };
 
 const AdminDataSources = () => {
+    const { user } = useAuth();
+
+    const { data: roles } = useQuery({
+        queryKey: ["user-roles", user?.id],
+        queryFn: async () => {
+            const { data } = await supabase.from("user_roles").select("role").eq("user_id", user!.id);
+            return data || [];
+        },
+        enabled: !!user,
+    });
+
+    const isAdmin = roles?.some((r) => r.role === "admin");
+    if (roles && !isAdmin) return <Navigate to="/dashboard" replace />;
+
+    const { data: configuredKeys } = useQuery({
+        queryKey: ["admin-api-keys"],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("ai_config")
+                .select("*")
+                .eq("purpose", "api_key_store");
+            return data || [];
+        },
+        enabled: isAdmin,
+    });
+
+    const isKeyConfigured = (envName: string) => {
+        return configuredKeys?.some((k) => k.provider === envName && k.is_active);
+    };
+
     const categories = [...new Set(dataSources.map((ds) => ds.category))];
 
     return (
@@ -101,10 +121,6 @@ const AdminDataSources = () => {
                     <h1 className="text-2xl font-bold">Data Sources</h1>
                     <p className="text-muted-foreground text-sm">Manage enrichment and discovery API integrations</p>
                 </div>
-                <Button variant="outline" size="sm" className="gap-1.5">
-                    <RefreshCw className="h-3.5 w-3.5" />
-                    Health Check All
-                </Button>
             </div>
 
             {categories.map((cat) => (
@@ -117,9 +133,9 @@ const AdminDataSources = () => {
                             .filter((ds) => ds.category === cat)
                             .map((ds) => {
                                 const Icon = ds.icon;
-                                const st = statusConfig[ds.status];
+                                const connected = isKeyConfigured(ds.envName);
+                                const st = connected ? statusConfig.connected : statusConfig.disconnected;
                                 const StIcon = st.icon;
-                                const usagePercent = ds.usage.limit > 0 ? Math.round((ds.usage.current / ds.usage.limit) * 100) : 0;
 
                                 return (
                                     <div
@@ -139,29 +155,9 @@ const AdminDataSources = () => {
                                                     </Badge>
                                                 </div>
                                                 <p className="text-sm text-muted-foreground mb-3">{ds.description}</p>
-
-                                                {/* Usage bar */}
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex-1 max-w-xs">
-                                                        <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                                                            <span>{ds.usage.current.toLocaleString()} / {ds.usage.limit.toLocaleString()}</span>
-                                                            <span>{ds.usage.period}</span>
-                                                        </div>
-                                                        <div className="h-1.5 rounded-full bg-border overflow-hidden">
-                                                            <div
-                                                                className={cn(
-                                                                    "h-full rounded-full transition-all",
-                                                                    usagePercent > 80 ? "bg-amber-400" : "bg-primary"
-                                                                )}
-                                                                style={{ width: `${Math.min(usagePercent, 100)}%` }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    {ds.lastChecked && (
-                                                        <span className="text-[11px] text-muted-foreground/60">
-                                                            Checked {ds.lastChecked}
-                                                        </span>
-                                                    )}
+                                                <div className="text-xs text-muted-foreground">
+                                                    API Key: <code className="bg-muted px-1 py-0.5 rounded text-[10px]">{ds.envName}</code>
+                                                    <span className="ml-3">Limit: {ds.usage.limit.toLocaleString()} / {ds.usage.period}</span>
                                                 </div>
                                             </div>
 
@@ -170,10 +166,6 @@ const AdminDataSources = () => {
                                                     <a href={ds.url} target="_blank" rel="noopener noreferrer">
                                                         <ExternalLink className="h-3.5 w-3.5" />
                                                     </a>
-                                                </Button>
-                                                <Button variant="outline" size="sm" className="gap-1.5">
-                                                    <Settings2 className="h-3.5 w-3.5" />
-                                                    Configure
                                                 </Button>
                                             </div>
                                         </div>

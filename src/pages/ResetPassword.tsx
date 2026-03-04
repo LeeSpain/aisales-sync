@@ -9,6 +9,7 @@ import { Zap } from "lucide-react";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -23,6 +24,10 @@ const ResetPassword = () => {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
@@ -52,6 +57,10 @@ const ResetPassword = () => {
           <div className="space-y-2">
             <Label htmlFor="password">New password</Label>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirm-password">Confirm password</Label>
+            <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
           </div>
           <Button type="submit" className="w-full gradient-primary border-0 text-white" disabled={loading}>
             {loading ? "Updating..." : "Update password"}
