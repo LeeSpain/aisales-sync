@@ -23,7 +23,6 @@ const Signup = () => {
       password,
       options: {
         data: { full_name: fullName },
-        emailRedirectTo: window.location.origin,
       },
     });
 
@@ -33,17 +32,24 @@ const Signup = () => {
       return;
     }
 
-    // Attempt to login immediately (works if email confirmation is disabled)
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    // If signup returned a session, user is auto-confirmed — go straight to plan selection
+    if (signUpData.session) {
+      setLoading(false);
+      navigate("/select-plan");
+      return;
+    }
 
+    // Fallback: try signing in immediately (works when email confirmation is disabled)
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
 
     if (signInError) {
-      // If login fails right after signup, it likely means email confirmation IS required
-      toast({ title: "Check your email", description: "We sent you a confirmation link." });
+      toast({
+        title: "Account created!",
+        description: "Please check your email for a confirmation link, then sign in.",
+      });
       navigate("/login");
     } else {
-      // Login succeeded, the ProtectedRoute logic will handle sending them to /select-plan
       navigate("/select-plan");
     }
   };
