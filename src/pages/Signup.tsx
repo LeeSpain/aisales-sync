@@ -18,39 +18,55 @@ const Signup = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-      },
-    });
 
-    if (signUpError) {
-      setLoading(false);
-      toast({ title: "Signup failed", description: signUpError.message, variant: "destructive" });
-      return;
-    }
+    try {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+        },
+      });
 
-    // If signup returned a session, user is auto-confirmed — go straight to plan selection
-    if (signUpData.session) {
-      setLoading(false);
-      navigate("/select-plan");
-      return;
-    }
+      if (signUpError) {
+        toast({ title: "Signup failed", description: signUpError.message, variant: "destructive" });
+        return;
+      }
 
-    // Fallback: try signing in immediately (works when email confirmation is disabled)
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+      // If signup returned a session directly, go straight to plan selection
+      if (signUpData.session) {
+        navigate("/select-plan");
+        return;
+      }
 
-    if (signInError) {
+      // The DB trigger auto-confirms users — give it a moment then sign in
+      await new Promise((r) => setTimeout(r, 1000));
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (!signInError) {
+        navigate("/select-plan");
+        return;
+      }
+
+      // Second attempt after a bit more time
+      await new Promise((r) => setTimeout(r, 1500));
+
+      const { error: retryError } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (!retryError) {
+        navigate("/select-plan");
+        return;
+      }
+
+      // If still failing, email confirmation is likely still required in Supabase settings
       toast({
         title: "Account created!",
-        description: "Please check your email for a confirmation link, then sign in.",
+        description: "Please check your email to confirm, then sign in.",
       });
       navigate("/login");
-    } else {
-      navigate("/select-plan");
+    } finally {
+      setLoading(false);
     }
   };
 
