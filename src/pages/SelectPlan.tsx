@@ -75,35 +75,64 @@ const SelectPlan = () => {
         enabled: !!user,
     });
 
+    const ensureCompany = async (): Promise<string | null> => {
+        if (profile?.company_id) return profile.company_id;
+
+        // Auto-create company for new signups
+        const fullName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "My Company";
+        const { data: newCompany, error: compErr } = await supabase
+            .from("companies")
+            .insert({ name: `${fullName}'s Company`, owner_id: user!.id, status: "active" })
+            .select("id")
+            .single();
+
+        if (compErr || !newCompany) {
+            console.error("Failed to create company:", compErr?.message);
+            return null;
+        }
+
+        // Link profile to company
+        await supabase.from("profiles").update({ company_id: newCompany.id }).eq("id", user!.id);
+
+        // Also add client role
+        await supabase.from("user_roles").insert({ user_id: user!.id, role: "client" as const });
+
+        return newCompany.id;
+    };
+
     const activateSubscription = async (plan: string, mode: "trial" | "paid") => {
-        if (!user || !profile?.company_id) {
-            toast({
-                title: "Error",
-                description: "Profile not ready yet. Please wait a moment and try again.",
-                variant: "destructive",
-            });
+        if (!user) {
+            toast({ title: "Error", description: "Not authenticated.", variant: "destructive" });
             return;
         }
 
         setActivating(plan);
+
+        try {
+        // Ensure company exists (auto-create for new signups)
+        const companyId = await ensureCompany();
+        if (!companyId) {
+            toast({ title: "Error", description: "Failed to set up your account. Please try again.", variant: "destructive" });
+            setActivating(null);
+            return;
+        }
 
         const isTrial = mode === "trial";
         const subscriptionData = {
             plan,
             status: isTrial ? "trial" : "active",
             monthly_amount: plan === "starter" ? 750 : plan === "growth" ? 1250 : 0,
-            setup_fee_paid: !isTrial, // paid in full when not trial
+            setup_fee_paid: !isTrial,
             current_period_start: new Date().toISOString(),
             current_period_end: new Date(
                 Date.now() + (isTrial ? 14 : 30) * 24 * 60 * 60 * 1000
             ).toISOString(),
         };
 
-        try {
             const { data: existing } = await supabase
                 .from("subscriptions")
                 .select("id")
-                .eq("company_id", profile.company_id)
+                .eq("company_id", companyId)
                 .maybeSingle();
 
             if (existing) {
@@ -113,7 +142,7 @@ const SelectPlan = () => {
                     .eq("id", existing.id);
             } else {
                 await supabase.from("subscriptions").insert({
-                    company_id: profile.company_id,
+                    company_id: companyId,
                     ...subscriptionData,
                 });
             }
