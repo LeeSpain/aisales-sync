@@ -20,7 +20,31 @@ const INDUSTRIES = [
   "Hospitality / Tourism", "Education", "Professional Services", "Other",
 ];
 
-const REGIONS = ["United Kingdom", "Europe", "North America", "Asia Pacific", "Global", "Custom"];
+const GEO_SCOPES = [
+  { value: "local", label: "Local", desc: "Specific cities, towns, or postcodes" },
+  { value: "regional", label: "Regional", desc: "Counties, states, or metro areas" },
+  { value: "national", label: "National", desc: "One or more countries" },
+  { value: "international", label: "International", desc: "Multiple countries or global" },
+];
+
+const COUNTRIES = [
+  "United Kingdom", "United States", "Canada", "Australia", "Germany",
+  "France", "Spain", "Italy", "Netherlands", "Ireland", "Sweden",
+  "Norway", "Denmark", "Switzerland", "Belgium", "Austria", "Portugal",
+  "New Zealand", "Singapore", "UAE", "India", "Japan", "South Korea",
+  "Brazil", "Mexico", "South Africa",
+];
+
+const UK_REGIONS = [
+  "London", "South East", "South West", "East of England", "West Midlands",
+  "East Midlands", "Yorkshire", "North West", "North East", "Scotland",
+  "Wales", "Northern Ireland",
+];
+
+const INTERNATIONAL_REGIONS = [
+  "Western Europe", "Eastern Europe", "Scandinavia", "North America",
+  "Latin America", "Middle East", "Asia Pacific", "Africa", "Global",
+];
 
 const TONE_OPTIONS = [
   { value: "formal", label: "Formal", desc: "Corporate, traditional business tone" },
@@ -112,8 +136,10 @@ const Onboarding = () => {
   const [services, setServices] = useState<string[]>([]);
   const [pricingSummary, setPricingSummary] = useState("");
   const [targetMarkets, setTargetMarkets] = useState<string[]>([]);
-  const [geographicRange, setGeographicRange] = useState("");
-  const [customRegion, setCustomRegion] = useState("");
+  const [geoScope, setGeoScope] = useState("");
+  const [geoCountries, setGeoCountries] = useState<string[]>([]);
+  const [geoRegions, setGeoRegions] = useState<string[]>([]);
+  const [geoCities, setGeoCities] = useState<string[]>([]);
   const [sellingPoints, setSellingPoints] = useState<string[]>([]);
   const [tonePreference, setTonePreference] = useState("professional");
 
@@ -140,6 +166,15 @@ const Onboarding = () => {
   const marketsFlushRef = useRef<(() => string) | null>(null);
   const uspsFlushRef = useRef<(() => string) | null>(null);
 
+  /** Build a human-readable geography summary */
+  const geoSummary = () => {
+    if (geoScope === "local") return geoCities.join(", ");
+    if (geoScope === "regional") return geoRegions.join(", ");
+    if (geoScope === "national") return geoCountries.join(", ");
+    if (geoScope === "international") return geoRegions.join(", ");
+    return "";
+  };
+
   const totalSteps = STEPS.length;
   const progress = ((step + 1) / totalSteps) * 100;
 
@@ -157,7 +192,16 @@ const Onboarding = () => {
       case 0: valid = website.trim().length > 0; break;
       case 1: valid = companyName.trim().length > 0 && industry.length > 0; break;
       case 2: valid = services.length > 0 || flushed.length > 0; break;
-      case 3: valid = (targetMarkets.length > 0 || flushed.length > 0) && geographicRange.length > 0 && (geographicRange !== "Custom" || customRegion.trim().length > 0); break;
+      case 3: {
+        const hasMarkets = targetMarkets.length > 0 || flushed.length > 0;
+        const hasGeo = geoScope === "local" ? geoCountries.length > 0 && geoCities.length > 0
+          : geoScope === "regional" ? geoCountries.length > 0 && geoRegions.length > 0
+          : geoScope === "national" ? geoCountries.length > 0
+          : geoScope === "international" ? geoRegions.length > 0
+          : false;
+        valid = hasMarkets && hasGeo;
+        break;
+      }
       case 4: valid = sellingPoints.length > 0 || flushed.length > 0; break;
     }
 
@@ -200,7 +244,7 @@ const Onboarding = () => {
     setSaving(true);
 
     try {
-      const geo = geographicRange === "Custom" ? customRegion : geographicRange;
+      const geo = geoSummary();
 
       const { error: updateErr } = await supabase
         .from("companies")
@@ -420,26 +464,168 @@ const Onboarding = () => {
                       flushRef={marketsFlushRef}
                     />
                   </div>
+                  {/* Scope selector */}
                   <div className="space-y-2">
-                    <Label>Geographic range</Label>
-                    <Select value={geographicRange} onValueChange={setGeographicRange}>
-                      <SelectTrigger><SelectValue placeholder="Where do you want to find clients?" /></SelectTrigger>
-                      <SelectContent>
-                        {REGIONS.map((r) => (
-                          <SelectItem key={r} value={r}>{r}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label>Where do you want to find clients?</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {GEO_SCOPES.map((s) => (
+                        <button
+                          key={s.value}
+                          onClick={() => {
+                            setGeoScope(s.value);
+                            setGeoCountries([]);
+                            setGeoRegions([]);
+                            setGeoCities([]);
+                          }}
+                          className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${
+                            geoScope === s.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <div>
+                            <p className="text-sm font-medium">{s.label}</p>
+                            <p className="text-xs text-muted-foreground">{s.desc}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  {geographicRange === "Custom" && (
+
+                  {/* LOCAL: Country + Cities/Towns/Postcodes */}
+                  {geoScope === "local" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Country</Label>
+                        <Select value={geoCountries[0] || ""} onValueChange={(v) => setGeoCountries([v])}>
+                          <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
+                          <SelectContent>
+                            {COUNTRIES.map((c) => (
+                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cities, towns, or postcodes</Label>
+                        <TagInput
+                          tags={geoCities}
+                          onAdd={(t) => setGeoCities([...geoCities, t])}
+                          onRemove={(i) => setGeoCities(geoCities.filter((_, idx) => idx !== i))}
+                          placeholder="e.g. Málaga, Torremolinos, 29001"
+                        />
+                        <p className="text-xs text-muted-foreground">Add as many locations as you like. Your AI will search for businesses in each area.</p>
+                      </div>
+                    </>
+                  )}
+
+                  {/* REGIONAL: Country + Regions */}
+                  {geoScope === "regional" && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Country</Label>
+                        <Select value={geoCountries[0] || ""} onValueChange={(v) => setGeoCountries([v])}>
+                          <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
+                          <SelectContent>
+                            {COUNTRIES.map((c) => (
+                              <SelectItem key={c} value={c}>{c}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {geoCountries[0] === "United Kingdom" ? (
+                        <div className="space-y-2">
+                          <Label>Regions</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {UK_REGIONS.map((r) => (
+                              <Badge
+                                key={r}
+                                variant={geoRegions.includes(r) ? "default" : "outline"}
+                                className={`cursor-pointer transition-all ${
+                                  geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
+                                }`}
+                                onClick={() =>
+                                  setGeoRegions((prev) =>
+                                    prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+                                  )
+                                }
+                              >
+                                {r}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label>Regions, states, or areas</Label>
+                          <TagInput
+                            tags={geoRegions}
+                            onAdd={(t) => setGeoRegions([...geoRegions, t])}
+                            onRemove={(i) => setGeoRegions(geoRegions.filter((_, idx) => idx !== i))}
+                            placeholder="e.g. Andalusia, Catalonia, Costa del Sol"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* NATIONAL: Multi-country select */}
+                  {geoScope === "national" && (
                     <div className="space-y-2">
-                      <Label htmlFor="customRegion">Specific regions or cities</Label>
-                      <Input
-                        id="customRegion"
-                        value={customRegion}
-                        onChange={(e) => setCustomRegion(e.target.value)}
-                        placeholder="e.g. London, Manchester, Birmingham"
-                      />
+                      <Label>Countries</Label>
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {geoCountries.map((c, i) => (
+                          <Badge key={i} variant="secondary" className="gap-1 pr-1">
+                            {c}
+                            <button onClick={() => setGeoCountries(geoCountries.filter((_, idx) => idx !== i))} className="ml-1 hover:text-destructive">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                      <Select value="" onValueChange={(v) => { if (!geoCountries.includes(v)) setGeoCountries([...geoCountries, v]); }}>
+                        <SelectTrigger><SelectValue placeholder="Add a country" /></SelectTrigger>
+                        <SelectContent>
+                          {COUNTRIES.filter((c) => !geoCountries.includes(c)).map((c) => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* INTERNATIONAL: World regions */}
+                  {geoScope === "international" && (
+                    <div className="space-y-2">
+                      <Label>World regions</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {INTERNATIONAL_REGIONS.map((r) => (
+                          <Badge
+                            key={r}
+                            variant={geoRegions.includes(r) ? "default" : "outline"}
+                            className={`cursor-pointer transition-all ${
+                              geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
+                            }`}
+                            onClick={() =>
+                              setGeoRegions((prev) =>
+                                prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+                              )
+                            }
+                          >
+                            {r}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Contextual tip */}
+                  {geoScope && (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                      <p className="text-xs text-muted-foreground">
+                        {geoScope === "local" && "Perfect for targeting businesses on specific high streets, business parks, or neighbourhoods. Your AI will search for leads in these exact locations."}
+                        {geoScope === "regional" && "Great for covering larger areas like counties or metro regions. Your AI will find businesses across the entire region."}
+                        {geoScope === "national" && "Target businesses across entire countries. Best for products or services that aren't location-dependent."}
+                        {geoScope === "international" && "Go global. Your AI will adapt outreach language and approach for each market."}
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -502,7 +688,8 @@ const Onboarding = () => {
                     <ReviewRow label="Services" value={services.join(", ")} onEdit={() => setStep(2)} />
                     {pricingSummary && <ReviewRow label="Pricing" value={pricingSummary} onEdit={() => setStep(2)} />}
                     <ReviewRow label="Target markets" value={targetMarkets.join(", ")} onEdit={() => setStep(3)} />
-                    <ReviewRow label="Geography" value={geographicRange === "Custom" ? customRegion : geographicRange} onEdit={() => setStep(3)} />
+                    <ReviewRow label="Geo scope" value={GEO_SCOPES.find(s => s.value === geoScope)?.label || geoScope} onEdit={() => setStep(3)} />
+                    <ReviewRow label="Locations" value={geoSummary()} onEdit={() => setStep(3)} />
                     <ReviewRow label="USPs" value={sellingPoints.join(", ")} onEdit={() => setStep(4)} />
                     <ReviewRow label="Tone" value={TONE_OPTIONS.find(t => t.value === tonePreference)?.label || tonePreference} onEdit={() => setStep(4)} />
                   </div>
