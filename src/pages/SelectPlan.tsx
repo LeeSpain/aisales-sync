@@ -175,15 +175,17 @@ const SelectPlan = () => {
                 .maybeSingle();
 
             if (existing) {
-                await supabase
+                const { error: subErr } = await supabase
                     .from("subscriptions")
                     .update(subscriptionData)
                     .eq("id", existing.id);
+                if (subErr) throw new Error(`Subscription update failed: ${subErr.message}`);
             } else {
-                await supabase.from("subscriptions").insert({
+                const { error: subErr } = await supabase.from("subscriptions").insert({
                     company_id: companyId,
                     ...subscriptionData,
                 });
+                if (subErr) throw new Error(`Subscription create failed: ${subErr.message}`);
             }
 
             // Log subscription activation
