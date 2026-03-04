@@ -45,7 +45,7 @@ const AdminSettings = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { isTestMode, isToggling, toggle: toggleTestMode } = useTestMode();
-  const { theme, toggle: toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { colors, setColors, reset: resetColors, defaults } = useBrandColors();
   const [values, setValues] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
@@ -208,45 +208,110 @@ const AdminSettings = () => {
         </div>
       </div>
 
-      {/* ═══ THEME TOGGLE ═══ */}
+      {/* ═══ THEME PICKER ═══ */}
       <div className="rounded-xl border border-border bg-card p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-            {theme === "dark" ? <Moon className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}
+            {theme === "dark" ? <Moon className="h-4 w-4 text-primary" /> : theme === "brand" ? <Palette className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}
           </div>
-          <h2 className="font-semibold">Appearance</h2>
-        </div>
-
-        <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium">Theme</p>
+            <h2 className="font-semibold">Appearance</h2>
             <p className="text-xs text-muted-foreground">
-              Switch between dark and light mode. Your preference is saved locally.
+              Choose your theme. Your preference is saved locally.
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <span className={cn("text-xs font-medium", theme === "light" ? "text-foreground" : "text-muted-foreground")}>
-              <Sun className="h-3.5 w-3.5 inline mr-1" />Light
-            </span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={theme === "dark"}
-              onClick={toggleTheme}
-              className={cn(
-                "relative inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full transition-colors",
-                theme === "dark" ? "bg-primary" : "bg-muted"
-              )}
-            >
-              <span className={cn(
-                "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-                theme === "dark" ? "translate-x-6" : "translate-x-1"
-              )} />
-            </button>
-            <span className={cn("text-xs font-medium", theme === "dark" ? "text-foreground" : "text-muted-foreground")}>
-              <Moon className="h-3.5 w-3.5 inline mr-1" />Dark
-            </span>
-          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          {/* Light */}
+          <button
+            onClick={() => setTheme("light")}
+            className={cn(
+              "rounded-xl border-2 p-4 text-left transition-all",
+              theme === "light"
+                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                : "border-border hover:border-muted-foreground/30"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100">
+                <Sun className="h-4 w-4 text-amber-600" />
+              </div>
+              {theme === "light" && <span className="ml-auto text-[10px] font-semibold text-primary uppercase tracking-wide">Active</span>}
+            </div>
+            <p className="text-sm font-semibold">Light</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Clean, bright interface</p>
+            {/* Mini preview */}
+            <div className="mt-3 rounded-lg border border-gray-200 overflow-hidden">
+              <div className="h-2 bg-gray-100" />
+              <div className="flex">
+                <div className="w-6 bg-gray-50 h-8" />
+                <div className="flex-1 bg-white h-8 p-1.5">
+                  <div className="h-1.5 w-8 bg-gray-200 rounded" />
+                </div>
+              </div>
+            </div>
+          </button>
+
+          {/* Dark */}
+          <button
+            onClick={() => setTheme("dark")}
+            className={cn(
+              "rounded-xl border-2 p-4 text-left transition-all",
+              theme === "dark"
+                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                : "border-border hover:border-muted-foreground/30"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800">
+                <Moon className="h-4 w-4 text-slate-300" />
+              </div>
+              {theme === "dark" && <span className="ml-auto text-[10px] font-semibold text-primary uppercase tracking-wide">Active</span>}
+            </div>
+            <p className="text-sm font-semibold">Dark</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Easy on the eyes</p>
+            {/* Mini preview */}
+            <div className="mt-3 rounded-lg border border-gray-700 overflow-hidden">
+              <div className="h-2 bg-gray-900" />
+              <div className="flex">
+                <div className="w-6 bg-gray-800 h-8" />
+                <div className="flex-1 bg-gray-900 h-8 p-1.5">
+                  <div className="h-1.5 w-8 bg-gray-700 rounded" />
+                </div>
+              </div>
+            </div>
+          </button>
+
+          {/* Brand */}
+          <button
+            onClick={() => setTheme("brand")}
+            className={cn(
+              "rounded-xl border-2 p-4 text-left transition-all",
+              theme === "brand"
+                ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                : "border-border hover:border-muted-foreground/30"
+            )}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary">
+                <Palette className="h-4 w-4 text-white" />
+              </div>
+              {theme === "brand" && <span className="ml-auto text-[10px] font-semibold text-primary uppercase tracking-wide">Active</span>}
+            </div>
+            <p className="text-sm font-semibold">Brand</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Tinted with your colours</p>
+            {/* Mini preview — brand-tinted */}
+            <div className="mt-3 rounded-lg border border-primary/30 overflow-hidden">
+              <div className="h-2 bg-primary/20" />
+              <div className="flex">
+                <div className="w-6 bg-primary/10 h-8" />
+                <div className="flex-1 bg-primary/5 h-8 p-1.5">
+                  <div className="h-1.5 w-8 bg-primary/20 rounded" />
+                </div>
+              </div>
+            </div>
+          </button>
         </div>
       </div>
 

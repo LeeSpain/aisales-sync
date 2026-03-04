@@ -47,15 +47,24 @@ function getInitial(): BrandColors {
 
 function applyToDOM(colors: BrandColors) {
   const root = document.documentElement;
-  root.style.setProperty("--primary", hexToHSL(colors.primary));
-  root.style.setProperty("--primary-light", hexToHSL(colors.primary)); // simplified
-  root.style.setProperty("--primary-dark", hexToHSL(colors.primary));
-  root.style.setProperty("--ring", hexToHSL(colors.primary));
-  root.style.setProperty("--sidebar-primary", hexToHSL(colors.primary));
-  root.style.setProperty("--sidebar-ring", hexToHSL(colors.primary));
-  root.style.setProperty("--accent", hexToHSL(colors.accent));
+  const primaryHSL = hexToHSL(colors.primary);
+  const accentHSL = hexToHSL(colors.accent);
+
+  root.style.setProperty("--primary", primaryHSL);
+  root.style.setProperty("--primary-light", primaryHSL);
+  root.style.setProperty("--primary-dark", primaryHSL);
+  root.style.setProperty("--ring", primaryHSL);
+  root.style.setProperty("--sidebar-primary", primaryHSL);
+  root.style.setProperty("--sidebar-ring", primaryHSL);
+  root.style.setProperty("--accent", accentHSL);
   root.style.setProperty("--success", hexToHSL(colors.success));
   root.style.setProperty("--warning", hexToHSL(colors.warning));
+
+  // Expose individual hue values for the brand theme to tint surfaces
+  const primaryHue = primaryHSL.split(" ")[0];
+  const accentHue = accentHSL.split(" ")[0];
+  root.style.setProperty("--brand-hue", primaryHue);
+  root.style.setProperty("--accent-hue", accentHue);
 }
 
 export function useBrandColors() {

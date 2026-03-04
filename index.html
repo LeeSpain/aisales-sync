@@ -25,7 +25,7 @@
   <body>
     <script>
       // Prevent flash: apply saved theme before React renders
-      (function(){var t=localStorage.getItem('ais-theme');if(t==='light'){document.documentElement.classList.remove('dark');document.documentElement.style.colorScheme='light'}})();
+      (function(){var t=localStorage.getItem('ais-theme');var d=document.documentElement;if(t==='light'){d.classList.remove('dark');d.style.colorScheme='light'}else if(t==='brand'){d.classList.add('brand');d.style.colorScheme='dark'}})();
     </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

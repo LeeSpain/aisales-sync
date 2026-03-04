@@ -78,6 +78,34 @@
     --border-light: 240 10% 24%;
     --text-dim: 240 10% 38%;
   }
+
+  /* Brand theme — dark base with primary-hue-tinted surfaces.
+     --brand-hue is set dynamically by useBrandColors (defaults to 239). */
+  .brand {
+    --brand-hue: 239;
+    --accent-hue: 187;
+
+    --background: var(--brand-hue) 35% 5%;
+    --foreground: var(--brand-hue) 15% 95%;
+    --card: var(--brand-hue) 30% 9%;
+    --card-foreground: var(--brand-hue) 15% 95%;
+    --popover: var(--brand-hue) 30% 9%;
+    --popover-foreground: var(--brand-hue) 15% 95%;
+    --secondary: var(--brand-hue) 25% 13%;
+    --secondary-foreground: var(--brand-hue) 15% 95%;
+    --muted: var(--brand-hue) 25% 13%;
+    --muted-foreground: var(--brand-hue) 15% 55%;
+    --border: var(--brand-hue) 25% 20%;
+    --input: var(--brand-hue) 25% 15%;
+    --sidebar-background: var(--brand-hue) 35% 6%;
+    --sidebar-foreground: var(--brand-hue) 15% 95%;
+    --sidebar-accent: var(--brand-hue) 25% 13%;
+    --sidebar-accent-foreground: var(--brand-hue) 15% 95%;
+    --sidebar-border: var(--brand-hue) 25% 20%;
+    --elevated: var(--brand-hue) 28% 12%;
+    --border-light: var(--brand-hue) 20% 28%;
+    --text-dim: var(--brand-hue) 15% 40%;
+  }
 }
 
 @layer base {
