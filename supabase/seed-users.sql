@@ -129,26 +129,22 @@ BEGIN
     now(), now()
   );
 
-  -- ── 5. Create profiles (linked to companies, onboarding completed) ──
-  INSERT INTO public.profiles (id, email, full_name, company_id, onboarding_completed, created_at, updated_at)
-  VALUES (
-    v_super_admin_id,
-    'leewakeman@hotmail.co.uk',
-    'Lee Wakeman',
-    v_super_company_id,
-    true,
-    now(), now()
-  );
+  -- ── 5. Update profiles (auto-created by Supabase trigger, just update fields) ──
+  UPDATE public.profiles SET
+    email = 'leewakeman@hotmail.co.uk',
+    full_name = 'Lee Wakeman',
+    company_id = v_super_company_id,
+    onboarding_completed = true,
+    updated_at = now()
+  WHERE id = v_super_admin_id;
 
-  INSERT INTO public.profiles (id, email, full_name, company_id, onboarding_completed, created_at, updated_at)
-  VALUES (
-    v_client_admin_id,
-    'test@tes.com',
-    'Test Client',
-    v_client_company_id,
-    true,
-    now(), now()
-  );
+  UPDATE public.profiles SET
+    email = 'test@tes.com',
+    full_name = 'Test Client',
+    company_id = v_client_company_id,
+    onboarding_completed = true,
+    updated_at = now()
+  WHERE id = v_client_admin_id;
 
   -- ── 6. Create subscriptions (active trial, bypasses flow gating) ──
   INSERT INTO public.subscriptions (id, company_id, plan, status, monthly_amount, current_period_start, current_period_end, created_at, updated_at)
@@ -168,19 +164,19 @@ BEGIN
     gen_random_uuid(),
     v_client_company_id,
     'growth',
-    'trial',
+    'trialing',
     1250,
     now(),
     now() + interval '14 days',
     now(), now()
   );
 
-  -- ── 7. Create user roles ──
-  -- Super Admin gets "admin" role → access to /admin/* Super Admin dashboard
+  -- ── 7. Set user roles (delete trigger-created defaults first) ──
+  DELETE FROM public.user_roles WHERE user_id IN (v_super_admin_id, v_client_admin_id);
+
   INSERT INTO public.user_roles (id, user_id, role)
   VALUES (gen_random_uuid(), v_super_admin_id, 'admin');
 
-  -- Client gets "client" role → access to /dashboard Client dashboard
   INSERT INTO public.user_roles (id, user_id, role)
   VALUES (gen_random_uuid(), v_client_admin_id, 'client');
 

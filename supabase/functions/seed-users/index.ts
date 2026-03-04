@@ -180,7 +180,7 @@ serve(async (req) => {
       companyName: "Test Client Ltd",
       industry: "Marketing",
       plan: "growth",
-      planStatus: "trial",
+      planStatus: "trialing",
       monthlyAmount: 1250,
       role: "client",
     });
