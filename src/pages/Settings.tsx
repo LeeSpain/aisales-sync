@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { TagInput } from "@/components/ui/tag-input";
 import { useToast } from "@/hooks/use-toast";
 import {
   Globe, Briefcase, MessageSquare, SlidersHorizontal, MapPin, Save,
@@ -13,50 +14,6 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
-
-// ─── Tag input helper ───
-function TagInput({ tags, onAdd, onRemove, placeholder }: {
-  tags: string[]; onAdd: (tag: string) => void; onRemove: (idx: number) => void; placeholder: string;
-}) {
-  const [input, setInput] = useState("");
-  const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if ((e.key === "Enter" || e.key === ",") && input.trim()) {
-      e.preventDefault();
-      onAdd(input.trim());
-      setInput("");
-    }
-  };
-  return (
-    <div>
-      <div className="flex flex-wrap gap-1.5 mb-2">
-        {tags.map((tag, i) => (
-          <Badge key={i} variant="secondary" className="gap-1 pr-1">
-            {tag}
-            <button onClick={() => onRemove(i)} className="ml-1 hover:text-destructive"><X className="h-3 w-3" /></button>
-          </Badge>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder={placeholder}
-          className="bg-background/50"
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => { if (input.trim()) { onAdd(input.trim()); setInput(""); } }}
-          disabled={!input.trim()}
-          className="shrink-0 gap-1"
-        >
-          <Plus className="h-3 w-3" /> Add
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 // ─── Inline editable field ───
 function EditableField({ label, value, icon: Icon, onSave, multiline }: {
@@ -439,6 +396,7 @@ const SettingsPage = () => {
             onAdd={(t) => updateCompanyField("services", [...services, t])}
             onRemove={(i) => updateCompanyField("services", services.filter((_, idx) => idx !== i))}
             placeholder="Add a service..."
+            showAddButton={true}
           />
         </div>
 
@@ -450,6 +408,7 @@ const SettingsPage = () => {
             onAdd={(t) => updateCompanyField("selling_points", [...sellingPoints, t])}
             onRemove={(i) => updateCompanyField("selling_points", sellingPoints.filter((_, idx) => idx !== i))}
             placeholder="Add a selling point..."
+            showAddButton={true}
           />
         </div>
 
@@ -461,6 +420,7 @@ const SettingsPage = () => {
             onAdd={(t) => updateCompanyField("target_markets", [...targetMarkets, t])}
             onRemove={(i) => updateCompanyField("target_markets", targetMarkets.filter((_, idx) => idx !== i))}
             placeholder="Add a target market..."
+            showAddButton={true}
           />
         </div>
       </div>

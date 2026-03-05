@@ -20,7 +20,7 @@ interface StreamChatOptions {
   context?: ChatContext;
   companyProfile?: Record<string, unknown> | null;
   onDelta: (text: string) => void;
-  onDone: () => void;
+  onDone: () => void | Promise<void>;
   onError?: (error: string) => void;
   signal?: AbortSignal;
 }
@@ -111,5 +111,5 @@ export async function streamChat({
     }
   }
 
-  onDone();
+  await onDone();
 }

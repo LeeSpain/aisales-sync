@@ -6,14 +6,26 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Zap, ArrowLeft } from "lucide-react";
+import { forgotPasswordSchema } from "@/lib/validations";
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const result = forgotPasswordSchema.safeParse({ email });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach(i => { errors[i.path[0] as string] = i.message; });
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({});
+
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
@@ -45,6 +57,7 @@ const ForgotPassword = () => {
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required />
+            {fieldErrors.email && <p className="text-xs text-destructive mt-1">{fieldErrors.email}</p>}
           </div>
           <Button type="submit" className="w-full gradient-primary border-0 text-white" disabled={loading}>
             {loading ? "Sending..." : "Send reset link"}

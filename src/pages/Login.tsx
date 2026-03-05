@@ -6,16 +6,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Zap } from "lucide-react";
+import { loginSchema } from "@/lib/validations";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const result = loginSchema.safeParse({ email, password });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach(i => { errors[i.path[0] as string] = i.message; });
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({});
+
     setLoading(true);
     const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
@@ -61,6 +73,7 @@ const Login = () => {
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required />
+            {fieldErrors.email && <p className="text-xs text-destructive mt-1">{fieldErrors.email}</p>}
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -68,6 +81,7 @@ const Login = () => {
               <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>
             </div>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+            {fieldErrors.password && <p className="text-xs text-destructive mt-1">{fieldErrors.password}</p>}
           </div>
           <Button type="submit" className="w-full gradient-primary border-0 text-white" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}

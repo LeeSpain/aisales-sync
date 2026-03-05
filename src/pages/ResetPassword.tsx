@@ -6,11 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Zap } from "lucide-react";
+import { resetPasswordSchema } from "@/lib/validations";
 
 const ResetPassword = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -24,10 +26,16 @@ const ResetPassword = () => {
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
+
+    const result = resetPasswordSchema.safeParse({ password, confirmPassword });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach(i => { errors[i.path[0] as string] = i.message; });
+      setFieldErrors(errors);
       return;
     }
+    setFieldErrors({});
+
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
@@ -56,11 +64,13 @@ const ResetPassword = () => {
         <form onSubmit={handleUpdate} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="password">New password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={8} />
+            {fieldErrors.password && <p className="text-xs text-destructive mt-1">{fieldErrors.password}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirm-password">Confirm password</Label>
-            <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+            <Input id="confirm-password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" required minLength={8} />
+            {fieldErrors.confirmPassword && <p className="text-xs text-destructive mt-1">{fieldErrors.confirmPassword}</p>}
           </div>
           <Button type="submit" className="w-full gradient-primary border-0 text-white" disabled={loading}>
             {loading ? "Updating..." : "Update password"}

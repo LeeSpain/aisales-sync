@@ -1,25 +1,20 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { optionsResponse, jsonResponse, errorResponse, getSupabaseClient, checkRateLimit } from "../_shared/utils.ts";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return optionsResponse();
   }
 
   try {
+    if (!checkRateLimit("send-invite", 20, 60_000)) {
+      return errorResponse("Rate limit exceeded. Please try again in a moment.", 429);
+    }
+
     const { invite_id } = await req.json();
     if (!invite_id) throw new Error("invite_id is required");
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    const supabase = getSupabaseClient();
 
     // Fetch the invite
     const { data: invite, error: invErr } = await supabase
@@ -131,14 +126,8 @@ serve(async (req) => {
       .update({ status: "sent" })
       .eq("id", invite_id);
 
-    return new Response(
-      JSON.stringify({ success: true, results }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-    );
+    return jsonResponse({ success: true, results });
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-    );
+    return errorResponse(error.message, 400);
   }
 });

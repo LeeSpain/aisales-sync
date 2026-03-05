@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { TagInput } from "@/components/ui/tag-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Zap, Globe, Building2, Package, Target, Award, Rocket, ChevronRight, ChevronLeft, X, Check } from "lucide-react";
 
@@ -61,65 +62,6 @@ const STEPS = [
   { icon: Award, label: "USPs" },
   { icon: Rocket, label: "Launch" },
 ];
-
-/** Reusable tag input component */
-function TagInput({ tags, onAdd, onRemove, placeholder, flushRef }: {
-  tags: string[]; onAdd: (tag: string) => void; onRemove: (idx: number) => void; placeholder: string;
-  flushRef?: React.MutableRefObject<(() => string) | null>;
-}) {
-  const [input, setInput] = useState("");
-
-  /** Commit pending text, return the value that was added (or "") */
-  const commitInput = (): string => {
-    const val = input.trim();
-    if (val) {
-      onAdd(val);
-      setInput("");
-    }
-    return val;
-  };
-
-  // Expose flush function so parent can commit pending text on Next click
-  useEffect(() => {
-    if (flushRef) flushRef.current = commitInput;
-    return () => { if (flushRef) flushRef.current = null; };
-  });
-
-  const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if ((e.key === "Enter" || e.key === ",") && input.trim()) {
-      e.preventDefault();
-      commitInput();
-    }
-  };
-
-  return (
-    <div>
-      <div className="flex flex-wrap gap-2 mb-2">
-        {tags.map((tag, i) => (
-          <Badge key={i} variant="secondary" className="gap-1 pr-1">
-            {tag}
-            <button onClick={() => onRemove(i)} className="ml-1 hover:text-destructive">
-              <X className="h-3 w-3" />
-            </button>
-          </Badge>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKey}
-          placeholder={placeholder}
-          className="flex-1"
-        />
-        <Button type="button" variant="outline" size="sm" onClick={() => commitInput()} disabled={!input.trim()}>
-          Add
-        </Button>
-      </div>
-      <p className="text-xs text-muted-foreground mt-1">Press Enter or click Add</p>
-    </div>
-  );
-}
 
 const Onboarding = () => {
   const { user } = useAuth();

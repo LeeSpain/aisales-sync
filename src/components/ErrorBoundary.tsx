@@ -21,6 +21,25 @@ class ErrorBoundary extends Component<Props, State> {
 
     componentDidCatch(error: Error, errorInfo: ErrorInfo) {
         console.error("[AI Sales Sync] Runtime error:", error, errorInfo);
+        this.reportError(error, errorInfo);
+    }
+
+    private async reportError(error: Error, errorInfo: React.ErrorInfo) {
+        try {
+            const { supabase } = await import("@/integrations/supabase/client");
+            await supabase.from("activity_log").insert({
+                action: "frontend_error",
+                description: `${error.name}: ${error.message}`,
+                metadata: {
+                    stack: error.stack?.substring(0, 2000),
+                    componentStack: errorInfo.componentStack?.substring(0, 2000),
+                    url: window.location.href,
+                    timestamp: new Date().toISOString(),
+                },
+            });
+        } catch {
+            // Silently fail — already in error state
+        }
     }
 
     render() {
@@ -61,6 +80,14 @@ class ErrorBoundary extends Component<Props, State> {
                             }}
                         >
                             Reload Page
+                        </button>
+                        <button
+                            onClick={() => navigator.clipboard.writeText(
+                                `Error: ${this.state.error?.message}\nURL: ${window.location.href}\nTime: ${new Date().toISOString()}`
+                            )}
+                            style={{ marginTop: 8, padding: "6px 12px", fontSize: 12, background: "#333", color: "#ccc", border: "1px solid #555", borderRadius: 4, cursor: "pointer" }}
+                        >
+                            Copy Error Details
                         </button>
                     </div>
                 </div>

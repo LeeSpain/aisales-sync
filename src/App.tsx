@@ -1,3 +1,4 @@
+import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,47 +8,54 @@ import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 
+// Loading spinner shown during lazy page loads
+const PageLoader = () => (
+  <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+  </div>
+);
+
 // Public pages
-import Index from "./pages/Index";
-import PricingPage from "./pages/PricingPage";
-import HowItWorksPage from "./pages/HowItWorksPage";
-import Login from "./pages/Login";
-import Signup from "./pages/Signup";
-import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
-import NotFound from "./pages/NotFound";
-import Setup from "./pages/Setup";
+const Index = React.lazy(() => import("./pages/Index"));
+const PricingPage = React.lazy(() => import("./pages/PricingPage"));
+const HowItWorksPage = React.lazy(() => import("./pages/HowItWorksPage"));
+const Login = React.lazy(() => import("./pages/Login"));
+const Signup = React.lazy(() => import("./pages/Signup"));
+const ForgotPassword = React.lazy(() => import("./pages/ForgotPassword"));
+const ResetPassword = React.lazy(() => import("./pages/ResetPassword"));
+const NotFound = React.lazy(() => import("./pages/NotFound"));
+const Setup = React.lazy(() => import("./pages/Setup"));
 
 // Protected pages
-import SelectPlan from "./pages/SelectPlan";
-import Onboarding from "./pages/Onboarding";
-import Dashboard from "./pages/Dashboard";
-import Campaigns from "./pages/Campaigns";
-import CampaignNew from "./pages/CampaignNew";
-import CampaignDetail from "./pages/CampaignDetail";
-import Leads from "./pages/Leads";
-import LeadDetail from "./pages/LeadDetail";
-import Inbox from "./pages/Inbox";
-import Calls from "./pages/Calls";
-import Pipeline from "./pages/Pipeline";
-import Proposals from "./pages/Proposals";
-import Reports from "./pages/Reports";
-import SettingsPage from "./pages/Settings";
-import Billing from "./pages/Billing";
-import SequenceDesigner from "./pages/SequenceDesigner";
-import ProposalDetail from "./pages/ProposalDetail";
+const SelectPlan = React.lazy(() => import("./pages/SelectPlan"));
+const Onboarding = React.lazy(() => import("./pages/Onboarding"));
+const Dashboard = React.lazy(() => import("./pages/Dashboard"));
+const Campaigns = React.lazy(() => import("./pages/Campaigns"));
+const CampaignNew = React.lazy(() => import("./pages/CampaignNew"));
+const CampaignDetail = React.lazy(() => import("./pages/CampaignDetail"));
+const Leads = React.lazy(() => import("./pages/Leads"));
+const LeadDetail = React.lazy(() => import("./pages/LeadDetail"));
+const Inbox = React.lazy(() => import("./pages/Inbox"));
+const Calls = React.lazy(() => import("./pages/Calls"));
+const Pipeline = React.lazy(() => import("./pages/Pipeline"));
+const Proposals = React.lazy(() => import("./pages/Proposals"));
+const Reports = React.lazy(() => import("./pages/Reports"));
+const SettingsPage = React.lazy(() => import("./pages/Settings"));
+const Billing = React.lazy(() => import("./pages/Billing"));
+const SequenceDesigner = React.lazy(() => import("./pages/SequenceDesigner"));
+const ProposalDetail = React.lazy(() => import("./pages/ProposalDetail"));
 
 // Admin pages
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminClients from "./pages/admin/AdminClients";
-import AdminAIConfig from "./pages/admin/AdminAIConfig";
-import AdminEmailConfig from "./pages/admin/AdminEmailConfig";
-import AdminBilling from "./pages/admin/AdminBilling";
-import AdminSettings from "./pages/admin/AdminSettings";
-import AdminActivity from "./pages/admin/AdminActivity";
-import AdminClientDetail from "./pages/admin/AdminClientDetail";
-import AdminDataSources from "./pages/admin/AdminDataSources";
-import AdminAIAgentCenter from "./pages/admin/AdminAIAgentCenter";
+const AdminDashboard = React.lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminClients = React.lazy(() => import("./pages/admin/AdminClients"));
+const AdminAIConfig = React.lazy(() => import("./pages/admin/AdminAIConfig"));
+const AdminEmailConfig = React.lazy(() => import("./pages/admin/AdminEmailConfig"));
+const AdminBilling = React.lazy(() => import("./pages/admin/AdminBilling"));
+const AdminSettings = React.lazy(() => import("./pages/admin/AdminSettings"));
+const AdminActivity = React.lazy(() => import("./pages/admin/AdminActivity"));
+const AdminClientDetail = React.lazy(() => import("./pages/admin/AdminClientDetail"));
+const AdminDataSources = React.lazy(() => import("./pages/admin/AdminDataSources"));
+const AdminAIAgentCenter = React.lazy(() => import("./pages/admin/AdminAIAgentCenter"));
 
 const queryClient = new QueryClient();
 
@@ -64,52 +72,54 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* Public */}
-            <Route path="/" element={<Index />} />
-            <Route path="/pricing" element={<PricingPage />} />
-            <Route path="/how-it-works" element={<HowItWorksPage />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/setup" element={<Setup />} />
+          <Suspense fallback={<PageLoader />}>
+            <Routes>
+              {/* Public */}
+              <Route path="/" element={<Index />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              <Route path="/how-it-works" element={<HowItWorksPage />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/setup" element={<Setup />} />
 
-            {/* Protected - Full screen (no layout) */}
-            <Route path="/select-plan" element={<ProtectedRoute><SelectPlan /></ProtectedRoute>} />
-            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
-            <Route path="/campaigns/new" element={<ProtectedRoute><AppLayout><CampaignNew /></AppLayout></ProtectedRoute>} />
-            <Route path="/campaigns/:id/sequence" element={<ProtectedRoute><AppLayout><SequenceDesigner /></AppLayout></ProtectedRoute>} />
+              {/* Protected - Full screen (no layout) */}
+              <Route path="/select-plan" element={<ProtectedRoute><SelectPlan /></ProtectedRoute>} />
+              <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+              <Route path="/campaigns/new" element={<ProtectedRoute><AppLayout><CampaignNew /></AppLayout></ProtectedRoute>} />
+              <Route path="/campaigns/:id/sequence" element={<ProtectedRoute><AppLayout><SequenceDesigner /></AppLayout></ProtectedRoute>} />
 
-            {/* Protected - With app layout */}
-            <Route path="/dashboard" element={<ProtectedWithLayout><Dashboard /></ProtectedWithLayout>} />
-            <Route path="/campaigns" element={<ProtectedWithLayout><Campaigns /></ProtectedWithLayout>} />
-            <Route path="/campaigns/:id" element={<ProtectedWithLayout><CampaignDetail /></ProtectedWithLayout>} />
-            <Route path="/leads" element={<ProtectedWithLayout><Leads /></ProtectedWithLayout>} />
-            <Route path="/leads/:id" element={<ProtectedWithLayout><LeadDetail /></ProtectedWithLayout>} />
-            <Route path="/inbox" element={<ProtectedWithLayout><Inbox /></ProtectedWithLayout>} />
-            <Route path="/calls" element={<ProtectedWithLayout><Calls /></ProtectedWithLayout>} />
-            <Route path="/pipeline" element={<ProtectedWithLayout><Pipeline /></ProtectedWithLayout>} />
-            <Route path="/proposals" element={<ProtectedWithLayout><Proposals /></ProtectedWithLayout>} />
-            <Route path="/proposals/:id" element={<ProtectedWithLayout><ProposalDetail /></ProtectedWithLayout>} />
-            <Route path="/reports" element={<ProtectedWithLayout><Reports /></ProtectedWithLayout>} />
-            <Route path="/settings" element={<ProtectedWithLayout><SettingsPage /></ProtectedWithLayout>} />
-            <Route path="/billing" element={<ProtectedWithLayout><Billing /></ProtectedWithLayout>} />
+              {/* Protected - With app layout */}
+              <Route path="/dashboard" element={<ProtectedWithLayout><Dashboard /></ProtectedWithLayout>} />
+              <Route path="/campaigns" element={<ProtectedWithLayout><Campaigns /></ProtectedWithLayout>} />
+              <Route path="/campaigns/:id" element={<ProtectedWithLayout><CampaignDetail /></ProtectedWithLayout>} />
+              <Route path="/leads" element={<ProtectedWithLayout><Leads /></ProtectedWithLayout>} />
+              <Route path="/leads/:id" element={<ProtectedWithLayout><LeadDetail /></ProtectedWithLayout>} />
+              <Route path="/inbox" element={<ProtectedWithLayout><Inbox /></ProtectedWithLayout>} />
+              <Route path="/calls" element={<ProtectedWithLayout><Calls /></ProtectedWithLayout>} />
+              <Route path="/pipeline" element={<ProtectedWithLayout><Pipeline /></ProtectedWithLayout>} />
+              <Route path="/proposals" element={<ProtectedWithLayout><Proposals /></ProtectedWithLayout>} />
+              <Route path="/proposals/:id" element={<ProtectedWithLayout><ProposalDetail /></ProtectedWithLayout>} />
+              <Route path="/reports" element={<ProtectedWithLayout><Reports /></ProtectedWithLayout>} />
+              <Route path="/settings" element={<ProtectedWithLayout><SettingsPage /></ProtectedWithLayout>} />
+              <Route path="/billing" element={<ProtectedWithLayout><Billing /></ProtectedWithLayout>} />
 
-            {/* Admin */}
-            <Route path="/admin" element={<ProtectedWithLayout><AdminDashboard /></ProtectedWithLayout>} />
-            <Route path="/admin/clients" element={<ProtectedWithLayout><AdminClients /></ProtectedWithLayout>} />
-            <Route path="/admin/clients/:id" element={<ProtectedWithLayout><AdminClientDetail /></ProtectedWithLayout>} />
-            <Route path="/admin/ai-agents" element={<ProtectedWithLayout><AdminAIAgentCenter /></ProtectedWithLayout>} />
-            <Route path="/admin/ai-config" element={<ProtectedWithLayout><AdminAIConfig /></ProtectedWithLayout>} />
-            <Route path="/admin/email-config" element={<ProtectedWithLayout><AdminEmailConfig /></ProtectedWithLayout>} />
-            <Route path="/admin/billing" element={<ProtectedWithLayout><AdminBilling /></ProtectedWithLayout>} />
-            <Route path="/admin/settings" element={<ProtectedWithLayout><AdminSettings /></ProtectedWithLayout>} />
-            <Route path="/admin/activity" element={<ProtectedWithLayout><AdminActivity /></ProtectedWithLayout>} />
-            <Route path="/admin/data-sources" element={<ProtectedWithLayout><AdminDataSources /></ProtectedWithLayout>} />
+              {/* Admin */}
+              <Route path="/admin" element={<ProtectedWithLayout><AdminDashboard /></ProtectedWithLayout>} />
+              <Route path="/admin/clients" element={<ProtectedWithLayout><AdminClients /></ProtectedWithLayout>} />
+              <Route path="/admin/clients/:id" element={<ProtectedWithLayout><AdminClientDetail /></ProtectedWithLayout>} />
+              <Route path="/admin/ai-agents" element={<ProtectedWithLayout><AdminAIAgentCenter /></ProtectedWithLayout>} />
+              <Route path="/admin/ai-config" element={<ProtectedWithLayout><AdminAIConfig /></ProtectedWithLayout>} />
+              <Route path="/admin/email-config" element={<ProtectedWithLayout><AdminEmailConfig /></ProtectedWithLayout>} />
+              <Route path="/admin/billing" element={<ProtectedWithLayout><AdminBilling /></ProtectedWithLayout>} />
+              <Route path="/admin/settings" element={<ProtectedWithLayout><AdminSettings /></ProtectedWithLayout>} />
+              <Route path="/admin/activity" element={<ProtectedWithLayout><AdminActivity /></ProtectedWithLayout>} />
+              <Route path="/admin/data-sources" element={<ProtectedWithLayout><AdminDataSources /></ProtectedWithLayout>} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

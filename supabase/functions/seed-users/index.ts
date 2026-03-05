@@ -1,17 +1,17 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { optionsResponse, jsonResponse, errorResponse, checkRateLimit } from "../_shared/utils.ts";
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return optionsResponse();
 
   try {
+    if (!checkRateLimit("seed-users", 5, 60_000)) {
+      return errorResponse("Rate limit exceeded. Please try again in a moment.", 429);
+    }
+
     // Service-role client — bypasses RLS, has admin auth access
+    // Uses custom auth config so cannot use getSupabaseClient()
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -187,13 +187,8 @@ serve(async (req) => {
 
     results.push("\n✅ All done! Both accounts ready to use.");
 
-    return new Response(JSON.stringify({ success: true, log: results }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonResponse({ success: true, log: results });
   } catch (err) {
-    return new Response(
-      JSON.stringify({ success: false, error: (err as Error).message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return errorResponse((err as Error).message, 500);
   }
 });

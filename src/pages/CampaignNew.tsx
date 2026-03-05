@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
+import { TagInput } from "@/components/ui/tag-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Target, Users, Globe, MessageSquare, BarChart3, Rocket,
@@ -88,34 +89,6 @@ const STEPS = [
   { icon: Rocket, label: "Launch" },
   { icon: Sparkles, label: "AI Running" },
 ];
-
-/** Tag input component */
-function TagInput({ tags, onAdd, onRemove, placeholder }: {
-  tags: string[]; onAdd: (tag: string) => void; onRemove: (idx: number) => void; placeholder: string;
-}) {
-  const [input, setInput] = useState("");
-  const handleKey = (e: KeyboardEvent<HTMLInputElement>) => {
-    if ((e.key === "Enter" || e.key === ",") && input.trim()) {
-      e.preventDefault();
-      onAdd(input.trim());
-      setInput("");
-    }
-  };
-  return (
-    <div>
-      <div className="flex flex-wrap gap-2 mb-2">
-        {tags.map((tag, i) => (
-          <Badge key={i} variant="secondary" className="gap-1 pr-1">
-            {tag}
-            <button onClick={() => onRemove(i)} className="ml-1 hover:text-destructive"><X className="h-3 w-3" /></button>
-          </Badge>
-        ))}
-      </div>
-      <Input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKey} placeholder={placeholder} />
-      <p className="text-xs text-muted-foreground mt-1">Press Enter to add</p>
-    </div>
-  );
-}
 
 const CampaignNew = () => {
   const { user } = useAuth();

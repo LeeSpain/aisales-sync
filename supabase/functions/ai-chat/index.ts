@@ -1,11 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { getCorsHeaders, optionsResponse, errorResponse, getSupabaseClient, checkDeadSwitch, checkRateLimit } from "../_shared/utils.ts";
 
 const SYSTEM_PROMPTS: Record<string, string> = {
   onboarding: `You are the AI Sales Sync AI onboarding wizard. Your job is to learn everything about the user's business so you can start finding them clients.
@@ -93,39 +87,29 @@ Be helpful, professional, and concise. If a question is outside your scope, ackn
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return optionsResponse();
   }
 
   try {
+    if (!checkRateLimit("ai-chat", 30, 60_000)) {
+      return errorResponse("Rate limit exceeded. Please try again in a moment.", 429);
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     // Check dead switch
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const sb = createClient(supabaseUrl, supabaseKey);
+    const sb = getSupabaseClient();
+    const isKilled = await checkDeadSwitch(sb);
 
-    const { data: deadSwitch } = await sb
-      .from("ai_config")
-      .select("is_active")
-      .eq("provider", "dead_switch")
-      .eq("purpose", "system_setting")
-      .maybeSingle();
-
-    if (deadSwitch?.is_active) {
-      return new Response(JSON.stringify({ error: "AI operations are currently disabled by admin." }), {
-        status: 503,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (isKilled) {
+      return errorResponse("AI operations are currently disabled by admin.", 503);
     }
 
     const { messages, context = "general", companyProfile } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
-      return new Response(JSON.stringify({ error: "messages array is required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse("messages array is required", 400);
     }
 
     // Load system prompt from DB (admin-editable), fall back to hardcoded
@@ -162,29 +146,20 @@ serve(async (req) => {
 
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return errorResponse("Rate limit exceeded. Please try again in a moment.", 429);
       }
       if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "AI usage limit reached. Please add credits." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return errorResponse("AI usage limit reached. Please add credits.", 402);
       }
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      return new Response(JSON.stringify({ error: "AI service temporarily unavailable" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return errorResponse("AI service temporarily unavailable", 500);
     }
 
     // Stream the response back
     return new Response(response.body, {
       headers: {
-        ...corsHeaders,
+        ...getCorsHeaders(),
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
@@ -192,12 +167,6 @@ serve(async (req) => {
     });
   } catch (e) {
     console.error("ai-chat error:", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
-    );
+    return errorResponse(e instanceof Error ? e.message : "Unknown error", 500);
   }
 });

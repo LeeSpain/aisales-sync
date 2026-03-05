@@ -19,15 +19,16 @@ import {
     X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { emailStatusColors } from "@/lib/constants";
 
 const statusConfig: Record<string, { label: string; color: string; icon: typeof FileText }> = {
-    pending_approval: { label: "Pending Approval", color: "bg-amber-500/10 text-amber-400", icon: Clock },
-    draft: { label: "Draft", color: "bg-muted text-muted-foreground", icon: FileText },
-    approved: { label: "Approved", color: "bg-success/10 text-success", icon: CheckCircle },
-    sent: { label: "Sent", color: "bg-blue-500/10 text-blue-400", icon: Send },
-    opened: { label: "Viewed", color: "bg-amber-500/10 text-amber-400", icon: Eye },
-    replied: { label: "Replied", color: "bg-emerald-500/10 text-emerald-400", icon: CheckCircle },
-    failed: { label: "Failed", color: "bg-destructive/10 text-destructive", icon: XCircle },
+    pending_approval: { label: "Pending Approval", color: emailStatusColors.pending_approval, icon: Clock },
+    draft: { label: "Draft", color: emailStatusColors.draft, icon: FileText },
+    approved: { label: "Approved", color: emailStatusColors.approved, icon: CheckCircle },
+    sent: { label: "Sent", color: emailStatusColors.sent, icon: Send },
+    opened: { label: "Viewed", color: emailStatusColors.opened, icon: Eye },
+    replied: { label: "Replied", color: emailStatusColors.replied, icon: CheckCircle },
+    failed: { label: "Failed", color: emailStatusColors.failed, icon: XCircle },
 };
 
 const Proposals = () => {

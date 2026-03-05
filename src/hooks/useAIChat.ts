@@ -28,14 +28,17 @@ export function useAIChat({ context, companyProfile, initialMessages = [] }: Use
 
       // Save user message to DB
       if (user) {
-        supabase.from("chat_messages").insert({
-          profile_id: user.id,
-          role: "user",
-          content: input.trim(),
-          context,
-        }).then(({ error: dbErr }) => {
+        try {
+          const { error: dbErr } = await supabase.from("chat_messages").insert({
+            profile_id: user.id,
+            role: "user",
+            content: input.trim(),
+            context,
+          });
           if (dbErr) console.error("Failed to save user message:", dbErr.message);
-        });
+        } catch (saveErr) {
+          console.error("Failed to save user message:", saveErr);
+        }
       }
 
       let assistantContent = "";
@@ -61,18 +64,21 @@ export function useAIChat({ context, companyProfile, initialMessages = [] }: Use
           context,
           companyProfile,
           onDelta: upsertAssistant,
-          onDone: () => {
+          onDone: async () => {
             setIsLoading(false);
             // Save assistant message to DB
             if (user && assistantContent) {
-              supabase.from("chat_messages").insert({
-                profile_id: user.id,
-                role: "assistant",
-                content: assistantContent,
-                context,
-              }).then(({ error: dbErr }) => {
+              try {
+                const { error: dbErr } = await supabase.from("chat_messages").insert({
+                  profile_id: user.id,
+                  role: "assistant",
+                  content: assistantContent,
+                  context,
+                });
                 if (dbErr) console.error("Failed to save assistant message:", dbErr.message);
-              });
+              } catch (saveErr) {
+                console.error("Failed to save assistant message:", saveErr);
+              }
             }
           },
           onError: (err) => {

@@ -228,6 +228,9 @@ const AppLayout = ({ children }: AppLayoutProps) => {
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded">
+        Skip to content
+      </a>
       {/* Desktop sidebar */}
       <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-border bg-card">
         {sidebarContent}
@@ -263,6 +266,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <div className="flex h-14 items-center gap-3 border-b border-border px-4 md:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
+            aria-label="Toggle sidebar"
             className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
           >
             <Menu className="h-5 w-5" />
@@ -275,7 +279,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
           </div>
         </div>
 
-        <main className="flex-1 overflow-auto">
+        <main id="main-content" className="flex-1 overflow-auto">
           {children}
         </main>
       </div>
@@ -285,6 +289,7 @@ const AppLayout = ({ children }: AppLayoutProps) => {
         <motion.button
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
+          aria-label="Toggle AI chat"
           className="fixed bottom-6 right-4 md:right-6 flex h-14 w-14 items-center justify-center rounded-2xl gradient-primary shadow-lg glow-primary z-30"
           onClick={() => setChatOpen(true)}
         >

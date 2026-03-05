@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Zap, UserCheck, MailOpen, TrendingUp, PhoneCall, Users, Target, CalendarCheck, FileText, Handshake, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { statusChartColors } from "@/lib/constants";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 const stats = [
@@ -17,23 +18,6 @@ const stats = [
   { label: "Deals Won", key: "deals", icon: Handshake, color: "text-success", bg: "bg-success/15" },
   { label: "Calls Made", key: "calls", icon: PhoneCall, color: "text-warning", bg: "bg-warning/15" },
 ];
-
-const statusChartColors: Record<string, string> = {
-  discovered: "hsl(240 10% 40%)",
-  researched: "hsl(240 10% 50%)",
-  scored: "hsl(234 89% 74%)",
-  qualified: "hsl(160 84% 39%)",
-  sequence_active: "hsl(187 92% 69%)",
-  contacted: "hsl(239 84% 67%)",
-  replied: "hsl(187 92% 69%)",
-  in_conversation: "hsl(187 92% 60%)",
-  meeting_booked: "hsl(38 92% 50%)",
-  proposal_sent: "hsl(239 84% 67%)",
-  negotiating: "hsl(38 92% 60%)",
-  converted: "hsl(160 84% 39%)",
-  rejected: "hsl(0 84% 60%)",
-  unresponsive: "hsl(240 10% 35%)",
-};
 
 const Dashboard = () => {
   const { user } = useAuth();

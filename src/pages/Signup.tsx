@@ -6,17 +6,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Zap } from "lucide-react";
+import { signupSchema } from "@/lib/validations";
 
 const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const result = signupSchema.safeParse({ fullName, email, password });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach(i => { errors[i.path[0] as string] = i.message; });
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({});
+
     setLoading(true);
 
     try {
@@ -88,14 +100,17 @@ const Signup = () => {
           <div className="space-y-2">
             <Label htmlFor="name">Full name</Label>
             <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" required />
+            {fieldErrors.fullName && <p className="text-xs text-destructive mt-1">{fieldErrors.fullName}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required />
+            {fieldErrors.email && <p className="text-xs text-destructive mt-1">{fieldErrors.email}</p>}
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required minLength={8} />
+            {fieldErrors.password && <p className="text-xs text-destructive mt-1">{fieldErrors.password}</p>}
           </div>
           <Button type="submit" className="w-full gradient-primary border-0 text-white" disabled={loading}>
             {loading ? "Creating account..." : "Create account"}

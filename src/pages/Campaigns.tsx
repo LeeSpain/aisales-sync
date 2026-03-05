@@ -5,16 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Plus, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const statusColors: Record<string, string> = {
-  setup: "bg-muted text-muted-foreground",
-  hunting: "bg-warning/10 text-warning",
-  scoring: "bg-primary/10 text-primary",
-  outreach: "bg-accent/10 text-accent",
-  active: "bg-success/10 text-success",
-  paused: "bg-muted text-muted-foreground",
-  completed: "bg-primary/10 text-primary",
-};
+import { campaignStatusColors } from "@/lib/constants";
 
 const Campaigns = () => {
   const { user } = useAuth();
@@ -64,7 +55,7 @@ const Campaigns = () => {
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold truncate">{campaign.name}</h3>
-                <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase", statusColors[campaign.status] || "bg-muted text-muted-foreground")}>
+                <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase", campaignStatusColors[campaign.status] || "bg-muted text-muted-foreground")}>
                   {campaign.status}
                 </span>
               </div>
