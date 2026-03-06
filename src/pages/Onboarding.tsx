@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +69,7 @@ const Onboarding = () => {
   const { toast } = useToast();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const queryClient = useQueryClient();
 
   // Form state
   const [website, setWebsite] = useState("");
@@ -138,9 +139,9 @@ const Onboarding = () => {
         const hasMarkets = targetMarkets.length > 0 || flushed.length > 0;
         const hasGeo = geoScope === "local" ? geoCountries.length > 0 && geoCities.length > 0
           : geoScope === "regional" ? geoCountries.length > 0 && geoRegions.length > 0
-          : geoScope === "national" ? geoCountries.length > 0
-          : geoScope === "international" ? geoRegions.length > 0
-          : false;
+            : geoScope === "national" ? geoCountries.length > 0
+              : geoScope === "international" ? geoRegions.length > 0
+                : false;
         valid = hasMarkets && hasGeo;
         break;
       }
@@ -221,6 +222,9 @@ const Onboarding = () => {
         metadata: { company_name: companyName, industry, services, target_markets: targetMarkets, geographic_range: geo },
       });
 
+      // Invalidate the ProtectedRoute state so it allows navigation to dashboard
+      await queryClient.invalidateQueries({ queryKey: ["flowState"] });
+
       toast({ title: "You're all set!", description: "Your AI sales team now knows your business." });
       navigate("/dashboard");
     } catch (e) {
@@ -252,17 +256,15 @@ const Onboarding = () => {
                 <button
                   key={s.label}
                   onClick={() => i < step && setStep(i)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                    isActive ? "bg-primary/10 text-primary font-medium" :
-                    isDone ? "text-foreground cursor-pointer hover:bg-muted/50" :
-                    "text-muted-foreground cursor-default"
-                  }`}
+                  className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${isActive ? "bg-primary/10 text-primary font-medium" :
+                      isDone ? "text-foreground cursor-pointer hover:bg-muted/50" :
+                        "text-muted-foreground cursor-default"
+                    }`}
                 >
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                    isActive ? "gradient-primary" :
-                    isDone ? "bg-success/20" :
-                    "bg-muted/30"
-                  }`}>
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${isActive ? "gradient-primary" :
+                      isDone ? "bg-success/20" :
+                        "bg-muted/30"
+                    }`}>
                     {isDone ? <Check className="h-4 w-4 text-success" /> : <Icon className={`h-4 w-4 ${isActive ? "text-white" : ""}`} />}
                   </div>
                   {s.label}
@@ -419,9 +421,8 @@ const Onboarding = () => {
                             setGeoRegions([]);
                             setGeoCities([]);
                           }}
-                          className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${
-                            geoScope === s.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                          }`}
+                          className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${geoScope === s.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                            }`}
                         >
                           <div>
                             <p className="text-sm font-medium">{s.label}</p>
@@ -481,9 +482,8 @@ const Onboarding = () => {
                               <Badge
                                 key={r}
                                 variant={geoRegions.includes(r) ? "default" : "outline"}
-                                className={`cursor-pointer transition-all ${
-                                  geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
-                                }`}
+                                className={`cursor-pointer transition-all ${geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
+                                  }`}
                                 onClick={() =>
                                   setGeoRegions((prev) =>
                                     prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
@@ -543,9 +543,8 @@ const Onboarding = () => {
                           <Badge
                             key={r}
                             variant={geoRegions.includes(r) ? "default" : "outline"}
-                            className={`cursor-pointer transition-all ${
-                              geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
-                            }`}
+                            className={`cursor-pointer transition-all ${geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
+                              }`}
                             onClick={() =>
                               setGeoRegions((prev) =>
                                 prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
@@ -599,11 +598,10 @@ const Onboarding = () => {
                         <button
                           key={t.value}
                           onClick={() => setTonePreference(t.value)}
-                          className={`rounded-xl border p-3 text-left transition-all ${
-                            tonePreference === t.value
+                          className={`rounded-xl border p-3 text-left transition-all ${tonePreference === t.value
                               ? "border-primary bg-primary/10"
                               : "border-border hover:border-primary/50"
-                          }`}
+                            }`}
                         >
                           <p className="text-sm font-medium">{t.label}</p>
                           <p className="text-xs text-muted-foreground">{t.desc}</p>

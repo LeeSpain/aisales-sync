@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTestMode } from "@/hooks/useTestMode";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
 
 const tiers = [
     {
@@ -59,6 +60,7 @@ const SelectPlan = () => {
     const { toast } = useToast();
     const { isTestMode } = useTestMode();
     const [activating, setActivating] = useState<string | null>(null);
+    const queryClient = useQueryClient();
 
     const activateSubscription = async (plan: string, mode: "trial" | "paid") => {
         if (!user) {
@@ -81,6 +83,9 @@ const SelectPlan = () => {
                 toast({ title: "Error", description: error.message, variant: "destructive" });
                 return;
             }
+
+            // Invalidate the ProtectedRoute state so it allows navigation past SelectPlan
+            await queryClient.invalidateQueries({ queryKey: ["flowState"] });
 
             toast({
                 title: isTrial ? "Trial activated!" : "Subscription activated!",

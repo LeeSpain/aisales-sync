@@ -1,30 +1,17 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
   const location = useLocation();
-  const [flowState, setFlowState] = useState<{
-    loading: boolean;
-    hasSubscription: boolean;
-    onboardingCompleted: boolean;
-    isAdmin: boolean;
-  }>({
-    loading: true,
-    hasSubscription: false,
-    onboardingCompleted: false,
-    isAdmin: false,
-  });
 
-  useEffect(() => {
-    let mounted = true;
-
-    async function checkFlowState() {
+  const { data: flowState = { loading: true, hasSubscription: false, onboardingCompleted: false, isAdmin: false }, isLoading: queryLoading } = useQuery({
+    queryKey: ["flowState", user?.id],
+    queryFn: async () => {
       if (!user) {
-        if (mounted) setFlowState((prev) => ({ ...prev, loading: false }));
-        return;
+        return { loading: false, hasSubscription: false, onboardingCompleted: false, isAdmin: false };
       }
 
       try {
@@ -37,8 +24,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
         // Admins skip subscription/onboarding checks
         if (isAdmin) {
-          if (mounted) setFlowState({ loading: false, hasSubscription: true, onboardingCompleted: true, isAdmin: true });
-          return;
+          return { loading: false, hasSubscription: true, onboardingCompleted: true, isAdmin: true };
         }
 
         // 2. Check profile for company_id and onboarding status
@@ -49,8 +35,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           .single();
 
         if (!profile?.company_id) {
-          if (mounted) setFlowState({ loading: false, hasSubscription: false, onboardingCompleted: false, isAdmin: false });
-          return;
+          return { loading: false, hasSubscription: false, onboardingCompleted: false, isAdmin: false };
         }
 
         // 3. Check for active/trial subscription
@@ -61,30 +46,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
           .in("status", ["active", "trialing", "trial", "past_due"])
           .maybeSingle();
 
-        if (mounted) {
-          setFlowState({
-            loading: false,
-            hasSubscription: !!sub,
-            onboardingCompleted: !!profile.onboarding_completed,
-            isAdmin: false,
-          });
-        }
+        return {
+          loading: false,
+          hasSubscription: !!sub,
+          onboardingCompleted: !!profile.onboarding_completed,
+          isAdmin: false,
+        };
       } catch (error) {
         console.error("Error checking flow state:", error);
-        if (mounted) setFlowState((prev) => ({ ...prev, loading: false }));
+        return { loading: false, hasSubscription: false, onboardingCompleted: false, isAdmin: false };
       }
-    }
+    },
+    enabled: !authLoading && !!user,
+  });
 
-    if (!authLoading) {
-      checkFlowState();
-    }
-
-    return () => {
-      mounted = false;
-    };
-  }, [user, authLoading]);
-
-  if (authLoading || flowState.loading) {
+  if (authLoading || queryLoading || flowState.loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
