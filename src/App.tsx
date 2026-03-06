@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
+import AdminRoute from "@/components/AdminRoute";
+import AdminLayout from "@/components/layout/AdminLayout";
 
 // Loading spinner shown during lazy page loads
 const PageLoader = () => (
@@ -65,6 +67,12 @@ const ProtectedWithLayout = ({ children }: { children: React.ReactNode }) => (
   </ProtectedRoute>
 );
 
+const AdminProtectedWithLayout = ({ children }: { children: React.ReactNode }) => (
+  <AdminRoute>
+    <AdminLayout>{children}</AdminLayout>
+  </AdminRoute>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -106,16 +114,16 @@ const App = () => (
               <Route path="/billing" element={<ProtectedWithLayout><Billing /></ProtectedWithLayout>} />
 
               {/* Admin */}
-              <Route path="/admin" element={<ProtectedWithLayout><AdminDashboard /></ProtectedWithLayout>} />
-              <Route path="/admin/clients" element={<ProtectedWithLayout><AdminClients /></ProtectedWithLayout>} />
-              <Route path="/admin/clients/:id" element={<ProtectedWithLayout><AdminClientDetail /></ProtectedWithLayout>} />
-              <Route path="/admin/ai-agents" element={<ProtectedWithLayout><AdminAIAgentCenter /></ProtectedWithLayout>} />
-              <Route path="/admin/ai-config" element={<ProtectedWithLayout><AdminAIConfig /></ProtectedWithLayout>} />
-              <Route path="/admin/email-config" element={<ProtectedWithLayout><AdminEmailConfig /></ProtectedWithLayout>} />
-              <Route path="/admin/billing" element={<ProtectedWithLayout><AdminBilling /></ProtectedWithLayout>} />
-              <Route path="/admin/settings" element={<ProtectedWithLayout><AdminSettings /></ProtectedWithLayout>} />
-              <Route path="/admin/activity" element={<ProtectedWithLayout><AdminActivity /></ProtectedWithLayout>} />
-              <Route path="/admin/data-sources" element={<ProtectedWithLayout><AdminDataSources /></ProtectedWithLayout>} />
+              <Route path="/admin" element={<AdminProtectedWithLayout><AdminDashboard /></AdminProtectedWithLayout>} />
+              <Route path="/admin/clients" element={<AdminProtectedWithLayout><AdminClients /></AdminProtectedWithLayout>} />
+              <Route path="/admin/clients/:id" element={<AdminProtectedWithLayout><AdminClientDetail /></AdminProtectedWithLayout>} />
+              <Route path="/admin/ai-agents" element={<AdminProtectedWithLayout><AdminAIAgentCenter /></AdminProtectedWithLayout>} />
+              <Route path="/admin/ai-config" element={<AdminProtectedWithLayout><AdminAIConfig /></AdminProtectedWithLayout>} />
+              <Route path="/admin/email-config" element={<AdminProtectedWithLayout><AdminEmailConfig /></AdminProtectedWithLayout>} />
+              <Route path="/admin/billing" element={<AdminProtectedWithLayout><AdminBilling /></AdminProtectedWithLayout>} />
+              <Route path="/admin/settings" element={<AdminProtectedWithLayout><AdminSettings /></AdminProtectedWithLayout>} />
+              <Route path="/admin/activity" element={<AdminProtectedWithLayout><AdminActivity /></AdminProtectedWithLayout>} />
+              <Route path="/admin/data-sources" element={<AdminProtectedWithLayout><AdminDataSources /></AdminProtectedWithLayout>} />
 
               <Route path="*" element={<NotFound />} />
             </Routes>
