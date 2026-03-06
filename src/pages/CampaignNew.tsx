@@ -54,6 +54,24 @@ const UK_REGIONS = [
   "Wales", "Northern Ireland",
 ];
 
+const SPAIN_REGIONS = [
+  "Andalusia", "Catalonia", "Community of Madrid", "Valencian Community",
+  "Galicia", "Castile and León", "Basque Country", "Canary Islands",
+  "Castile-La Mancha", "Region of Murcia", "Aragon", "Extremadura",
+  "Asturias", "Balearic Islands", "Navarre", "Cantabria", "La Rioja",
+];
+
+const LANGUAGES = [
+  "English", "Spanish", "French", "German", "Portuguese", "Italian",
+  "Dutch", "Catalan", "Arabic", "Mandarin", "Japanese",
+];
+
+const DECISION_MAKER_ROLES = [
+  "Owner / Founder", "CEO / Managing Director", "Sales Director",
+  "Marketing Manager", "Operations Manager", "General Manager",
+  "Procurement Manager", "Any decision maker",
+];
+
 const INTERNATIONAL_REGIONS = [
   "Western Europe", "Eastern Europe", "Scandinavia", "North America",
   "Latin America", "Middle East", "Asia Pacific", "Africa", "Global",
@@ -104,12 +122,14 @@ const CampaignNew = () => {
   const [businessSize, setBusinessSize] = useState("small");
   const [idealClient, setIdealClient] = useState("");
   const [customKeywords, setCustomKeywords] = useState<string[]>([]);
+  const [targetDecisionMaker, setTargetDecisionMaker] = useState("Any decision maker");
   const [geoScope, setGeoScope] = useState("");
   const [geoCountries, setGeoCountries] = useState<string[]>([]);
   const [geoRegions, setGeoRegions] = useState<string[]>([]);
   const [geoCities, setGeoCities] = useState<string[]>([]);
   const [channels, setChannels] = useState<string[]>(["email"]);
   const [tone, setTone] = useState("professional");
+  const [outreachLanguage, setOutreachLanguage] = useState("English");
   const [minimumScore, setMinimumScore] = useState(3.5);
   const [campaignName, setCampaignName] = useState("");
 
@@ -123,6 +143,15 @@ const CampaignNew = () => {
   });
 
   const company = profile?.companies as Record<string, unknown> | null;
+
+  // Pre-fill outreach language from company profile when it loads
+  useEffect(() => {
+    if (company?.outreach_languages) {
+      const langs = company.outreach_languages as string[];
+      if (langs.length > 0) setOutreachLanguage(langs[0]);
+    }
+  }, [company]);
+
   const totalSteps = STEPS.length;
   const progress = step >= 5 ? 100 : ((step + 1) / (totalSteps - 1)) * 100;
 
@@ -143,8 +172,8 @@ const CampaignNew = () => {
       case 0: return selectedIndustries.length > 0;
       case 1: {
         if (!geoScope) return false;
-        if (geoScope === "local") return geoCities.length > 0;
-        if (geoScope === "regional") return geoRegions.length > 0;
+        if (geoScope === "local") return geoCountries.length > 0 && geoCities.length > 0;
+        if (geoScope === "regional") return geoCountries.length > 0 && geoRegions.length > 0;
         if (geoScope === "national") return geoCountries.length > 0;
         return geoRegions.length > 0; // international
       }
@@ -154,10 +183,17 @@ const CampaignNew = () => {
     }
   };
 
-  /** Build a human-readable geography summary */
+  /** Build a human-readable geography summary (includes country so AI has full context) */
   const geoSummary = () => {
-    if (geoScope === "local") return geoCities.join(", ");
-    if (geoScope === "regional") return geoRegions.join(", ");
+    const country = geoCountries[0];
+    if (geoScope === "local") {
+      const cities = geoCities.join(", ");
+      return country ? `${cities} (${country})` : cities;
+    }
+    if (geoScope === "regional") {
+      const regions = geoRegions.join(", ");
+      return country ? `${regions} (${country})` : regions;
+    }
     if (geoScope === "national") return geoCountries.join(", ");
     if (geoScope === "international") return geoRegions.join(", ");
     return "";
@@ -201,8 +237,10 @@ const CampaignNew = () => {
         industries: selectedIndustries,
         business_size: businessSize,
         keywords: customKeywords,
+        target_decision_maker: targetDecisionMaker,
         channels,
         tone,
+        outreach_language: outreachLanguage,
         geo_scope: geoScope,
         geo_countries: geoCountries,
         geo_regions: geoRegions,
@@ -393,6 +431,23 @@ const CampaignNew = () => {
                       placeholder="e.g. Shopify, DTC brand, online store"
                     />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Who to contact at each business?</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {DECISION_MAKER_ROLES.map((role) => (
+                        <Badge
+                          key={role}
+                          variant={targetDecisionMaker === role ? "default" : "outline"}
+                          className={`cursor-pointer transition-all ${targetDecisionMaker === role ? "bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
+                          onClick={() => setTargetDecisionMaker(role)}
+                        >
+                          {role}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">The AI will try to find and contact this type of person at each lead.</p>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -450,14 +505,20 @@ const CampaignNew = () => {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Cities, towns, or postcodes</Label>
+                        <Label>Cities, towns, villages, or postcodes</Label>
                         <TagInput
                           tags={geoCities}
                           onAdd={(t) => setGeoCities([...geoCities, t])}
                           onRemove={(i) => setGeoCities(geoCities.filter((_, idx) => idx !== i))}
-                          placeholder="e.g. Manchester, M1, Leeds City Centre, Sheffield S1"
+                          placeholder={
+                            geoCountries[0] === "Spain"
+                              ? "e.g. Marbella, Ronda, Fuengirola, 29600, Nerja"
+                              : geoCountries[0] === "United Kingdom"
+                              ? "e.g. Manchester, M1, Leeds, Sheffield S1"
+                              : "e.g. Town, city, or postcode"
+                          }
                         />
-                        <p className="text-xs text-muted-foreground">Add as many locations as you like. Your AI will search for businesses in each area.</p>
+                        <p className="text-xs text-muted-foreground">Add any number of locations — villages, towns, cities, or postcodes. Your AI searches for businesses in each one.</p>
                       </div>
                     </>
                   )}
@@ -501,6 +562,28 @@ const CampaignNew = () => {
                             ))}
                           </div>
                         </div>
+                      ) : geoCountries[0] === "Spain" ? (
+                        <div className="space-y-2">
+                          <Label>Autonomous communities</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {SPAIN_REGIONS.map((r) => (
+                              <Badge
+                                key={r}
+                                variant={geoRegions.includes(r) ? "default" : "outline"}
+                                className={`cursor-pointer transition-all ${
+                                  geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
+                                }`}
+                                onClick={() =>
+                                  setGeoRegions((prev) =>
+                                    prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+                                  )
+                                }
+                              >
+                                {r}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       ) : (
                         <div className="space-y-2">
                           <Label>Regions, states, or areas</Label>
@@ -508,7 +591,7 @@ const CampaignNew = () => {
                             tags={geoRegions}
                             onAdd={(t) => setGeoRegions([...geoRegions, t])}
                             onRemove={(i) => setGeoRegions(geoRegions.filter((_, idx) => idx !== i))}
-                            placeholder="e.g. California, Bavaria, New South Wales"
+                            placeholder="e.g. Andalusia, California, Bavaria, New South Wales"
                           />
                         </div>
                       )}
@@ -636,6 +719,23 @@ const CampaignNew = () => {
                       ))}
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label>Outreach language</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {LANGUAGES.map((lang) => (
+                        <Badge
+                          key={lang}
+                          variant={outreachLanguage === lang ? "default" : "outline"}
+                          className={`cursor-pointer transition-all ${outreachLanguage === lang ? "bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
+                          onClick={() => setOutreachLanguage(lang)}
+                        >
+                          {lang}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">All messages for this campaign will be written in this language.</p>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -708,10 +808,12 @@ const CampaignNew = () => {
                   <div className="space-y-3">
                     <ReviewRow label="Industries" value={selectedIndustries.join(", ")} onEdit={() => setStep(0)} />
                     <ReviewRow label="Business size" value={SIZE_OPTIONS.find(s => s.value === businessSize)?.label || businessSize} onEdit={() => setStep(0)} />
+                    <ReviewRow label="Contact target" value={targetDecisionMaker} onEdit={() => setStep(0)} />
                     {idealClient && <ReviewRow label="Ideal client" value={idealClient} onEdit={() => setStep(0)} />}
                     <ReviewRow label="Scope" value={GEO_SCOPES.find(s => s.value === geoScope)?.label || geoScope} onEdit={() => setStep(1)} />
                     <ReviewRow label="Locations" value={geoSummary()} onEdit={() => setStep(1)} />
                     <ReviewRow label="Channels" value={channels.map(c => CHANNELS.find(ch => ch.value === c)?.label).join(", ")} onEdit={() => setStep(2)} />
+                    <ReviewRow label="Language" value={outreachLanguage} onEdit={() => setStep(2)} />
                     <ReviewRow label="Tone" value={TONE_OPTIONS.find(t => t.value === tone)?.label || tone} onEdit={() => setStep(2)} />
                     <ReviewRow label="Min score" value={minimumScore.toFixed(1)} onEdit={() => setStep(3)} />
                   </div>

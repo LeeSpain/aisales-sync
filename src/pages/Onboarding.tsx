@@ -42,6 +42,18 @@ const UK_REGIONS = [
   "Wales", "Northern Ireland",
 ];
 
+const SPAIN_REGIONS = [
+  "Andalusia", "Catalonia", "Community of Madrid", "Valencian Community",
+  "Galicia", "Castile and León", "Basque Country", "Canary Islands",
+  "Castile-La Mancha", "Region of Murcia", "Aragon", "Extremadura",
+  "Asturias", "Balearic Islands", "Navarre", "Cantabria", "La Rioja",
+];
+
+const LANGUAGES = [
+  "English", "Spanish", "French", "German", "Portuguese", "Italian",
+  "Dutch", "Catalan", "Arabic", "Mandarin", "Japanese",
+];
+
 const INTERNATIONAL_REGIONS = [
   "Western Europe", "Eastern Europe", "Scandinavia", "North America",
   "Latin America", "Middle East", "Asia Pacific", "Africa", "Global",
@@ -52,6 +64,11 @@ const TONE_OPTIONS = [
   { value: "professional", label: "Professional", desc: "Polished but approachable" },
   { value: "casual", label: "Casual", desc: "Relaxed, conversational style" },
   { value: "friendly", label: "Friendly", desc: "Warm, personable, relationship-first" },
+];
+
+const CONTACT_ROLES = [
+  "Owner / Founder", "Director / MD", "Sales Manager", "Marketing Manager",
+  "Operations Manager", "General Manager", "Consultant", "Other",
 ];
 
 const STEPS = [
@@ -74,6 +91,8 @@ const Onboarding = () => {
   // Form state
   const [website, setWebsite] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactRole, setContactRole] = useState("");
   const [industry, setIndustry] = useState("");
   const [description, setDescription] = useState("");
   const [services, setServices] = useState<string[]>([]);
@@ -85,6 +104,7 @@ const Onboarding = () => {
   const [geoCities, setGeoCities] = useState<string[]>([]);
   const [sellingPoints, setSellingPoints] = useState<string[]>([]);
   const [tonePreference, setTonePreference] = useState("professional");
+  const [outreachLanguages, setOutreachLanguages] = useState<string[]>(["English"]);
 
   const { data: profile, refetch: refetchProfile } = useQuery({
     queryKey: ["profile-onboarding", user?.id],
@@ -109,10 +129,17 @@ const Onboarding = () => {
   const marketsFlushRef = useRef<(() => string) | null>(null);
   const uspsFlushRef = useRef<(() => string) | null>(null);
 
-  /** Build a human-readable geography summary */
+  /** Build a human-readable geography summary (includes country so AI has full context) */
   const geoSummary = () => {
-    if (geoScope === "local") return geoCities.join(", ");
-    if (geoScope === "regional") return geoRegions.join(", ");
+    const country = geoCountries[0];
+    if (geoScope === "local") {
+      const cities = geoCities.join(", ");
+      return country ? `${cities} (${country})` : cities;
+    }
+    if (geoScope === "regional") {
+      const regions = geoRegions.join(", ");
+      return country ? `${regions} (${country})` : regions;
+    }
     if (geoScope === "national") return geoCountries.join(", ");
     if (geoScope === "international") return geoRegions.join(", ");
     return "";
@@ -202,6 +229,9 @@ const Onboarding = () => {
           geographic_range: geo,
           pricing_summary: pricingSummary || null,
           tone_preference: tonePreference,
+          contact_name: contactName || null,
+          contact_role: contactRole || null,
+          outreach_languages: outreachLanguages.length > 0 ? outreachLanguages : ["English"],
         })
         .eq("id", companyId);
 
@@ -306,17 +336,17 @@ const Onboarding = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="website">Website URL</Label>
+                    <Label htmlFor="website">Website URL or company name</Label>
                     <Input
                       id="website"
-                      type="url"
+                      type="text"
                       value={website}
                       onChange={(e) => setWebsite(e.target.value)}
                       placeholder="https://yourcompany.com"
                       autoFocus
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">Don't have a website? No problem — just type your company name and we'll set you up manually.</p>
+                  <p className="text-xs text-muted-foreground">No website? Just type your company name and we'll set you up manually.</p>
                 </CardContent>
               </Card>
             )}
@@ -333,6 +363,24 @@ const Onboarding = () => {
                     <Label htmlFor="companyName">Company name</Label>
                     <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Ltd" />
                   </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="contactName">Your name</Label>
+                      <Input id="contactName" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g. María García" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Your role</Label>
+                      <Select value={contactRole} onValueChange={setContactRole}>
+                        <SelectTrigger><SelectValue placeholder="Select role" /></SelectTrigger>
+                        <SelectContent>
+                          {CONTACT_ROLES.map((r) => (
+                            <SelectItem key={r} value={r}>{r}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground -mt-2">The AI will use your name when reaching out on your behalf.</p>
                   <div className="space-y-2">
                     <Label>Industry</Label>
                     <Select value={industry} onValueChange={setIndustry}>
@@ -448,14 +496,20 @@ const Onboarding = () => {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Cities, towns, or postcodes</Label>
+                        <Label>Cities, towns, villages, or postcodes</Label>
                         <TagInput
                           tags={geoCities}
                           onAdd={(t) => setGeoCities([...geoCities, t])}
                           onRemove={(i) => setGeoCities(geoCities.filter((_, idx) => idx !== i))}
-                          placeholder="e.g. Málaga, Torremolinos, 29001"
+                          placeholder={
+                            geoCountries[0] === "Spain"
+                              ? "e.g. Marbella, Ronda, Fuengirola, 29600"
+                              : geoCountries[0] === "United Kingdom"
+                              ? "e.g. Manchester, M1, Leeds, Sheffield S1"
+                              : "e.g. Town name, city, or postcode"
+                          }
                         />
-                        <p className="text-xs text-muted-foreground">Add as many locations as you like. Your AI will search for businesses in each area.</p>
+                        <p className="text-xs text-muted-foreground">Add any number of locations — villages, towns, cities, or postcodes. Your AI searches for businesses in each one.</p>
                       </div>
                     </>
                   )}
@@ -495,6 +549,27 @@ const Onboarding = () => {
                             ))}
                           </div>
                         </div>
+                      ) : geoCountries[0] === "Spain" ? (
+                        <div className="space-y-2">
+                          <Label>Autonomous communities</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {SPAIN_REGIONS.map((r) => (
+                              <Badge
+                                key={r}
+                                variant={geoRegions.includes(r) ? "default" : "outline"}
+                                className={`cursor-pointer transition-all ${geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
+                                  }`}
+                                onClick={() =>
+                                  setGeoRegions((prev) =>
+                                    prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+                                  )
+                                }
+                              >
+                                {r}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
                       ) : (
                         <div className="space-y-2">
                           <Label>Regions, states, or areas</Label>
@@ -502,7 +577,7 @@ const Onboarding = () => {
                             tags={geoRegions}
                             onAdd={(t) => setGeoRegions([...geoRegions, t])}
                             onRemove={(i) => setGeoRegions(geoRegions.filter((_, idx) => idx !== i))}
-                            placeholder="e.g. Andalusia, Catalonia, Costa del Sol"
+                            placeholder="e.g. Andalusia, Catalonia, Bavaria, New South Wales"
                           />
                         </div>
                       )}
@@ -592,6 +667,26 @@ const Onboarding = () => {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label>Outreach language(s)</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {LANGUAGES.map((lang) => (
+                        <Badge
+                          key={lang}
+                          variant={outreachLanguages.includes(lang) ? "default" : "outline"}
+                          className={`cursor-pointer transition-all ${outreachLanguages.includes(lang) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
+                          onClick={() =>
+                            setOutreachLanguages((prev) =>
+                              prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
+                            )
+                          }
+                        >
+                          {lang}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Select all languages your AI should use when contacting leads. For local businesses in Spain, select Spanish.</p>
+                  </div>
+                  <div className="space-y-2">
                     <Label>Outreach tone preference</Label>
                     <div className="grid grid-cols-2 gap-2">
                       {TONE_OPTIONS.map((t) => (
@@ -624,6 +719,7 @@ const Onboarding = () => {
                   <div className="space-y-3">
                     <ReviewRow label="Website" value={website} onEdit={() => setStep(0)} />
                     <ReviewRow label="Company" value={`${companyName} — ${industry}`} onEdit={() => setStep(1)} />
+                    {contactName && <ReviewRow label="Primary contact" value={`${contactName}${contactRole ? ` — ${contactRole}` : ""}`} onEdit={() => setStep(1)} />}
                     {description && <ReviewRow label="Description" value={description} onEdit={() => setStep(1)} />}
                     <ReviewRow label="Services" value={services.join(", ")} onEdit={() => setStep(2)} />
                     {pricingSummary && <ReviewRow label="Pricing" value={pricingSummary} onEdit={() => setStep(2)} />}
@@ -631,6 +727,7 @@ const Onboarding = () => {
                     <ReviewRow label="Geo scope" value={GEO_SCOPES.find(s => s.value === geoScope)?.label || geoScope} onEdit={() => setStep(3)} />
                     <ReviewRow label="Locations" value={geoSummary()} onEdit={() => setStep(3)} />
                     <ReviewRow label="USPs" value={sellingPoints.join(", ")} onEdit={() => setStep(4)} />
+                    <ReviewRow label="Outreach language(s)" value={outreachLanguages.join(", ") || "English"} onEdit={() => setStep(4)} />
                     <ReviewRow label="Tone" value={TONE_OPTIONS.find(t => t.value === tonePreference)?.label || tonePreference} onEdit={() => setStep(4)} />
                   </div>
                 </CardContent>

@@ -349,6 +349,8 @@ export type Database = {
         Row: {
           ai_profile: Json | null
           autonomy_level: number | null
+          contact_name: string | null
+          contact_role: string | null
           created_at: string
           description: string | null
           fleet_or_inventory: Json | null
@@ -356,6 +358,7 @@ export type Database = {
           id: string
           industry: string | null
           name: string
+          outreach_languages: string[] | null
           owner_id: string | null
           pricing_summary: string | null
           selling_points: Json | null
@@ -372,6 +375,8 @@ export type Database = {
         Insert: {
           ai_profile?: Json | null
           autonomy_level?: number | null
+          contact_name?: string | null
+          contact_role?: string | null
           created_at?: string
           description?: string | null
           fleet_or_inventory?: Json | null
@@ -379,6 +384,7 @@ export type Database = {
           id?: string
           industry?: string | null
           name: string
+          outreach_languages?: string[] | null
           owner_id?: string | null
           pricing_summary?: string | null
           selling_points?: Json | null
@@ -395,6 +401,8 @@ export type Database = {
         Update: {
           ai_profile?: Json | null
           autonomy_level?: number | null
+          contact_name?: string | null
+          contact_role?: string | null
           created_at?: string
           description?: string | null
           fleet_or_inventory?: Json | null
@@ -402,6 +410,7 @@ export type Database = {
           id?: string
           industry?: string | null
           name?: string
+          outreach_languages?: string[] | null
           owner_id?: string | null
           pricing_summary?: string | null
           selling_points?: Json | null
