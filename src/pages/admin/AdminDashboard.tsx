@@ -15,6 +15,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { updateFinance } from "@/lib/syncHub";
 
 /* ─── Admin To-Do types & helpers ─── */
 interface AdminTodo {
@@ -176,6 +177,18 @@ const AdminDashboard = () => {
       revenue: data.revenue,
     }));
   })();
+
+  // Sync Hub Telemetry: Update finance snapshot
+  useEffect(() => {
+    if (isAdmin && allCompanies && allSubscriptions) {
+      updateFinance({
+        mrrPence: mrr * 100,
+        arrPence: mrr * 12 * 100,
+        totalCustomers: allCompanies.length,
+        activeSubscriptions: allSubscriptions.filter(s => s.status === "active" || s.status === "trialing" || s.status === "trial").length
+      }).catch(console.error);
+    }
+  }, [isAdmin, allCompanies, allSubscriptions, mrr]);
 
   const cards = [
     { label: "Total Clients", value: allCompanies?.length || 0, icon: Users, color: "text-primary", bg: "bg-primary/15", path: "/admin/clients" },

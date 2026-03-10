@@ -8,6 +8,7 @@ import { useTestMode } from "@/hooks/useTestMode";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
+import { reportEvent, updateDailyMetrics } from "@/lib/syncHub";
 
 const tiers = [
     {
@@ -82,6 +83,24 @@ const SelectPlan = () => {
                 console.error("activate_plan failed:", error.message);
                 toast({ title: "Error", description: error.message, variant: "destructive" });
                 return;
+            }
+
+            // Sync Hub Telemetry
+            if (!isTrial) {
+                const tier = tiers.find(t => t.plan === plan);
+                const amountPence = tier ? tier.monthly * 100 : 0;
+                await reportEvent('new_sale', {
+                    amount: amountPence,
+                    label: `New sale — £${(amountPence / 100).toFixed(2)}`,
+                    metadata: { plan }
+                });
+                await updateDailyMetrics({ revenuePence: amountPence, newSignups: 1 });
+            } else {
+                await reportEvent('new_signup', {
+                    label: `New signup (Trial) — ${plan}`,
+                    metadata: { plan }
+                });
+                await updateDailyMetrics({ newSignups: 1 });
             }
 
             // Invalidate the ProtectedRoute state so it allows navigation past SelectPlan

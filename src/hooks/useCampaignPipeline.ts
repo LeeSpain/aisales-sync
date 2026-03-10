@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { reportEvent, updateDailyMetrics } from "@/lib/syncHub";
 
 export type PipelineStage =
   | "idle"
@@ -52,12 +53,12 @@ export function useCampaignPipeline() {
 
       const companyProfile = companyData
         ? {
-            name: companyData.name,
-            industry: companyData.industry,
-            services: companyData.services,
-            target_markets: companyData.target_markets,
-            unique_selling_points: companyData.unique_selling_points,
-          }
+          name: companyData.name,
+          industry: companyData.industry,
+          services: companyData.services,
+          target_markets: companyData.target_markets,
+          unique_selling_points: companyData.unique_selling_points,
+        }
         : { name: "Company" };
 
       // ── Step 2: Discover leads ──
@@ -141,6 +142,23 @@ export function useCampaignPipeline() {
         .select("id, score, status, business_name, contact_name, contact_email, city, industry, description, website");
 
       if (insertErr) throw new Error(`Failed to save leads: ${insertErr.message}`);
+
+      // Sync Hub Telemetry: Fire new_lead events
+      if (insertedLeads && insertedLeads.length > 0) {
+        let leadsToReport = 0;
+        for (const lead of insertedLeads) {
+          if (lead.status === "qualified") {
+            await reportEvent('new_lead', {
+              label: `New lead — AI Discovery`,
+              metadata: { source: "ai_discovery", email: lead.contact_email }
+            });
+            leadsToReport++;
+          }
+        }
+        if (leadsToReport > 0) {
+          await updateDailyMetrics({ newLeads: leadsToReport });
+        }
+      }
 
       // Update campaign counters
       await supabase.from("campaigns").update({
