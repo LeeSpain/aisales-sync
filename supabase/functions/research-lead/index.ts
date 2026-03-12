@@ -18,25 +18,20 @@ serve(async (req) => {
   try {
     const body = await req.json();
 
-    // Validate input
     const validationError = validateRequired(body, ["lead_id"]);
     if (validationError) return errorResponse(validationError, 400);
 
     const { lead_id } = body;
     if (!validateUUID(lead_id)) return errorResponse("Invalid lead_id format", 400);
 
-    // Rate limit
     if (!checkRateLimit(`research-lead:${lead_id}`, 5, 60_000)) {
       return errorResponse("Rate limit exceeded. Please try again in a moment.", 429);
     }
 
     const sb = getSupabaseClient();
 
-    // Check dead switch
     const isKilled = await checkDeadSwitch(sb);
-    if (isKilled) {
-      return errorResponse("AI operations are currently disabled by admin.", 503);
-    }
+    if (isKilled) return errorResponse("AI operations are currently disabled by admin.", 503);
 
     // Fetch lead from DB
     const { data: lead, error: leadError } = await sb
@@ -45,16 +40,8 @@ serve(async (req) => {
       .eq("id", lead_id)
       .maybeSingle();
 
-    if (leadError) {
-      console.error("Error fetching lead:", leadError);
-      return errorResponse("Failed to fetch lead", 500);
-    }
+    if (leadError) return errorResponse("Failed to fetch lead", 500);
     if (!lead) return errorResponse("Lead not found", 404);
-
-    // Check for website URL
-    if (!lead.website) {
-      return errorResponse("Lead has no website URL to research", 400);
-    }
 
     // Fetch company profile for context
     const { data: company } = await sb
@@ -63,125 +50,102 @@ serve(async (req) => {
       .eq("id", lead.company_id)
       .maybeSingle();
 
-    // Build AI prompt
-    const systemPrompt = `You are a business research analyst. Given information about a lead business, research and extract key business intelligence.
-Analyze the available information and provide a comprehensive research profile.
-Be specific and data-driven. Do NOT hallucinate; rely heavily on the provided real search data.`;
-
-    // Fetch real info from Serper Google Search
-    const serperKey = Deno.env.get("SERPER_API_KEY");
-    let searchContent = "";
-    
-    if (serperKey) {
-      const q = `"${lead.business_name}" ${lead.website ? lead.website : ""} ${[lead.city, lead.region].filter(Boolean).join(" ")}`;
-      try {
-        const [searchRes, newsRes] = await Promise.all([
-            fetch("https://google.serper.dev/search", {
-              method: "POST",
-              headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
-              body: JSON.stringify({ q, num: 5 })
-            }),
-            fetch("https://google.serper.dev/news", {
-              method: "POST",
-              headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
-              body: JSON.stringify({ q, num: 3 })
-            })
-        ]);
-        let sData = null, nData = null;
-        if (searchRes.ok) sData = await searchRes.json();
-        if (newsRes.ok) nData = await newsRes.json();
-        
-        if (sData?.organic || nData?.news) {
-            searchContent = `\n\nREAL GOOGLE SEARCH RESULTS for this business:\nSearch Snippets: ${JSON.stringify(sData?.organic?.slice(0, 5) || [])}\nNews Snippets: ${JSON.stringify(nData?.news?.slice(0, 3) || [])}\n\nIMPORTANT: Base your research profile entirely on these real search facts. Do not hallucinate.`;
-        }
-      } catch (e) {
-        console.error("Failed to fetch from Serper API in research:", e);
-      }
+    // ── Get Serper API key (env first, then DB) ──
+    let serperKey = Deno.env.get("SERPER_API_KEY");
+    if (!serperKey) {
+      const { data: keyRow } = await sb
+        .from("ai_config")
+        .select("api_key_encrypted")
+        .eq("provider", "SERPER_API_KEY")
+        .eq("purpose", "api_key_store")
+        .eq("is_active", true)
+        .maybeSingle();
+      serperKey = keyRow?.api_key_encrypted || null;
     }
 
-    const userContent = `Research this business lead:
+    // ── Fetch REAL search data about this business ──
+    let realSearchData = "";
+    if (serperKey && serperKey !== "configured") {
+      const q = `"${lead.business_name}" ${[lead.city, lead.region].filter(Boolean).join(" ")}`;
+      console.log(`[research-lead] Searching Serper for: "${q}"`);
+      try {
+        const [searchRes, newsRes] = await Promise.all([
+          fetch("https://google.serper.dev/search", {
+            method: "POST",
+            headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+            body: JSON.stringify({ q, num: 5 }),
+          }),
+          fetch("https://google.serper.dev/news", {
+            method: "POST",
+            headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+            body: JSON.stringify({ q, num: 3 }),
+          }),
+        ]);
+
+        const [sData, nData] = await Promise.all([
+          searchRes.ok ? searchRes.json() : null,
+          newsRes.ok ? newsRes.json() : null,
+        ]);
+
+        const organic = sData?.organic?.slice(0, 5) || [];
+        const news = nData?.news?.slice(0, 3) || [];
+
+        if (organic.length > 0 || news.length > 0) {
+          realSearchData = `\n\nREAL LIVE WEB DATA from Google Search (via Serper API):
+Search results: ${JSON.stringify(organic, null, 2)}
+Recent news: ${JSON.stringify(news, null, 2)}
+
+STRICT RULE: Base your entire research profile on these real results. Do NOT invent, assume, or fabricate ANY information not present in the above data.`;
+          console.log(`[research-lead] Got ${organic.length} search results, ${news.length} news items.`);
+        }
+      } catch (e) {
+        console.error("[research-lead] Serper search failed:", e);
+      }
+    } else {
+      console.warn("[research-lead] No Serper API key available — research profile will be limited.");
+    }
+
+    const systemPrompt = `You are a business research analyst. You MUST ONLY provide information directly supported by the real search data provided. Do not make up revenue figures, employee counts, or contact names. If information is not in the search data, explicitly state "Not available from public sources."`;
+
+    const userContent = `Research this business:
 
 Business Name: ${lead.business_name}
-Website: ${lead.website}
+Website: ${lead.website || "Unknown"}
 Industry: ${lead.industry || "Unknown"}
 Location: ${[lead.city, lead.region, lead.country].filter(Boolean).join(", ") || "Unknown"}
 Size Estimate: ${lead.size_estimate || "Unknown"}
 Description: ${lead.description || "No description available"}
 Rating: ${lead.rating || "N/A"} (${lead.review_count || 0} reviews)
-${searchContent}
+${realSearchData}
 
-${company ? `Our Company Context (for positioning analysis):
+${company ? `Our Company:
 Company: ${company.name}
-Industry: ${company.industry || "N/A"}
 Services: ${JSON.stringify(company.services || [])}
-Target Markets: ${JSON.stringify(company.target_markets || [])}
-Selling Points: ${JSON.stringify(company.selling_points || [])}` : ""}
-
-Provide a thorough research analysis of this lead.`;
+Target Markets: ${JSON.stringify(company.target_markets || [])}` : ""}`;
 
     const tools = [
       {
         type: "function",
         function: {
           name: "research_lead",
-          description:
-            "Return structured research data about the lead business",
+          description: "Return structured research data based ONLY on real search results provided",
           parameters: {
             type: "object",
             properties: {
-              services_offered: {
-                type: "array",
-                items: { type: "string" },
-                description:
-                  "List of services or products the lead business offers",
-              },
-              target_market: {
-                type: "string",
-                description:
-                  "Description of the lead's target market and customer base",
-              },
-              positioning: {
-                type: "string",
-                description:
-                  "How the lead positions themselves in their market (premium, budget, niche, etc.)",
-              },
-              pricing_indicators: {
-                type: "string",
-                description:
-                  "Any indicators about the lead's pricing level or budget capacity",
-              },
-              competitive_advantages: {
-                type: "array",
-                items: { type: "string" },
-                description: "Key competitive advantages of the lead business",
-              },
-              recent_activity: {
-                type: "array",
-                items: { type: "string" },
-                description:
-                  "Notable recent activities, news, or changes at the lead business",
-              },
-              research_summary: {
-                type: "string",
-                description:
-                  "A comprehensive summary of the research findings, including how this lead might benefit from our services",
-              },
+              services_offered: { type: "array", items: { type: "string" }, description: "Services or products the business offers — from real search results only" },
+              target_market: { type: "string", description: "Target market — from real search results only" },
+              positioning: { type: "string", description: "Market positioning — from real search results only" },
+              pricing_indicators: { type: "string", description: "Pricing indicators from search data, or 'Not available from public sources'" },
+              competitive_advantages: { type: "array", items: { type: "string" }, description: "Competitive advantages from search data" },
+              recent_activity: { type: "array", items: { type: "string" }, description: "Recent news or activities from the news search results" },
+              research_summary: { type: "string", description: "Summary of findings — only reference real data found in the search results" },
             },
-            required: [
-              "services_offered",
-              "target_market",
-              "positioning",
-              "pricing_indicators",
-              "competitive_advantages",
-              "recent_activity",
-              "research_summary",
-            ],
+            required: ["services_offered", "target_market", "positioning", "pricing_indicators", "competitive_advantages", "recent_activity", "research_summary"],
           },
         },
       },
     ];
 
-    // Call AI
     const aiResponse = await callAI({
       systemPrompt,
       userContent,
@@ -190,70 +154,35 @@ Provide a thorough research analysis of this lead.`;
     });
 
     const researchData = extractToolCallArgs(aiResponse);
+    if (!researchData) return errorResponse("AI failed to generate research data", 500);
 
-    if (!researchData) {
-      console.error("AI did not return structured research data");
-      return errorResponse("AI failed to generate research data", 500);
-    }
-
-    // Update lead's research_data JSONB
     const { error: updateError } = await sb
       .from("leads")
       .update({
         research_data: {
           ...researchData,
           researched_at: new Date().toISOString(),
+          data_source: serperKey && serperKey !== "configured" ? "serper_google_search" : "ai_only",
         },
       })
       .eq("id", lead_id);
 
-    if (updateError) {
-      console.error("Error updating lead research_data:", updateError);
-      return errorResponse("Failed to update lead research data", 500);
-    }
+    if (updateError) return errorResponse("Failed to update lead research data", 500);
 
-    // Update lead status to "researched" if currently "discovered"
-    // Note: "researched" is not in the original CHECK constraint for leads.status.
-    // If the constraint has been updated to include it, this will succeed.
-    // Otherwise the status remains unchanged after the research_data update above.
     if (lead.status === "discovered") {
-      const { error: statusError } = await sb
-        .from("leads")
-        .update({ status: "researched" })
-        .eq("id", lead_id)
-        .eq("status", "discovered");
-
-      if (statusError) {
-        console.warn(
-          "Could not update lead status to 'researched':",
-          statusError.message,
-        );
-      }
+      await sb.from("leads").update({ status: "researched" }).eq("id", lead_id).eq("status", "discovered");
     }
 
-    // Log activity
-    await logActivity(
-      sb,
-      "lead_researched",
-      lead.company_id,
-      `Researched lead: ${lead.business_name}`,
-      {
-        lead_id,
-        business_name: lead.business_name,
-        website: lead.website,
-      },
-    );
-
-    return jsonResponse({
-      status: "researched",
+    await logActivity(sb, "lead_researched", lead.company_id, `Researched lead: ${lead.business_name}`, {
       lead_id,
-      research_data: researchData,
+      business_name: lead.business_name,
+      website: lead.website,
+      data_source: serperKey ? "serper_google_search" : "ai_only",
     });
+
+    return jsonResponse({ status: "researched", lead_id, research_data: researchData });
   } catch (e) {
     console.error("research-lead error:", e);
-    return errorResponse(
-      e instanceof Error ? e.message : "Unknown error",
-      500,
-    );
+    return errorResponse(e instanceof Error ? e.message : "Unknown error", 500);
   }
 });
