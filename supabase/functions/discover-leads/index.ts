@@ -24,13 +24,12 @@ serve(async (req) => {
 
     if (!serperKey) {
       const { data: keyRow } = await sb
-        .from("ai_config")
-        .select("api_key_encrypted")
-        .eq("provider", "SERPER_API_KEY")
-        .eq("purpose", "api_key_store")
+        .from("api_keys")
+        .select("key_value")
+        .eq("key_name", "SERPER_API_KEY")
         .eq("is_active", true)
         .maybeSingle();
-      serperKey = keyRow?.api_key_encrypted || null;
+      serperKey = keyRow?.key_value || null;
     }
 
     if (!serperKey || serperKey === "configured") {

@@ -109,13 +109,13 @@ const AdminSettings = () => {
   const { data: storedKeys } = useQuery({
     queryKey: ["admin-api-keys"],
     queryFn: async () => {
-      const { data } = await supabase.from("ai_config").select("*").eq("purpose", "api_key_store");
+      const { data } = await supabase.from("api_keys").select("*").eq("is_active", true);
       return data || [];
     },
     enabled: isAdmin,
   });
 
-  const isKeyConfigured = (envName: string) => storedKeys?.some((k) => k.provider === envName && k.is_active);
+  const isKeyConfigured = (envName: string) => storedKeys?.some((k) => k.key_name === envName && k.is_active);
 
   const handleSave = async (config: ApiKeyConfig) => {
     const value = values[config.id];
@@ -125,13 +125,13 @@ const AdminSettings = () => {
     }
     setSaving((p) => ({ ...p, [config.id]: true }));
     try {
-      const existing = storedKeys?.find((k) => k.provider === config.envName);
+      const existing = storedKeys?.find((k) => k.key_name === config.envName);
       if (existing) {
-        await supabase.from("ai_config").update({ api_key_encrypted: value, is_active: true, model: config.label }).eq("id", existing.id);
+        await supabase.from("api_keys").update({ key_value: value, is_active: true, label: config.label }).eq("id", existing.id);
       } else {
-        await supabase.from("ai_config").insert({ provider: config.envName, purpose: "api_key_store", model: config.label, api_key_encrypted: value, is_active: true });
+        await supabase.from("api_keys").insert({ key_name: config.envName, key_value: value, label: config.label, is_active: true });
       }
-      toast({ title: "Saved", description: `${config.label} has been saved. Add it as a backend secret named ${config.envName} to activate.` });
+      toast({ title: "Saved", description: `${config.label} has been saved and is now live.` });
       setValues((p) => ({ ...p, [config.id]: "" }));
       queryClient.invalidateQueries({ queryKey: ["admin-api-keys"] });
     } catch {
