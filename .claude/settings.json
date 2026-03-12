@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/leewakeman/agent-aura-56/agent-aura-56 -type f -name *migration* -o -name *schema* -o -name *supabase*)",
+      "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
+      "Bash(git pull:*)",
+      "Bash(npx supabase:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}

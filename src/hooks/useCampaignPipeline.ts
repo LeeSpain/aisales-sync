@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { reportEvent, updateDailyMetrics } from "@/lib/syncHub";
 
@@ -39,9 +39,13 @@ export function useCampaignPipeline() {
     messagesGenerated: 0,
     error: null,
   });
+  const isRunningRef = useRef(false);
 
   const runPipeline = useCallback(async (params: RunPipelineParams) => {
     const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone } = params;
+
+    if (isRunningRef.current) return;
+    isRunningRef.current = true;
 
     try {
       // ── Step 1: Fetch company profile for AI context ──
@@ -57,7 +61,7 @@ export function useCampaignPipeline() {
           industry: companyData.industry,
           services: companyData.services,
           target_markets: companyData.target_markets,
-          unique_selling_points: companyData.unique_selling_points,
+          unique_selling_points: companyData.selling_points,
         }
         : { name: "Company" };
 
@@ -219,7 +223,10 @@ export function useCampaignPipeline() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Pipeline failed";
       console.error("Campaign pipeline error:", err);
+      await supabase.from("campaigns").update({ status: "error" }).eq("id", campaignId);
       setState((s) => ({ ...s, stage: "error", error: message, progress: message }));
+    } finally {
+      isRunningRef.current = false;
     }
   }, []);
 

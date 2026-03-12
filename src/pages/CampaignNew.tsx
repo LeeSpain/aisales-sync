@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -115,6 +115,7 @@ const CampaignNew = () => {
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null);
+  const [launchLocked, setLaunchLocked] = useState(false);
   const pipeline = useCampaignPipeline();
 
   // Form state
@@ -144,7 +145,6 @@ const CampaignNew = () => {
 
   const company = profile?.companies as Record<string, unknown> | null;
 
-  // Pre-fill outreach language from company profile when it loads
   useEffect(() => {
     if (company?.outreach_languages) {
       const langs = company.outreach_languages as string[];
@@ -175,7 +175,7 @@ const CampaignNew = () => {
         if (geoScope === "local") return geoCountries.length > 0 && geoCities.length > 0;
         if (geoScope === "regional") return geoCountries.length > 0 && geoRegions.length > 0;
         if (geoScope === "national") return geoCountries.length > 0;
-        return geoRegions.length > 0; // international
+        return geoRegions.length > 0;
       }
       case 2: return channels.length > 0;
       case 3: return true;
@@ -183,7 +183,6 @@ const CampaignNew = () => {
     }
   };
 
-  /** Build a human-readable geography summary (includes country so AI has full context) */
   const geoSummary = () => {
     const country = geoCountries[0];
     if (geoScope === "local") {
@@ -221,14 +220,22 @@ const CampaignNew = () => {
   };
 
   const handleLaunch = async () => {
-    if (!user) return;
+    if (!user || saving || launchLocked || pipeline.stage !== "idle") return;
+
+    if (!campaignName.trim()) {
+      toast({ title: "Campaign name required", description: "Please enter a campaign name before launch.", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
+    setLaunchLocked(true);
 
     try {
       const companyId = await ensureCompany();
       if (!companyId) {
         toast({ title: "Error", description: "Failed to set up your company. Please try again.", variant: "destructive" });
         setSaving(false);
+        setLaunchLocked(false);
         return;
       }
 
@@ -263,13 +270,11 @@ const CampaignNew = () => {
 
       if (campErr) throw campErr;
 
-      // Move to pipeline step
       setCreatedCampaignId(newCampaign.id);
       setStep(5);
       setSaving(false);
 
-      // Run the AI pipeline
-      pipeline.runPipeline({
+      await pipeline.runPipeline({
         campaignId: newCampaign.id,
         companyId,
         targetCriteria: criteria,
@@ -281,12 +286,13 @@ const CampaignNew = () => {
       console.error("Campaign create error:", e);
       toast({ title: "Error", description: "Could not create campaign. Please try again.", variant: "destructive" });
       setSaving(false);
+      setLaunchLocked(false);
     }
   };
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Left sidebar — steps */}
+      {/* Left sidebar */}
       <div className="hidden w-72 flex-col justify-between border-r border-border bg-card p-8 lg:flex">
         <div>
           <div className="mb-8 flex items-center gap-3">
@@ -302,7 +308,7 @@ const CampaignNew = () => {
               const isActive = i === step;
               const isDone = i < step;
               const isPipelineStep = i === 5;
-              const pipelineLocked = step >= 5; // Can't go back once pipeline starts
+              const pipelineLocked = step >= 5;
               return (
                 <button
                   key={s.label}
@@ -319,9 +325,12 @@ const CampaignNew = () => {
                     isDone ? "bg-success/20" :
                     "bg-muted/30"
                   }`}>
-                    {isDone ? <Check className="h-4 w-4 text-success" /> :
-                     isActive && isPipelineStep ? <Loader2 className={`h-4 w-4 text-white ${pipeline.stage !== "done" && pipeline.stage !== "error" ? "animate-spin" : ""}`} /> :
-                     <Icon className={`h-4 w-4 ${isActive ? "text-white" : ""}`} />}
+                    {isDone
+                      ? <Check className="h-4 w-4 text-success" />
+                      : isActive && isPipelineStep
+                        ? <Loader2 className={`h-4 w-4 text-white ${pipeline.stage !== "done" && pipeline.stage !== "error" ? "animate-spin" : ""}`} />
+                        : <Icon className={`h-4 w-4 ${isActive ? "text-white" : ""}`} />
+                    }
                   </div>
                   {s.label}
                 </button>
@@ -329,7 +338,6 @@ const CampaignNew = () => {
             })}
           </div>
 
-          {/* AI tip from company profile */}
           {company?.industry && (
             <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-4">
               <p className="text-xs font-medium text-primary mb-1">AI Suggestion</p>
@@ -347,7 +355,6 @@ const CampaignNew = () => {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col">
-        {/* Mobile progress */}
         <div className="p-4 lg:p-6">
           <div className="lg:hidden flex items-center gap-3 mb-4">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
@@ -359,11 +366,10 @@ const CampaignNew = () => {
           <Progress value={progress} className="h-1.5" />
         </div>
 
-        {/* Step content */}
         <div className="flex-1 px-4 pb-8 lg:px-8">
           <div className="w-full space-y-6">
 
-            {/* Step 0: Target Audience */}
+            {/* ── Step 0: Target Audience ── */}
             {step === 0 && (
               <Card className="card-glow">
                 <CardHeader>
@@ -378,11 +384,7 @@ const CampaignNew = () => {
                         <Badge
                           key={ind}
                           variant={selectedIndustries.includes(ind) ? "default" : "outline"}
-                          className={`cursor-pointer transition-all ${
-                            selectedIndustries.includes(ind)
-                              ? "bg-primary text-primary-foreground"
-                              : "hover:border-primary/50"
-                          }`}
+                          className={`cursor-pointer transition-all ${selectedIndustries.includes(ind) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
                           onClick={() => toggleIndustry(ind)}
                         >
                           {ind}
@@ -398,11 +400,7 @@ const CampaignNew = () => {
                         <button
                           key={s.value}
                           onClick={() => setBusinessSize(s.value)}
-                          className={`rounded-xl border p-3 text-left transition-all ${
-                            businessSize === s.value
-                              ? "border-primary bg-primary/10"
-                              : "border-border hover:border-primary/50"
-                          }`}
+                          className={`rounded-xl border p-3 text-left transition-all ${businessSize === s.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}
                         >
                           <p className="text-sm font-medium">{s.label}</p>
                           <p className="text-xs text-muted-foreground">{s.desc}</p>
@@ -452,7 +450,7 @@ const CampaignNew = () => {
               </Card>
             )}
 
-            {/* Step 1: Geographic Focus */}
+            {/* ── Step 1: Geographic Focus ── */}
             {step === 1 && (
               <Card className="card-glow">
                 <CardHeader>
@@ -460,22 +458,14 @@ const CampaignNew = () => {
                   <CardDescription>Define exactly where your AI should find leads — from local streets to global markets.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  {/* Scope selector */}
                   <div className="space-y-2">
                     <Label>Search scope</Label>
                     <div className="grid grid-cols-2 gap-2">
                       {GEO_SCOPES.map((s) => (
                         <button
                           key={s.value}
-                          onClick={() => {
-                            setGeoScope(s.value);
-                            setGeoCountries([]);
-                            setGeoRegions([]);
-                            setGeoCities([]);
-                          }}
-                          className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${
-                            geoScope === s.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                          }`}
+                          onClick={() => { setGeoScope(s.value); setGeoCountries([]); setGeoRegions([]); setGeoCities([]); }}
+                          className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${geoScope === s.value ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}
                         >
                           <span className="text-lg mt-0.5">{s.icon}</span>
                           <div>
@@ -487,21 +477,13 @@ const CampaignNew = () => {
                     </div>
                   </div>
 
-                  {/* LOCAL: Country + Cities/Towns/Postcodes */}
                   {geoScope === "local" && (
                     <>
                       <div className="space-y-2">
                         <Label>Country</Label>
-                        <Select
-                          value={geoCountries[0] || ""}
-                          onValueChange={(v) => setGeoCountries([v])}
-                        >
+                        <Select value={geoCountries[0] || ""} onValueChange={(v) => setGeoCountries([v])}>
                           <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
-                          <SelectContent>
-                            {COUNTRIES.map((c) => (
-                              <SelectItem key={c} value={c}>{c}</SelectItem>
-                            ))}
-                          </SelectContent>
+                          <SelectContent>{COUNTRIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-2">
@@ -510,34 +492,20 @@ const CampaignNew = () => {
                           tags={geoCities}
                           onAdd={(t) => setGeoCities([...geoCities, t])}
                           onRemove={(i) => setGeoCities(geoCities.filter((_, idx) => idx !== i))}
-                          placeholder={
-                            geoCountries[0] === "Spain"
-                              ? "e.g. Marbella, Ronda, Fuengirola, 29600, Nerja"
-                              : geoCountries[0] === "United Kingdom"
-                              ? "e.g. Manchester, M1, Leeds, Sheffield S1"
-                              : "e.g. Town, city, or postcode"
-                          }
+                          placeholder={geoCountries[0] === "Spain" ? "e.g. Marbella, Ronda, 29600" : geoCountries[0] === "United Kingdom" ? "e.g. Manchester, M1, Leeds" : "e.g. Town, city, or postcode"}
                         />
-                        <p className="text-xs text-muted-foreground">Add any number of locations — villages, towns, cities, or postcodes. Your AI searches for businesses in each one.</p>
+                        <p className="text-xs text-muted-foreground">Add any number of locations. Your AI searches for businesses in each one.</p>
                       </div>
                     </>
                   )}
 
-                  {/* REGIONAL: Country + Regions */}
                   {geoScope === "regional" && (
                     <>
                       <div className="space-y-2">
                         <Label>Country</Label>
-                        <Select
-                          value={geoCountries[0] || ""}
-                          onValueChange={(v) => setGeoCountries([v])}
-                        >
+                        <Select value={geoCountries[0] || ""} onValueChange={(v) => setGeoCountries([v])}>
                           <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
-                          <SelectContent>
-                            {COUNTRIES.map((c) => (
-                              <SelectItem key={c} value={c}>{c}</SelectItem>
-                            ))}
-                          </SelectContent>
+                          <SelectContent>{COUNTRIES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                         </Select>
                       </div>
                       {geoCountries[0] === "United Kingdom" ? (
@@ -545,20 +513,7 @@ const CampaignNew = () => {
                           <Label>Regions</Label>
                           <div className="flex flex-wrap gap-2">
                             {UK_REGIONS.map((r) => (
-                              <Badge
-                                key={r}
-                                variant={geoRegions.includes(r) ? "default" : "outline"}
-                                className={`cursor-pointer transition-all ${
-                                  geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
-                                }`}
-                                onClick={() =>
-                                  setGeoRegions((prev) =>
-                                    prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
-                                  )
-                                }
-                              >
-                                {r}
-                              </Badge>
+                              <Badge key={r} variant={geoRegions.includes(r) ? "default" : "outline"} className={`cursor-pointer transition-all ${geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"}`} onClick={() => setGeoRegions((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])}>{r}</Badge>
                             ))}
                           </div>
                         </div>
@@ -567,38 +522,19 @@ const CampaignNew = () => {
                           <Label>Autonomous communities</Label>
                           <div className="flex flex-wrap gap-2">
                             {SPAIN_REGIONS.map((r) => (
-                              <Badge
-                                key={r}
-                                variant={geoRegions.includes(r) ? "default" : "outline"}
-                                className={`cursor-pointer transition-all ${
-                                  geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
-                                }`}
-                                onClick={() =>
-                                  setGeoRegions((prev) =>
-                                    prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
-                                  )
-                                }
-                              >
-                                {r}
-                              </Badge>
+                              <Badge key={r} variant={geoRegions.includes(r) ? "default" : "outline"} className={`cursor-pointer transition-all ${geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"}`} onClick={() => setGeoRegions((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])}>{r}</Badge>
                             ))}
                           </div>
                         </div>
                       ) : (
                         <div className="space-y-2">
                           <Label>Regions, states, or areas</Label>
-                          <TagInput
-                            tags={geoRegions}
-                            onAdd={(t) => setGeoRegions([...geoRegions, t])}
-                            onRemove={(i) => setGeoRegions(geoRegions.filter((_, idx) => idx !== i))}
-                            placeholder="e.g. Andalusia, California, Bavaria, New South Wales"
-                          />
+                          <TagInput tags={geoRegions} onAdd={(t) => setGeoRegions([...geoRegions, t])} onRemove={(i) => setGeoRegions(geoRegions.filter((_, idx) => idx !== i))} placeholder="e.g. Andalusia, California, Bavaria" />
                         </div>
                       )}
                     </>
                   )}
 
-                  {/* NATIONAL: Multi-country select */}
                   {geoScope === "national" && (
                     <div className="space-y-2">
                       <Label>Countries</Label>
@@ -606,54 +542,28 @@ const CampaignNew = () => {
                         {geoCountries.map((c, i) => (
                           <Badge key={i} variant="secondary" className="gap-1 pr-1">
                             {c}
-                            <button onClick={() => setGeoCountries(geoCountries.filter((_, idx) => idx !== i))} className="ml-1 hover:text-destructive">
-                              <X className="h-3 w-3" />
-                            </button>
+                            <button onClick={() => setGeoCountries(geoCountries.filter((_, idx) => idx !== i))} className="ml-1 hover:text-destructive"><X className="h-3 w-3" /></button>
                           </Badge>
                         ))}
                       </div>
-                      <Select
-                        value=""
-                        onValueChange={(v) => {
-                          if (!geoCountries.includes(v)) setGeoCountries([...geoCountries, v]);
-                        }}
-                      >
+                      <Select value="" onValueChange={(v) => { if (!geoCountries.includes(v)) setGeoCountries([...geoCountries, v]); }}>
                         <SelectTrigger><SelectValue placeholder="Add a country" /></SelectTrigger>
-                        <SelectContent>
-                          {COUNTRIES.filter((c) => !geoCountries.includes(c)).map((c) => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                          ))}
-                        </SelectContent>
+                        <SelectContent>{COUNTRIES.filter((c) => !geoCountries.includes(c)).map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                       </Select>
                     </div>
                   )}
 
-                  {/* INTERNATIONAL: World regions */}
                   {geoScope === "international" && (
                     <div className="space-y-2">
                       <Label>World regions</Label>
                       <div className="flex flex-wrap gap-2">
                         {INTERNATIONAL_REGIONS.map((r) => (
-                          <Badge
-                            key={r}
-                            variant={geoRegions.includes(r) ? "default" : "outline"}
-                            className={`cursor-pointer transition-all ${
-                              geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"
-                            }`}
-                            onClick={() =>
-                              setGeoRegions((prev) =>
-                                prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
-                              )
-                            }
-                          >
-                            {r}
-                          </Badge>
+                          <Badge key={r} variant={geoRegions.includes(r) ? "default" : "outline"} className={`cursor-pointer transition-all ${geoRegions.includes(r) ? "bg-primary text-primary-foreground" : "hover:border-primary/50"}`} onClick={() => setGeoRegions((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])}>{r}</Badge>
                         ))}
                       </div>
                     </div>
                   )}
 
-                  {/* Info tip */}
                   {geoScope && (
                     <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
                       <p className="text-xs text-muted-foreground">
@@ -668,7 +578,7 @@ const CampaignNew = () => {
               </Card>
             )}
 
-            {/* Step 2: Outreach Strategy */}
+            {/* ── Step 2: Outreach Strategy ── */}
             {step === 2 && (
               <Card className="card-glow">
                 <CardHeader>
@@ -683,14 +593,8 @@ const CampaignNew = () => {
                         const Icon = ch.icon;
                         const selected = channels.includes(ch.value);
                         return (
-                          <button
-                            key={ch.value}
-                            onClick={() => toggleChannel(ch.value)}
-                            className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${
-                              selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                            }`}
-                          >
-                            <Icon className={`h-5 w-5 mt-0.5 ${selected ? "text-primary" : "text-muted-foreground"}`} />
+                          <button key={ch.value} onClick={() => toggleChannel(ch.value)} className={"flex items-start gap-3 rounded-xl border p-3 text-left transition-all " + (selected ? "border-primary bg-primary/10" : "border-border hover:border-primary/50")}>
+                            <Icon className={"h-5 w-5 mt-0.5 " + (selected ? "text-primary" : "text-muted-foreground")} />
                             <div>
                               <p className="text-sm font-medium">{ch.label}</p>
                               <p className="text-xs text-muted-foreground">{ch.desc}</p>
@@ -700,38 +604,21 @@ const CampaignNew = () => {
                       })}
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Communication tone</Label>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {TONE_OPTIONS.map((t) => (
-                        <button
-                          key={t.value}
-                          onClick={() => setTone(t.value)}
-                          className={`rounded-xl border px-3 py-2 text-sm transition-all ${
-                            tone === t.value
-                              ? "border-primary bg-primary/10 font-medium"
-                              : "border-border hover:border-primary/50"
-                          }`}
-                        >
+                        <button key={t.value} onClick={() => setTone(t.value)} className={"rounded-xl border px-3 py-2 text-sm transition-all " + (tone === t.value ? "border-primary bg-primary/10 font-medium" : "border-border hover:border-primary/50")}>
                           {t.label}
                         </button>
                       ))}
                     </div>
                   </div>
-
                   <div className="space-y-2">
                     <Label>Outreach language</Label>
                     <div className="flex flex-wrap gap-2">
                       {LANGUAGES.map((lang) => (
-                        <Badge
-                          key={lang}
-                          variant={outreachLanguage === lang ? "default" : "outline"}
-                          className={`cursor-pointer transition-all ${outreachLanguage === lang ? "bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
-                          onClick={() => setOutreachLanguage(lang)}
-                        >
-                          {lang}
-                        </Badge>
+                        <Badge key={lang} variant={outreachLanguage === lang ? "default" : "outline"} className={"cursor-pointer transition-all " + (outreachLanguage === lang ? "bg-primary text-primary-foreground" : "hover:border-primary/50")} onClick={() => setOutreachLanguage(lang)}>{lang}</Badge>
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground">All messages for this campaign will be written in this language.</p>
@@ -740,7 +627,6 @@ const CampaignNew = () => {
               </Card>
             )}
 
-            {/* Step 3: Quality & Scoring */}
             {step === 3 && (
               <Card className="card-glow">
                 <CardHeader>
@@ -751,31 +637,18 @@ const CampaignNew = () => {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <Label>Minimum quality score</Label>
-                      <Badge variant="secondary" className="text-lg font-bold px-3 py-1">
-                        {minimumScore.toFixed(1)}
-                      </Badge>
+                      <Badge variant="secondary" className="text-lg font-bold px-3 py-1">{minimumScore.toFixed(1)}</Badge>
                     </div>
-                    <Slider
-                      value={[minimumScore]}
-                      onValueChange={(v) => setMinimumScore(v[0])}
-                      min={1}
-                      max={5}
-                      step={0.5}
-                    />
+                    <Slider value={[minimumScore]} onValueChange={(v) => setMinimumScore(v[0])} min={1} max={5} step={0.5} />
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>1.0 — More leads</span>
                       <span>5.0 — Higher quality</span>
                     </div>
                   </div>
-
                   <div className="rounded-xl border border-border bg-card p-4 space-y-2">
                     {Object.entries(SCORE_LABELS).map(([score, label]) => (
-                      <div key={score} className={`flex items-center gap-2 text-xs ${
-                        parseFloat(score) === Math.floor(minimumScore) ? "text-primary font-medium" : "text-muted-foreground"
-                      }`}>
-                        <div className={`h-1.5 w-1.5 rounded-full ${
-                          parseFloat(score) === Math.floor(minimumScore) ? "bg-primary" : "bg-border"
-                        }`} />
+                      <div key={score} className={"flex items-center gap-2 text-xs " + (parseFloat(score) === Math.floor(minimumScore) ? "text-primary font-medium" : "text-muted-foreground")}>
+                        <div className={"h-1.5 w-1.5 rounded-full " + (parseFloat(score) === Math.floor(minimumScore) ? "bg-primary" : "bg-border")} />
                         <span className="font-medium w-4">{score}.0</span>
                         <span>{label}</span>
                       </div>
@@ -785,11 +658,10 @@ const CampaignNew = () => {
               </Card>
             )}
 
-            {/* Step 4: Review & Launch */}
             {step === 4 && (
               <Card className="card-glow">
                 <CardHeader>
-                  <CardTitle className="text-xl">Review & launch</CardTitle>
+                  <CardTitle className="text-xl">Review and launch</CardTitle>
                   <CardDescription>Give your campaign a name and confirm the details.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -799,176 +671,138 @@ const CampaignNew = () => {
                       id="campaignName"
                       value={campaignName}
                       onChange={(e) => setCampaignName(e.target.value)}
-                      placeholder="e.g. UK E-commerce Q1"
                       onFocus={autoName}
-                      autoFocus
+                      placeholder="e.g. E-commerce — Manchester Q1"
                     />
                   </div>
-
-                  <div className="space-y-3">
-                    <ReviewRow label="Industries" value={selectedIndustries.join(", ")} onEdit={() => setStep(0)} />
-                    <ReviewRow label="Business size" value={SIZE_OPTIONS.find(s => s.value === businessSize)?.label || businessSize} onEdit={() => setStep(0)} />
-                    <ReviewRow label="Contact target" value={targetDecisionMaker} onEdit={() => setStep(0)} />
-                    {idealClient && <ReviewRow label="Ideal client" value={idealClient} onEdit={() => setStep(0)} />}
-                    <ReviewRow label="Scope" value={GEO_SCOPES.find(s => s.value === geoScope)?.label || geoScope} onEdit={() => setStep(1)} />
-                    <ReviewRow label="Locations" value={geoSummary()} onEdit={() => setStep(1)} />
-                    <ReviewRow label="Channels" value={channels.map(c => CHANNELS.find(ch => ch.value === c)?.label).join(", ")} onEdit={() => setStep(2)} />
-                    <ReviewRow label="Language" value={outreachLanguage} onEdit={() => setStep(2)} />
-                    <ReviewRow label="Tone" value={TONE_OPTIONS.find(t => t.value === tone)?.label || tone} onEdit={() => setStep(2)} />
-                    <ReviewRow label="Min score" value={minimumScore.toFixed(1)} onEdit={() => setStep(3)} />
+                  <div className="rounded-xl border border-border bg-muted/30 p-4 space-y-3">
+                    <p className="text-sm font-medium">Campaign summary</p>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Industries</span><span className="font-medium text-right max-w-48 truncate">{selectedIndustries.join(", ") || "—"}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Business size</span><span className="font-medium capitalize">{businessSize}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Geography</span><span className="font-medium text-right max-w-48 truncate">{geoSummary() || "—"}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Channels</span><span className="font-medium capitalize">{channels.join(", ")}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Tone</span><span className="font-medium capitalize">{tone}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Language</span><span className="font-medium">{outreachLanguage}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Min. score</span><span className="font-medium">{minimumScore.toFixed(1)} / 5.0</span></div>
+                      {targetDecisionMaker !== "Any decision maker" && (
+                        <div className="flex justify-between"><span className="text-muted-foreground">Contact</span><span className="font-medium">{targetDecisionMaker}</span></div>
+                      )}
+                    </div>
                   </div>
+                  <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex gap-3">
+                    <Sparkles className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                    <p className="text-xs text-muted-foreground">
+                      Once launched, your AI will discover real companies, score them, research decision-makers, and generate personalised outreach — all automatically.
+                    </p>
+                  </div>
+                  <Button
+                    className="w-full gradient-primary text-white"
+                    size="lg"
+                    onClick={handleLaunch}
+                    disabled={saving || launchLocked || !campaignName.trim()}
+                  >
+                    {saving ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating campaign...</>
+                    ) : (
+                      <><Rocket className="h-4 w-4 mr-2" />Launch Campaign</>
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             )}
 
-            {/* Step 5: AI Pipeline Running */}
             {step === 5 && (
               <Card className="card-glow">
                 <CardHeader>
                   <CardTitle className="text-xl flex items-center gap-2">
                     {pipeline.stage === "done" ? (
-                      <><CheckCircle2 className="h-5 w-5 text-success" /> Campaign Ready</>
+                      <><CheckCircle2 className="h-5 w-5 text-success" />Campaign launched!</>
                     ) : pipeline.stage === "error" ? (
-                      <><AlertCircle className="h-5 w-5 text-destructive" /> Pipeline Error</>
+                      <><AlertCircle className="h-5 w-5 text-destructive" />Pipeline error</>
                     ) : (
-                      <><Loader2 className="h-5 w-5 animate-spin text-primary" /> AI Pipeline Running</>
+                      <><Loader2 className="h-5 w-5 animate-spin text-primary" />AI is working...</>
                     )}
                   </CardTitle>
-                  <CardDescription>{pipeline.progress || "Starting pipeline..."}</CardDescription>
+                  <CardDescription>
+                    {pipeline.stage === "done"
+                      ? "Your leads have been discovered, scored, and outreach has been prepared."
+                      : pipeline.stage === "error"
+                      ? "Something went wrong. Your campaign has been saved — you can retry from the campaign page."
+                      : "Sit back while your AI discovers and qualifies leads for this campaign."}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Pipeline stages */}
+                <CardContent className="space-y-4">
                   <div className="space-y-3">
                     {[
-                      { key: "discovering", label: "Discovering leads", icon: Search },
-                      { key: "scoring", label: "Scoring & qualifying", icon: BarChart3 },
-                      { key: "saving_leads", label: "Saving leads to pipeline", icon: Users },
-                      { key: "generating_outreach", label: "Writing outreach messages", icon: MessageSquare },
-                      { key: "finalizing", label: "Finalising campaign", icon: Rocket },
-                    ].map((s) => {
-                      const stageOrder = ["idle", "discovering", "scoring", "saving_leads", "generating_outreach", "finalizing", "done"];
-                      const currentIdx = stageOrder.indexOf(pipeline.stage === "error" ? "done" : pipeline.stage);
-                      const thisIdx = stageOrder.indexOf(s.key);
-                      const isActive = pipeline.stage === s.key;
-                      const isDone = currentIdx > thisIdx || pipeline.stage === "done";
-                      const Icon = s.icon;
+                      { key: "discovering", label: "Discovering real companies", icon: Search },
+                      { key: "scoring", label: "Scoring and qualifying leads", icon: BarChart3 },
+                      { key: "researching", label: "Researching decision-makers", icon: Users },
+                      { key: "outreach", label: "Generating personalised outreach", icon: MessageSquare },
+                    ].map(({ key, label, icon: Icon }) => {
+                      const stages = ["discovering", "scoring", "researching", "outreach", "done"];
+                      const stageIdx = stages.indexOf(pipeline.stage);
+                      const thisIdx = stages.indexOf(key);
+                      const isDone = stageIdx > thisIdx || pipeline.stage === "done";
+                      const isActive = pipeline.stage === key;
                       return (
-                        <div key={s.key} className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${
-                          isActive ? "bg-primary/10 text-primary font-medium" :
-                          isDone ? "text-foreground" :
-                          "text-muted-foreground"
-                        }`}>
-                          <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                            isActive ? "gradient-primary" :
-                            isDone ? "bg-success/20" :
-                            "bg-muted/30"
-                          }`}>
-                            {isActive ? (
-                              <Loader2 className="h-4 w-4 text-white animate-spin" />
-                            ) : isDone ? (
-                              <Check className="h-4 w-4 text-success" />
-                            ) : (
-                              <Icon className="h-4 w-4" />
-                            )}
+                        <div key={key} className={"flex items-center gap-3 rounded-xl border p-3 transition-all " + (isActive ? "border-primary bg-primary/5" : isDone ? "border-success/30 bg-success/5" : "border-border opacity-50")}>
+                          <div className={"flex h-8 w-8 items-center justify-center rounded-lg " + (isDone ? "bg-success/20" : isActive ? "bg-primary/10" : "bg-muted/30")}>
+                            {isDone ? <Check className="h-4 w-4 text-success" /> : isActive ? <Loader2 className="h-4 w-4 text-primary animate-spin" /> : <Icon className="h-4 w-4 text-muted-foreground" />}
                           </div>
-                          {s.label}
+                          <span className={"text-sm " + (isDone ? "text-foreground font-medium" : isActive ? "text-primary font-medium" : "text-muted-foreground")}>{label}</span>
+                          {isDone && <Check className="h-4 w-4 text-success ml-auto" />}
                         </div>
                       );
                     })}
                   </div>
-
-                  {/* Stats */}
-                  {(pipeline.leadsFound > 0 || pipeline.stage === "done") && (
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="rounded-xl border border-border bg-card p-3 text-center">
-                        <p className="text-2xl font-bold">{pipeline.leadsFound}</p>
-                        <p className="text-[10px] text-muted-foreground">Leads Found</p>
-                      </div>
-                      <div className="rounded-xl border border-border bg-card p-3 text-center">
-                        <p className="text-2xl font-bold">{pipeline.leadsQualified}</p>
-                        <p className="text-[10px] text-muted-foreground">Qualified</p>
-                      </div>
-                      <div className="rounded-xl border border-border bg-card p-3 text-center">
-                        <p className="text-2xl font-bold">{pipeline.messagesGenerated}</p>
-                        <p className="text-[10px] text-muted-foreground">Messages</p>
-                      </div>
+                  {pipeline.leadsFound > 0 && (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center">
+                      <p className="text-2xl font-bold text-primary">{pipeline.leadsFound}</p>
+                      <p className="text-sm text-muted-foreground">qualified leads found so far</p>
                     </div>
                   )}
-
-                  {pipeline.stage === "error" && (
-                    <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-4">
-                      <p className="text-sm text-destructive">{pipeline.error}</p>
-                      <p className="text-xs text-muted-foreground mt-1">The campaign was created. You can view it and retry later.</p>
-                    </div>
+                  {pipeline.stage === "done" && createdCampaignId && (
+                    <Button className="w-full gradient-primary text-white" onClick={() => navigate("/campaigns/" + createdCampaignId)}>
+                      <ChevronRight className="h-4 w-4 mr-2" />View Campaign
+                    </Button>
+                  )}
+                  {pipeline.stage === "error" && createdCampaignId && (
+                    <Button variant="outline" className="w-full" onClick={() => navigate("/campaigns/" + createdCampaignId)}>
+                      View Campaign
+                    </Button>
                   )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Navigation */}
-            {step <= 4 && (
-              <div className="flex items-center justify-between pt-2">
-                <Button
-                  variant="ghost"
-                  onClick={() => step === 0 ? navigate("/campaigns") : setStep(step - 1)}
-                  className="gap-1"
-                >
-                  <ChevronLeft className="h-4 w-4" /> {step === 0 ? "Cancel" : "Back"}
-                </Button>
-
-                {step < 4 ? (
-                  <Button
-                    onClick={() => setStep(step + 1)}
-                    disabled={!canNext()}
-                    className="gradient-primary border-0 text-white gap-1"
-                  >
-                    Next <ChevronRight className="h-4 w-4" />
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleLaunch}
-                    disabled={saving || !campaignName.trim()}
-                    className="gradient-primary border-0 text-white gap-2"
-                  >
-                    {saving ? "Launching..." : (
-                      <>
-                        <Rocket className="h-4 w-4" /> Launch Campaign
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            )}
-
-            {/* Pipeline done/error navigation */}
-            {step === 5 && (pipeline.stage === "done" || pipeline.stage === "error") && (
-              <div className="flex items-center justify-end pt-2">
-                <Button
-                  onClick={() => navigate(`/campaigns/${createdCampaignId}`)}
-                  className="gradient-primary border-0 text-white gap-2"
-                >
-                  View Campaign <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
           </div>
         </div>
+
+        {step < 5 && (
+          <div className="sticky bottom-0 border-t border-border bg-card/80 backdrop-blur-sm px-4 py-4 lg:px-8">
+            <div className="flex items-center justify-between gap-4">
+              <Button variant="outline" onClick={() => step > 0 ? setStep(step - 1) : navigate("/campaigns")} className="gap-2">
+                <ChevronLeft className="h-4 w-4" />
+                {step === 0 ? "Cancel" : "Back"}
+              </Button>
+              {step < 4 ? (
+                <Button className="gradient-primary text-white gap-2" onClick={() => setStep(step + 1)} disabled={!canNext()}>
+                  Continue
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              ) : (
+                <Button className="gradient-primary text-white gap-2" onClick={handleLaunch} disabled={saving || launchLocked || !campaignName.trim()}>
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+                  {saving ? "Launching..." : "Launch Campaign"}
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
-
-/** Small review row with edit button */
-function ReviewRow({ label, value, onEdit }: { label: string; value: string; onEdit: () => void }) {
-  return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-3">
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="text-sm truncate">{value}</p>
-      </div>
-      <button onClick={onEdit} className="shrink-0 text-xs text-primary hover:underline">Edit</button>
-    </div>
-  );
-}
 
 export default CampaignNew;
