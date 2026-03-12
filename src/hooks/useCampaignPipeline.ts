@@ -42,38 +42,110 @@ interface SerperPlace {
   longitude?: number;
 }
 
+// Maps campaign industry tags to precise Google Places search terms
+const INDUSTRY_TO_SEARCH_TERM: Record<string, string> = {
+  "Real Estate": "estate agents",
+  "E-commerce": "ecommerce online store",
+  "SaaS": "software company tech startup",
+  "Retail": "retail shop store",
+  "Healthcare": "healthcare clinic medical practice",
+  "Finance": "financial services accountant",
+  "Marketing": "marketing agency digital agency",
+  "Hospitality": "hotel restaurant hospitality",
+  "Manufacturing": "manufacturing factory",
+  "Education": "school college training centre",
+  "Professional Services": "professional services consultancy",
+};
+
+// Reject results that clearly don't match ANY of the requested industries
+function isRelevantPlace(place: SerperPlace, requestedIndustries: string[]): boolean {
+  if (!requestedIndustries.length || !place.category) return true; // no filter if no category info
+  
+  const cat = (place.category || "").toLowerCase();
+  const title = (place.title || "").toLowerCase();
+  
+  // Explicit reject list — things that should never appear
+  const rejectTerms = ["supermarket", "grocery", "convenience store", "petrol station", 
+    "gas station", "fast food", "takeaway", "pub ", "church", "mosque", "temple", "hospital"];
+  if (rejectTerms.some((term) => cat.includes(term) || title.includes(term))) return false;
+  
+  // For Real Estate campaigns, only keep real estate related results
+  if (requestedIndustries.includes("Real Estate")) {
+    const realEstateTerms = ["estate", "property", "letting", "realt", "homes", "housing", "land agent"];
+    return realEstateTerms.some((t) => cat.includes(t) || title.includes(t));
+  }
+  
+  return true; // default: keep
+}
+
 // ── Fetch real businesses from Google Places via Serper API ──
 async function fetchRealLeadsFromSerper(
   serperKey: string,
   targetCriteria: Record<string, unknown>,
   geographicFocus: string
 ): Promise<SerperPlace[]> {
-  const targetStr = Object.values(targetCriteria)
-    .filter((v) => typeof v === "string" && (v as string).trim())
-    .join(" ");
-  const query = `${targetStr ? targetStr + " in " : ""}${geographicFocus}`;
+  // Build a PRECISE search term from industry only
+  const industries = (targetCriteria.industries as string[]) || [];
+  const keywords = (targetCriteria.keywords as string[]) || [];
+  
+  // Get precise search terms for each selected industry
+  const searchTerms = industries.map((ind) => INDUSTRY_TO_SEARCH_TERM[ind] || ind).join(" OR ");
+  const keywordStr = keywords.length > 0 ? ` ${keywords.join(" ")}` : "";
+  
+  // Determine search locations — prefer specific cities over vague country-level geographic focus
+  const cities = (targetCriteria.geo_cities as string[]) || [];
+  const regions = (targetCriteria.geo_regions as string[]) || [];
+  const countries = (targetCriteria.geo_countries as string[]) || [];
+  
+  const locations: string[] = [];
+  if (cities.length > 0) locations.push(...cities.slice(0, 5)); // max 5 cities
+  else if (regions.length > 0) locations.push(...regions.slice(0, 3));
+  else if (countries.length > 0) locations.push(...countries.slice(0, 2));
+  else locations.push(geographicFocus);
 
-  console.log(`[pipeline] Calling Serper Places for: "${query}"`);
+  const allPlaces: SerperPlace[] = [];
+  
+  for (const location of locations) {
+    const query = `${searchTerms}${keywordStr} in ${location}`;
+    console.log(`[pipeline] Serper Places query: "${query}"`);
 
-  const response = await fetch("https://google.serper.dev/places", {
-    method: "POST",
-    headers: {
-      "X-API-KEY": serperKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ q: query, gl: "us", hl: "en", num: 20 }),
-  });
+    try {
+      const response = await fetch("https://google.serper.dev/places", {
+        method: "POST",
+        headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ q: query, gl: "us", hl: "en", num: 20 }),
+      });
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error("[pipeline] Serper error:", response.status, errText);
-    throw new Error(`Serper API error (${response.status}): Check your API key in Admin → Settings.`);
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error("[pipeline] Serper error:", response.status, errText);
+        throw new Error(`Serper API error (${response.status}). Check your API key in Admin → Settings.`);
+      }
+
+      const data = await response.json();
+      const places: SerperPlace[] = data.places || [];
+
+      // Post-filter: only keep relevant business types
+      const relevant = places.filter((p) => isRelevantPlace(p, industries));
+      console.log(`[pipeline] ${location}: ${places.length} places, ${relevant.length} relevant`);
+      allPlaces.push(...relevant);
+    } catch (err) {
+      if (err instanceof Error && err.message.includes("Serper API error")) throw err;
+      console.error(`[pipeline] Search failed for ${location}:`, err);
+    }
   }
 
-  const data = await response.json();
-  const places: SerperPlace[] = data.places || [];
-  console.log(`[pipeline] Serper returned ${places.length} real places.`);
-  return places;
+  // De-duplicate by business name
+  const seen = new Set<string>();
+  const unique = allPlaces.filter((p) => {
+    const key = (p.title || "").toLowerCase().trim();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  console.log(`[pipeline] Total unique real businesses: ${unique.length}`);
+  return unique;
 }
 
 // ── Convert Serper places to our lead format ──
@@ -161,14 +233,15 @@ export function useCampaignPipeline() {
       // ── Step 2: Read Serper API key from database ──
       setState((s) => ({ ...s, stage: "discovering", progress: "Checking Serper API key..." }));
 
-      const { data: keyRow } = await supabase
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: keyRow } = await (supabase as any)
         .from("api_keys")
         .select("key_value")
         .eq("key_name", "SERPER_API_KEY")
         .eq("is_active", true)
         .maybeSingle();
 
-      const serperKey = keyRow?.key_value;
+      const serperKey = keyRow?.key_value as string | undefined;
 
       if (!serperKey) {
         throw new Error(
