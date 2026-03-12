@@ -728,7 +728,7 @@ const CampaignNew = () => {
                     {pipeline.stage === "done"
                       ? "Your leads have been discovered, scored, and outreach has been prepared."
                       : pipeline.stage === "error"
-                      ? "Something went wrong. Your campaign has been saved — you can retry from the campaign page."
+                      ? (pipeline.error || "Something went wrong. Your campaign has been saved — you can retry from the campaign page.")
                       : "Sit back while your AI discovers and qualifies leads for this campaign."}
                   </CardDescription>
                 </CardHeader>
