@@ -127,9 +127,9 @@ const AdminSettings = () => {
     try {
       const existing = storedKeys?.find((k) => k.provider === config.envName);
       if (existing) {
-        await supabase.from("ai_config").update({ api_key_encrypted: "configured", is_active: true, model: config.label }).eq("id", existing.id);
+        await supabase.from("ai_config").update({ api_key_encrypted: value, is_active: true, model: config.label }).eq("id", existing.id);
       } else {
-        await supabase.from("ai_config").insert({ provider: config.envName, purpose: "api_key_store", model: config.label, api_key_encrypted: "configured", is_active: true });
+        await supabase.from("ai_config").insert({ provider: config.envName, purpose: "api_key_store", model: config.label, api_key_encrypted: value, is_active: true });
       }
       toast({ title: "Saved", description: `${config.label} has been saved. Add it as a backend secret named ${config.envName} to activate.` });
       setValues((p) => ({ ...p, [config.id]: "" }));
