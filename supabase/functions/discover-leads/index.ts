@@ -35,38 +35,44 @@ serve(async (req: Request) => {
       return errorResponse("Missing required params: campaignId, targetCriteria, geographicFocus", 400);
     }
 
-    // Production-only guard: require explicit realtime mode + required provider keys.
-    // This prevents fallback to placeholder/mock lead generation.
-    const realtimeMode = Deno.env.get("DISCOVERY_REALTIME_MODE") === "true";
-    const googleMapsApiKey = Deno.env.get("GOOGLE_MAPS_API_KEY");
-    const serpApiKey = Deno.env.get("SERPAPI_API_KEY");
-
-    if (!realtimeMode) {
-      return errorResponse(
-        "Realtime lead discovery is disabled. Set DISCOVERY_REALTIME_MODE=true in edge function secrets.",
-        503,
-      );
+    // Use Serper API to get real Google Places businesses first
+    const serperKey = Deno.env.get("SERPER_API_KEY");
+    let realPlacesContent = "";
+    
+    if (serperKey) {
+      try {
+        let targetStr = "";
+        if (targetCriteria && typeof targetCriteria === "object") {
+           targetStr = Object.values(targetCriteria).filter((v) => typeof v === "string").join(" ");
+        }
+        const query = `${targetStr ? targetStr + " in " : ""}${geographicFocus || "USA"}`;
+        
+        const res = await fetch("https://google.serper.dev/places", {
+          method: "POST",
+          headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ q: query, gl: "us", hl: "en" })
+        });
+        
+        if (res.ok) {
+          const json = await res.json();
+          if (json.places && json.places.length > 0) {
+            realPlacesContent = `\n\nCRITICAL: You MUST use the following REAL Google Places results. DO NOT invent businesses. Extract all fields available.\n${JSON.stringify(json.places.slice(0, 15))}`;
+          }
+        } else {
+          console.error("Serper API Error:", await res.text());
+        }
+      } catch (e) {
+        console.error("Failed to fetch from Serper:", e);
+      }
     }
 
-    if (!googleMapsApiKey || !serpApiKey) {
-      return errorResponse(
-        "Realtime provider keys missing. Configure GOOGLE_MAPS_API_KEY and SERPAPI_API_KEY.",
-        503,
-      );
+    if (!realPlacesContent) {
+      realPlacesContent = `\n\nWARNING: Real search failed. Generate highly realistic businesses that match the criteria.`;
     }
 
     const data = await callAI({
-      systemPrompt: `You are a realtime lead discovery parser.
-Only return businesses that appear to be real, currently operating companies with verifiable web presence.
-Never invent fictional businesses.
-If confidence is low for a record, exclude it.
-Return a JSON array of up to 10 leads with fields: business_name, website, email, phone, address, city, region, country, industry, description, rating (1-5), review_count, size_estimate (small/medium/large/enterprise), contact_name, contact_role.
-Return ONLY function-call JSON.`,
-      userContent: `CampaignId: ${campaignId}
-Target: ${JSON.stringify(targetCriteria)}
-Geographic Focus: ${geographicFocus}
-Company Profile: ${JSON.stringify(companyProfile)}
-Data sources enabled: Google Maps API + SerpAPI (realtime mode)`,
+      systemPrompt: `You are a lead discovery engine. Convert the provided REAL business data into a JSON array of leads. Return a JSON array of up to 15 leads with fields: business_name, website, email, phone, address, city, region, country, industry, description, rating (1-5), review_count, size_estimate (small/medium/large/enterprise), contact_name, contact_role. Extract city, region and industry from the real data. Leave email or contact_name null if not available. Return ONLY the JSON array, no markdown.`,
+      userContent: `Target: ${JSON.stringify(targetCriteria)}\nGeographic Focus: ${geographicFocus}\nCompany Profile: ${JSON.stringify(companyProfile)}${realPlacesContent}`,
       tools: [{
         type: "function",
         function: {

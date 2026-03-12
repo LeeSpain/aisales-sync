@@ -66,7 +66,38 @@ serve(async (req) => {
     // Build AI prompt
     const systemPrompt = `You are a business research analyst. Given information about a lead business, research and extract key business intelligence.
 Analyze the available information and provide a comprehensive research profile.
-Be specific and data-driven. If information is not available, make reasonable inferences based on industry, size, and location.`;
+Be specific and data-driven. Do NOT hallucinate; rely heavily on the provided real search data.`;
+
+    // Fetch real info from Serper Google Search
+    const serperKey = Deno.env.get("SERPER_API_KEY");
+    let searchContent = "";
+    
+    if (serperKey) {
+      const q = `"${lead.business_name}" ${lead.website ? lead.website : ""} ${[lead.city, lead.region].filter(Boolean).join(" ")}`;
+      try {
+        const [searchRes, newsRes] = await Promise.all([
+            fetch("https://google.serper.dev/search", {
+              method: "POST",
+              headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+              body: JSON.stringify({ q, num: 5 })
+            }),
+            fetch("https://google.serper.dev/news", {
+              method: "POST",
+              headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+              body: JSON.stringify({ q, num: 3 })
+            })
+        ]);
+        let sData = null, nData = null;
+        if (searchRes.ok) sData = await searchRes.json();
+        if (newsRes.ok) nData = await newsRes.json();
+        
+        if (sData?.organic || nData?.news) {
+            searchContent = `\n\nREAL GOOGLE SEARCH RESULTS for this business:\nSearch Snippets: ${JSON.stringify(sData?.organic?.slice(0, 5) || [])}\nNews Snippets: ${JSON.stringify(nData?.news?.slice(0, 3) || [])}\n\nIMPORTANT: Base your research profile entirely on these real search facts. Do not hallucinate.`;
+        }
+      } catch (e) {
+        console.error("Failed to fetch from Serper API in research:", e);
+      }
+    }
 
     const userContent = `Research this business lead:
 
@@ -77,6 +108,7 @@ Location: ${[lead.city, lead.region, lead.country].filter(Boolean).join(", ") ||
 Size Estimate: ${lead.size_estimate || "Unknown"}
 Description: ${lead.description || "No description available"}
 Rating: ${lead.rating || "N/A"} (${lead.review_count || 0} reviews)
+${searchContent}
 
 ${company ? `Our Company Context (for positioning analysis):
 Company: ${company.name}
