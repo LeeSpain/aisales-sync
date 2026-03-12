@@ -42,19 +42,34 @@ interface SerperPlace {
   longitude?: number;
 }
 
-// Maps campaign industry tags to precise Google Places search terms
+// Maps campaign industry tags to precise Google Places search terms (bilingual: English + Spanish)
 const INDUSTRY_TO_SEARCH_TERM: Record<string, string> = {
-  "Real Estate": "estate agents",
-  "E-commerce": "ecommerce online store",
-  "SaaS": "software company tech startup",
-  "Retail": "retail shop store",
-  "Healthcare": "healthcare clinic medical practice",
-  "Finance": "financial services accountant",
-  "Marketing": "marketing agency digital agency",
-  "Hospitality": "hotel restaurant hospitality",
-  "Manufacturing": "manufacturing factory",
-  "Education": "school college training centre",
-  "Professional Services": "professional services consultancy",
+  "Real Estate": "inmobiliaria agencia inmobiliaria estate agents property",
+  "E-commerce": "tienda online ecommerce online store",
+  "SaaS": "empresa software tech startup software company",
+  "Retail": "tienda retail shop store comercio",
+  "Healthcare": "clinica medica healthcare clinic medical centre",
+  "Finance": "asesoría financiera financial services accountant",
+  "Marketing": "agencia marketing digital marketing agency",
+  "Hospitality": "hotel restaurante restaurant hospitality",
+  "Manufacturing": "fabricacion manufacturing factory",
+  "Education": "academia escuela school college training",
+  "Professional Services": "asesoría consultoria consultancy professional services",
+};
+
+// Fallback simpler search terms when the main query returns nothing
+const INDUSTRY_FALLBACK_TERM: Record<string, string> = {
+  "Real Estate": "inmobiliaria",
+  "Finance": "asesoría",
+  "Marketing": "agencia marketing",
+  "Healthcare": "clinica",
+  "Education": "academia",
+  "Professional Services": "consultoria",
+  "Hospitality": "hotel",
+  "Manufacturing": "empresa industrial",
+  "SaaS": "empresa tecnologia",
+  "Retail": "tienda comercio",
+  "E-commerce": "tienda online",
 };
 
 // Map country names to Serper gl country codes
@@ -162,16 +177,18 @@ async function fetchRealLeadsFromSerper(
   else locations.push(geographicFocus);
 
   const allPlaces: SerperPlace[] = [];
-  
+  const gl = COUNTRY_TO_GL[countries[0]] || "us";
+
   for (const location of locations) {
     const query = `${searchTerms}${keywordStr} in ${location}`;
-    console.log(`[pipeline] Serper Places query: "${query}"`);
+    console.log(`[pipeline] Serper Places query: "${query}" (gl=${gl})`);
 
+    let places: SerperPlace[] = [];
     try {
       const response = await fetch("https://google.serper.dev/places", {
         method: "POST",
         headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ q: query, gl: COUNTRY_TO_GL[countries[0]] || "us", hl: "en", num: 20 }),
+        body: JSON.stringify({ q: query, gl, hl: "en", num: 20 }),
       });
 
       if (!response.ok) {
@@ -181,15 +198,48 @@ async function fetchRealLeadsFromSerper(
       }
 
       const data = await response.json();
-      const places: SerperPlace[] = data.places || [];
-
-      // Post-filter: only keep relevant business types
-      const relevant = places.filter((p) => isRelevantPlace(p, industries));
-      console.log(`[pipeline] ${location}: ${places.length} places, ${relevant.length} relevant`);
-      allPlaces.push(...relevant);
+      places = data.places || [];
     } catch (err) {
       if (err instanceof Error && err.message.includes("Serper API error")) throw err;
       console.error(`[pipeline] Search failed for ${location}:`, err);
+      continue;
+    }
+
+    // If no results with primary query, try fallback terms
+    if (places.length === 0 && industries.length > 0) {
+      const fallbackTerm = INDUSTRY_FALLBACK_TERM[industries[0]] || industries[0];
+      const fallbackQuery = `${fallbackTerm} in ${location}`;
+      console.log(`[pipeline] Zero results, trying fallback: "${fallbackQuery}"`);
+      try {
+        const fbRes = await fetch("https://google.serper.dev/places", {
+          method: "POST",
+          headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
+          body: JSON.stringify({ q: fallbackQuery, gl, hl: "en", num: 20 }),
+        });
+        if (fbRes.ok) {
+          const fbData = await fbRes.json();
+          places = fbData.places || [];
+          console.log(`[pipeline] Fallback returned ${places.length} places`);
+        }
+      } catch (e) {
+        console.error(`[pipeline] Fallback search failed:`, e);
+      }
+    }
+
+    // Filter: keep only relevant business types
+    const relevant = places.filter((p) => isRelevantPlace(p, industries));
+    console.log(`[pipeline] ${location}: ${places.length} raw, ${relevant.length} relevant after filter`);
+
+    // Safety net: if filter removed everything, return minus-only-bad-chains
+    if (places.length > 0 && relevant.length === 0) {
+      console.warn(`[pipeline] Filter too strict - using relaxed filter for ${location}`);
+      const relaxed = places.filter((p) => {
+        const combined = `${(p.category || "").toLowerCase()} ${(p.title || "").toLowerCase()}`;
+        return !KNOWN_BAD_CHAINS.some((chain) => combined.includes(chain));
+      });
+      allPlaces.push(...relaxed);
+    } else {
+      allPlaces.push(...relevant);
     }
   }
 
