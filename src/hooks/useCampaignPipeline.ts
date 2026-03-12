@@ -57,25 +57,83 @@ const INDUSTRY_TO_SEARCH_TERM: Record<string, string> = {
   "Professional Services": "professional services consultancy",
 };
 
-// Reject results that clearly don't match ANY of the requested industries
+// Map country names to Serper gl country codes
+const COUNTRY_TO_GL: Record<string, string> = {
+  "Spain": "es", "United Kingdom": "gb", "United States": "us",
+  "Canada": "ca", "Australia": "au", "Germany": "de",
+  "France": "fr", "Italy": "it", "Netherlands": "nl",
+  "Ireland": "ie", "Sweden": "se", "Norway": "no",
+  "Denmark": "dk", "Switzerland": "ch", "Belgium": "be",
+  "Austria": "at", "Portugal": "pt", "New Zealand": "nz",
+  "Singapore": "sg", "UAE": "ae", "India": "in",
+  "Brazil": "br", "Mexico": "mx",
+};
+
+// Industry-specific allow-terms: a result must contain at least one of these to pass
+const INDUSTRY_ALLOW_TERMS: Record<string, string[]> = {
+  "Real Estate": ["estate", "property", "letting", "realt", "homes", "housing", "land agent",
+    "inmobiliaria", "agencia inmobiliaria", "compraven", "alquiler"],
+  "Finance": ["financial", "accountant", "accounting", "bank", "insurance",
+    "mortgage", "investment", "wealth", "tax", "contabilidad", "asesoría fiscal"],
+  "Marketing": ["marketing", "agency", "advertising", "digital", "media",
+    "seo", "brand", "creative", "pr ", "publicidad"],
+  "Healthcare": ["clinic", "health", "medical", "dental", "therapy", "physio",
+    "care", "pharmacy", "doctor", "clínica", "salud"],
+  "Education": ["school", "college", "academy", "training", "language",
+    "tutoring", "university", "escuela", "academia"],
+  "Professional Services": ["consultant", "consultancy", "solicitor", "lawyer",
+    "architect", "engineer", "surveyor", "advisor", "asesor"],
+  "Hospitality": ["hotel", "restaurant", "bar", "café", "bistro",
+    "resort", "spa", "catering", "hostal"],
+  "Manufacturing": ["manufactur", "factory", "production", "industrial",
+    "warehouse", "fabricat", "fábrica"],
+  "SaaS": ["software", "tech", "saas", "app", "platform", "cloud", "it ",
+    "development", "digital"],
+  "E-commerce": ["online store", "ecommerce", "shop", "boutique", "retail",
+    "tienda", "store"],
+};
+
+// Names of known supermarket & irrelevant chains to hard-reject
+const KNOWN_BAD_CHAINS = [
+  "alcampo", "mercadona", "lidl", "aldi", "carrefour", "eroski",
+  "tesco", "sainsbury", "asda", "morrisons", "waitrose", "iceland",
+  "dunnes", "supervalu", "costco", "walmart", "amazon",
+  "mcdonald", "burger king", "kfc", "subway", "starbucks",
+  "repsol", "cepsa", "bp ", "shell ",
+];
+
+// Reject results that clearly don't match the requested industries
 function isRelevantPlace(place: SerperPlace, requestedIndustries: string[]): boolean {
-  if (!requestedIndustries.length || !place.category) return true; // no filter if no category info
-  
   const cat = (place.category || "").toLowerCase();
   const title = (place.title || "").toLowerCase();
-  
-  // Explicit reject list — things that should never appear
-  const rejectTerms = ["supermarket", "grocery", "convenience store", "petrol station", 
-    "gas station", "fast food", "takeaway", "pub ", "church", "mosque", "temple", "hospital"];
-  if (rejectTerms.some((term) => cat.includes(term) || title.includes(term))) return false;
-  
-  // For Real Estate campaigns, only keep real estate related results
-  if (requestedIndustries.includes("Real Estate")) {
-    const realEstateTerms = ["estate", "property", "letting", "realt", "homes", "housing", "land agent"];
-    return realEstateTerms.some((t) => cat.includes(t) || title.includes(t));
+  const combined = `${cat} ${title}`;
+
+  // Always reject known bad chains regardless of category
+  if (KNOWN_BAD_CHAINS.some((chain) => combined.includes(chain))) return false;
+
+  // Always reject generic bad categories
+  const rejectCategories = [
+    "supermarket", "grocery", "convenience store", "hypermarket",
+    "petrol station", "gas station", "fuel station",
+    "fast food", "takeaway", "church", "mosque", "temple",
+    "hospital", "atm", "cash machine",
+  ];
+  if (rejectCategories.some((term) => combined.includes(term))) return false;
+
+  // If no industries specified, accept everything that passed the reject filter
+  if (!requestedIndustries.length) return true;
+
+  // Check against industry-specific allow terms
+  for (const industry of requestedIndustries) {
+    const allowTerms = INDUSTRY_ALLOW_TERMS[industry];
+    if (!allowTerms) continue; // unknown industry — let it through
+    if (allowTerms.some((t) => combined.includes(t))) return true;
   }
-  
-  return true; // default: keep
+
+  // If category data is absent, err on the side of inclusion
+  if (!place.category) return true;
+
+  return false; // doesn't match any requested industry
 }
 
 // ── Fetch real businesses from Google Places via Serper API ──
@@ -113,7 +171,7 @@ async function fetchRealLeadsFromSerper(
       const response = await fetch("https://google.serper.dev/places", {
         method: "POST",
         headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ q: query, gl: "us", hl: "en", num: 20 }),
+        body: JSON.stringify({ q: query, gl: COUNTRY_TO_GL[countries[0]] || "us", hl: "en", num: 20 }),
       });
 
       if (!response.ok) {
