@@ -43,7 +43,7 @@ CREATE TABLE public.leads (
   score DECIMAL,
   score_reasoning TEXT,
   research_data JSONB,
-  source TEXT DEFAULT 'manual' CHECK (source IN ('google_maps','serp','directory','manual')),
+  source TEXT DEFAULT 'manual' CHECK (source IN ('google_maps','serp','directory','manual','ai_discovery')),
   status TEXT DEFAULT 'discovered' CHECK (status IN ('discovered','scored','qualified','outreach_pending','contacted','replied','in_conversation','call_scheduled','call_completed','converted','rejected','unresponsive')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
