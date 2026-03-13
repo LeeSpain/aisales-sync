@@ -33,7 +33,7 @@ const API_KEYS: ApiKeyConfig[] = [
   { id: "stripe_secret", label: "Stripe Secret Key", envName: "STRIPE_SECRET_KEY", description: "For subscription payments & billing portal. Get it from dashboard.stripe.com/apikeys", icon: CreditCard, category: "Payments", docsUrl: "https://dashboard.stripe.com/apikeys" },
   { id: "stripe_webhook", label: "Stripe Webhook Secret", envName: "STRIPE_WEBHOOK_SECRET", description: "For receiving Stripe webhook events. Found in your Stripe webhook endpoint settings.", icon: CreditCard, category: "Payments", docsUrl: "https://dashboard.stripe.com/webhooks" },
   { id: "google_places", label: "Google Places API Key", envName: "GOOGLE_PLACES_API_KEY", description: "For real lead discovery via Google Maps/Places. Enable Places API in Google Cloud Console.", icon: Globe, category: "Lead Discovery", docsUrl: "https://console.cloud.google.com/apis/credentials" },
-  { id: "serp_api", label: "SerpAPI Key", envName: "SERP_API_KEY", description: "For enriching lead data with search results. Get it from serpapi.com/dashboard", icon: Globe, category: "Lead Discovery", docsUrl: "https://serpapi.com/dashboard" },
+  { id: "serp_api", label: "Serper API Key", envName: "serper_api_key", description: "For enriching lead data with search results. Get it from serper.dev", icon: Globe, category: "Lead Discovery", docsUrl: "https://serper.dev" },
   { id: "apollo_api", label: "Apollo API Key", envName: "APOLLO_API_KEY", description: "For B2B prospect discovery and enrichment. Get it from your Apollo.io settings.", icon: Globe, category: "Lead Discovery", docsUrl: "https://apollo.io/settings/api" },
   { id: "linkedin_cookie", label: "LinkedIn session cookie (li_at)", envName: "LINKEDIN_SESSION_COOKIE", description: "For LinkedIn out-bound sequences and search. Grab 'li_at' cookie from browser.", icon: Globe, category: "Lead Discovery", docsUrl: "https://linkedin.com" },
   { id: "sendgrid", label: "SendGrid API Key", envName: "SENDGRID_API_KEY", description: "For sending outreach emails. Create one at app.sendgrid.com/settings/api_keys", icon: Mail, category: "Email", docsUrl: "https://app.sendgrid.com/settings/api_keys" },
@@ -56,12 +56,12 @@ const AdminSettings = () => {
 
   const getPurpose = (keyId: string): string => {
     const maps: Record<string, string> = {
-      "google_places": "google_places_api",
-      "serp_api": "serper_api",
-      "apollo_api": "apollo_api",
-      "linkedin_cookie": "linkedin_api",
+      "google_places": "google_places",
+      "serp_api": "serper",
+      "apollo_api": "apollo",
+      "linkedin_cookie": "linkedin_session",
     };
-    return maps[keyId] || `${keyId}_api`;
+    return maps[keyId] || keyId;
   };
   const [values, setValues] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
@@ -457,7 +457,6 @@ const AdminSettings = () => {
               const isEnabled = leadToggles.isApiEnabled(purpose);
               const configured = isKeyConfigured(config.envName);
               const isLeadDiscovery = config.category === "Lead Discovery";
-              const configured = isKeyConfigured(config.envName);
               const statusText = isLeadDiscovery 
                 ? (isEnabled && configured ? "Enabled & Configured" : isEnabled ? "Enabled • Add Key" : "Disabled")
                 : (configured ? "Configured" : "Not set");
