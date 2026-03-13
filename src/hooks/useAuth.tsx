@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 
@@ -35,8 +36,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setLoading(true);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Failed to sign out:", error);
+      setLoading(false);
+      return;
+    }
+
+    // Ensure we clear local session state immediately, flush cached data, and redirect.
+    queryClient.clear();
+    setSession(null);
+    setLoading(false);
+    navigate("/login");
   };
 
   return (
