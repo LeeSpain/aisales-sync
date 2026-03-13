@@ -34,22 +34,6 @@ interface RunPipelineParams {
   tone: string;
 }
 
-// Shape of a pipeline_runs row from the database
-interface PipelineRun {
-  id: string;
-  campaign_id: string;
-  company_id: string;
-  status: "running" | "completed" | "failed";
-  current_stage: string;
-  progress_message: string;
-  leads_discovered: number;
-  leads_qualified: number;
-  messages_generated: number;
-  started_at: string;
-  completed_at: string | null;
-  error_message: string | null;
-}
-
 const POLL_INTERVAL_MS = 3000;
 
 /** Map backend stage names to frontend PipelineStage */
@@ -64,6 +48,69 @@ function mapStage(backendStage: string): PipelineStage {
     case "completed":         return "done";
     case "failed":            return "error";
     default:                  return "discovering";
+  }
+}
+
+/**
+ * Classify edge function errors into user-friendly messages.
+ * Supabase JS client wraps failures as FunctionsHttpError, FunctionsRelayError,
+ * or FunctionsFetchError depending on what went wrong.
+ */
+function classifyPipelineError(err: unknown): string {
+  if (!(err instanceof Error)) return "Pipeline failed to start.";
+
+  const msg = err.message || "";
+  const name = err.name || "";
+
+  // Network-level failure: function doesn't exist or isn't reachable
+  if (
+    name === "FunctionsFetchError" ||
+    msg.includes("Failed to send a request") ||
+    msg.includes("Failed to fetch") ||
+    msg.includes("NetworkError") ||
+    msg.includes("TypeError")
+  ) {
+    return "Pipeline service is not deployed yet. Contact support or check deployment status.";
+  }
+
+  // HTTP 404 — function not found
+  if (msg.includes("404") || msg.includes("not found")) {
+    return "Pipeline service is not deployed yet. Contact support or check deployment status.";
+  }
+
+  // HTTP 401/403 — auth/secrets issue
+  if (
+    msg.includes("401") ||
+    msg.includes("403") ||
+    msg.includes("Unauthorized") ||
+    msg.includes("Forbidden") ||
+    msg.includes("Invalid JWT")
+  ) {
+    return "Pipeline configuration error. API keys may not be set.";
+  }
+
+  // HTTP 503 — dead switch or service unavailable
+  if (msg.includes("503") || msg.includes("disabled by admin")) {
+    return "Pipeline is currently disabled by admin.";
+  }
+
+  // Anything else: show the actual message
+  return msg;
+}
+
+/**
+ * Pre-flight check: verify edge functions are reachable before starting pipeline.
+ * Calls the lightweight health-check function.
+ * Returns true if healthy, false if unreachable.
+ */
+async function checkEdgeFunctionHealth(): Promise<boolean> {
+  try {
+    const { error } = await supabase.functions.invoke("health-check", {
+      method: "GET",
+    });
+    return !error;
+  } catch {
+    return false;
   }
 }
 
@@ -137,7 +184,7 @@ export function useCampaignPipeline() {
 
     setState({
       stage: "discovering",
-      progress: "Starting pipeline...",
+      progress: "Checking pipeline services...",
       leadsFound: 0,
       leadsQualified: 0,
       messagesGenerated: 0,
@@ -145,7 +192,15 @@ export function useCampaignPipeline() {
     });
 
     try {
-      // Fire the edge function — it creates pipeline_runs and runs the full pipeline
+      // ── Pre-flight: verify edge functions are reachable ──
+      const healthy = await checkEdgeFunctionHealth();
+      if (!healthy) {
+        throw new Error("Cannot reach pipeline services. Please check your deployment.");
+      }
+
+      setState((s) => ({ ...s, progress: "Starting pipeline..." }));
+
+      // ── Fire the pipeline edge function ──
       const { data, error: invokeErr } = await supabase.functions.invoke(
         "run-campaign-pipeline",
         {
@@ -161,7 +216,7 @@ export function useCampaignPipeline() {
       );
 
       if (invokeErr) {
-        throw new Error(invokeErr.message || "Failed to start pipeline");
+        throw invokeErr;
       }
 
       const runId = data?.run_id as string | undefined;
@@ -176,7 +231,7 @@ export function useCampaignPipeline() {
       // Also do one immediate poll
       await pollProgress();
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Pipeline failed to start";
+      const message = classifyPipelineError(err);
       setState((s) => ({ ...s, stage: "error", error: message, progress: message }));
       isRunningRef.current = false;
     }
