@@ -13,14 +13,15 @@ serve(async (req) => {
     const isKilled = await checkDeadSwitch(sb);
     if (isKilled) return errorResponse("AI operations are currently disabled by admin.", 503);
 
-    // ── Check Serper API toggle ──
+    // ── Check Serper provider toggle (global default row) ──
     const { data: serperToggle } = await sb
-      .from("ai_config")
-      .select("is_active")
-      .eq("purpose", "serper_api")
+      .from("provider_configs")
+      .select("is_enabled")
+      .eq("provider_name", "serper")
+      .is("company_id", null)
       .maybeSingle();
-    
-    if (!serperToggle?.is_active) {
+
+    if (!serperToggle?.is_enabled) {
       console.log("[discover-leads] Serper API disabled by admin toggle. Returning no leads.");
       return jsonResponse({ leads: [], count: 0, source: "serper_disabled" });
     }
@@ -31,14 +32,14 @@ serve(async (req) => {
     }
 
     // ── Step 1: Get Serper API key ──
-    // First check Deno env (deployed secret), then fall back to admin-saved key in ai_config table
+    // First check Deno env (deployed secret), then fall back to admin-saved key in api_keys table
     let serperKey = Deno.env.get("SERPER_API_KEY");
 
     if (!serperKey) {
       const { data: keyRow } = await sb
         .from("api_keys")
         .select("key_value")
-        .eq("key_name", "SERPER_API_KEY")
+        .eq("key_name", "serper_api_key")
         .eq("is_active", true)
         .maybeSingle();
       serperKey = keyRow?.key_value || null;
@@ -46,7 +47,7 @@ serve(async (req) => {
 
     if (!serperKey || serperKey === "configured") {
       return errorResponse(
-        "Serper API key not configured. Go to Admin → Settings → Lead Discovery and add your SERPER_API_KEY from serper.dev. This is required for real lead discovery.",
+        "Serper API key not configured. Go to Admin → Settings → Lead Discovery and add your serper_api_key from serper.dev. This is required for real lead discovery.",
         503
       );
     }

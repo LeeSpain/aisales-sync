@@ -12,6 +12,34 @@ import {
 } from "../_shared/utils.ts";
 import { validateRequired, validateUUID } from "../_shared/validators.ts";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// INTERNAL EDGE FUNCTION CALLER (same pattern as run-campaign-pipeline)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+async function callScrapeUrl(
+  url: string,
+  hint: string = "static"
+): Promise<Record<string, unknown> | null> {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/scrape-url`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ url, hint }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn("[research-lead] scrape-url call failed:", err);
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return optionsResponse();
 
@@ -33,14 +61,15 @@ serve(async (req) => {
     const isKilled = await checkDeadSwitch(sb);
     if (isKilled) return errorResponse("AI operations are currently disabled by admin.", 503);
 
-    // ── Check Serper API toggle ──
+    // ── Check Serper provider toggle (global default row) ──
     const { data: serperToggle } = await sb
-      .from("ai_config")
-      .select("is_active")
-      .eq("purpose", "serper_api")
+      .from("provider_configs")
+      .select("is_enabled")
+      .eq("provider_name", "serper")
+      .is("company_id", null)
       .maybeSingle();
-    
-    if (!serperToggle?.is_active) {
+
+    if (!serperToggle?.is_enabled) {
       console.log("[research-lead] Serper API disabled by admin toggle. Skipping research.");
       return jsonResponse({ status: "skipped", reason: "serper_disabled" });
     }
@@ -68,13 +97,57 @@ serve(async (req) => {
       const { data: keyRow } = await sb
         .from("api_keys")
         .select("key_value")
-        .eq("key_name", "SERPER_API_KEY")
+        .eq("key_name", "serper_api_key")
         .eq("is_active", true)
         .maybeSingle();
       serperKey = keyRow?.key_value || null;
     }
 
-    // ── Fetch REAL search data about this business ──
+    // ── Collect pages_fetched for provenance ──
+    const pagesFetched: Array<{ url: string; content: string; provider: string }> = [];
+    const enrichedFields: Record<string, string> = {};
+
+    // ── Scrape lead website via scrape-url ──
+    let websiteData = "";
+    if (lead.website) {
+      console.log(`[research-lead] Scraping website via scrape-url: ${lead.website}`);
+      const scrapeResult = await callScrapeUrl(lead.website, "static");
+
+      if (scrapeResult && !scrapeResult.error) {
+        const mainContent = (scrapeResult.main_content as string) || "";
+        const title = (scrapeResult.title as string) || "";
+        const description = (scrapeResult.description as string) || "";
+        const emailsFound = (scrapeResult.emails_found as string[]) || [];
+        const phonesFound = (scrapeResult.phones_found as string[]) || [];
+
+        if (mainContent.length > 50) {
+          websiteData = `\n\nWEBSITE CONTENT (scraped from ${lead.website}):
+Title: ${title}
+Description: ${description}
+Content: ${mainContent.slice(0, 5000)}`;
+
+          pagesFetched.push({
+            url: lead.website,
+            content: mainContent,
+            provider: (scrapeResult.provider_used as string) || "static",
+          });
+        }
+
+        // Capture enriched fields from website scrape
+        if (emailsFound.length > 0 && !lead.contact_email) {
+          enrichedFields.contact_email = emailsFound[0];
+        }
+        if (phonesFound.length > 0 && !lead.phone) {
+          enrichedFields.phone = phonesFound[0];
+        }
+
+        console.log(`[research-lead] Website scrape: ${mainContent.length} chars, ${emailsFound.length} emails, ${phonesFound.length} phones`);
+      } else {
+        console.warn(`[research-lead] Website scrape failed: ${scrapeResult?.error || "no response"}`);
+      }
+    }
+
+    // ── Fetch REAL search data about this business (Serper) ──
     let realSearchData = "";
     if (serperKey && serperKey !== "configured") {
       const q = `"${lead.business_name}" ${[lead.city, lead.region].filter(Boolean).join(" ")}`;
@@ -108,6 +181,17 @@ Recent news: ${JSON.stringify(news, null, 2)}
 
 STRICT RULE: Base your entire research profile on these real results. Do NOT invent, assume, or fabricate ANY information not present in the above data.`;
           console.log(`[research-lead] Got ${organic.length} search results, ${news.length} news items.`);
+
+          // Find the lead's own website in organic results for provenance
+          for (const result of organic) {
+            if (result.link && result.snippet) {
+              pagesFetched.push({
+                url: result.link,
+                content: `${result.title || ""}\n${result.snippet}`,
+                provider: "serper",
+              });
+            }
+          }
         }
       } catch (e) {
         console.error("[research-lead] Serper search failed:", e);
@@ -127,6 +211,7 @@ Location: ${[lead.city, lead.region, lead.country].filter(Boolean).join(", ") ||
 Size Estimate: ${lead.size_estimate || "Unknown"}
 Description: ${lead.description || "No description available"}
 Rating: ${lead.rating || "N/A"} (${lead.review_count || 0} reviews)
+${websiteData}
 ${realSearchData}
 
 ${company ? `Our Company:
@@ -150,6 +235,8 @@ Target Markets: ${JSON.stringify(company.target_markets || [])}` : ""}`;
               competitive_advantages: { type: "array", items: { type: "string" }, description: "Competitive advantages from search data" },
               recent_activity: { type: "array", items: { type: "string" }, description: "Recent news or activities from the news search results" },
               research_summary: { type: "string", description: "Summary of findings — only reference real data found in the search results" },
+              contact_name: { type: "string", description: "Contact name found in search results, or empty string if not found" },
+              contact_role: { type: "string", description: "Contact role/title found in search results, or empty string if not found" },
             },
             required: ["services_offered", "target_market", "positioning", "pricing_indicators", "competitive_advantages", "recent_activity", "research_summary"],
           },
@@ -167,14 +254,25 @@ Target Markets: ${JSON.stringify(company.target_markets || [])}` : ""}`;
     const researchData = extractToolCallArgs(aiResponse);
     if (!researchData) return errorResponse("AI failed to generate research data", 500);
 
+    // Capture AI-extracted contact fields as enriched
+    if (researchData.contact_name && !lead.contact_name) {
+      enrichedFields.contact_name = researchData.contact_name as string;
+    }
+
+    const dataSource = serperKey && serperKey !== "configured" ? "serper_google_search" : "ai_only";
+
     const { error: updateError } = await sb
       .from("leads")
       .update({
         research_data: {
           ...researchData,
           researched_at: new Date().toISOString(),
-          data_source: serperKey && serperKey !== "configured" ? "serper_google_search" : "ai_only",
+          data_source: dataSource,
         },
+        // Update enriched fields on the lead record directly
+        ...(enrichedFields.contact_email ? { contact_email: enrichedFields.contact_email } : {}),
+        ...(enrichedFields.phone ? { phone: enrichedFields.phone } : {}),
+        ...(enrichedFields.contact_name ? { contact_name: enrichedFields.contact_name } : {}),
       })
       .eq("id", lead_id);
 
@@ -188,10 +286,16 @@ Target Markets: ${JSON.stringify(company.target_markets || [])}` : ""}`;
       lead_id,
       business_name: lead.business_name,
       website: lead.website,
-      data_source: serperKey ? "serper_google_search" : "ai_only",
+      data_source: dataSource,
     });
 
-    return jsonResponse({ status: "researched", lead_id, research_data: researchData });
+    return jsonResponse({
+      status: "researched",
+      lead_id,
+      research_data: researchData,
+      pages_fetched: pagesFetched,
+      enriched_fields: enrichedFields,
+    });
   } catch (e) {
     console.error("research-lead error:", e);
     return errorResponse(e instanceof Error ? e.message : "Unknown error", 500);

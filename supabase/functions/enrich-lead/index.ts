@@ -20,17 +20,18 @@ serve(async (req) => {
     const killed = await checkDeadSwitch(sb);
     if (killed) return errorResponse("AI operations are currently disabled by admin.", 503);
 
-    // ── Check Serper API toggle ──
+    // ── Check Serper provider toggle (global default row) ──
     const { data: serperToggle } = await sb
-      .from("ai_config")
-      .select("is_active")
-      .eq("purpose", "serper_api")
+      .from("provider_configs")
+      .select("is_enabled")
+      .eq("provider_name", "serper")
+      .is("company_id", null)
       .maybeSingle();
-    
-    if (!serperToggle?.is_active) {
+
+    if (!serperToggle?.is_enabled) {
       console.log("[enrich-lead] Serper API disabled by admin toggle. Skipping enrichment.");
-      return jsonResponse({ 
-        success: false, 
+      return jsonResponse({
+        success: false,
         reason: "serper_disabled",
         enrichment: { estimated_revenue: "Not available", estimated_employees: 0, key_contacts: [], tech_indicators: [] }
       });
@@ -59,7 +60,7 @@ serve(async (req) => {
       const { data: keyRow } = await sb
         .from("api_keys")
         .select("key_value")
-        .eq("key_name", "SERPER_API_KEY")
+        .eq("key_name", "serper_api_key")
         .eq("is_active", true)
         .maybeSingle();
       serperKey = keyRow?.key_value || null;
