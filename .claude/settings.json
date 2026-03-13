@@ -5,7 +5,12 @@
       "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
       "Bash(git pull:*)",
       "Bash(npx supabase:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(grep -E \"\\\\.sql$\")",
+      "Bash(npm run:*)",
+      "Bash(supabase --version)",
+      "Bash(supabase projects:*)",
+      "Bash(cat /Users/leewakeman/agent-aura-56/aisales-sync/.lovable/*.json)"
     ]
   }
 }
