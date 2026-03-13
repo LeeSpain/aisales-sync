@@ -457,14 +457,13 @@ const AdminSettings = () => {
               const isEnabled = leadToggles.isApiEnabled(purpose);
               const configured = isKeyConfigured(config.envName);
               const isLeadDiscovery = config.category === "Lead Discovery";
+              const configured = isKeyConfigured(config.envName);
               const statusText = isLeadDiscovery 
                 ? (isEnabled && configured ? "Enabled & Configured" : isEnabled ? "Enabled • Add Key" : "Disabled")
                 : (configured ? "Configured" : "Not set");
               const statusVariant = isLeadDiscovery 
                 ? (isEnabled && configured ? "bg-emerald-500/10 text-emerald-400" : isEnabled ? "bg-amber-500/10 text-amber-400" : "bg-muted text-muted-foreground")
                 : (configured ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground");;
-
-              const configured = isKeyConfigured(config.envName);
               return (
                 <div key={config.id} className="rounded-xl border border-border bg-card p-5">
                   <div className="flex items-start justify-between mb-3">
