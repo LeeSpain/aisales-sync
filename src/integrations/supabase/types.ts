@@ -845,8 +845,39 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      },
+      api_keys: {
+        Row: {
+          id: string
+          key_name: string
+          key_value: string
+          label: string | null
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          key_name: string
+          key_value: string
+          label?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          key_name?: string
+          key_value?: string
+          label?: string | null
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
     }
+
     Views: {
       [_ in never]: never
     }

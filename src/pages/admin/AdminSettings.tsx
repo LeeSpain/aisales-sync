@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useTestMode } from "@/hooks/useTestMode";
 import { useTheme } from "@/hooks/useTheme";
 import { useBrandColors } from "@/hooks/useBrandColors";
+import { useLeadApiToggles } from "@/hooks/useLeadApiToggles";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   Key, Eye, EyeOff, Shield, Globe, CreditCard, Mail, Phone, Save,
@@ -50,6 +52,17 @@ const AdminSettings = () => {
   const { isTestMode, isToggling, toggle: toggleTestMode } = useTestMode();
   const { theme, setTheme } = useTheme();
   const { colors, setColors, reset: resetColors, defaults } = useBrandColors();
+  const leadToggles = useLeadApiToggles();
+
+  const getPurpose = (keyId: string): string => {
+    const maps: Record<string, string> = {
+      "google_places": "google_places_api",
+      "serp_api": "serper_api",
+      "apollo_api": "apollo_api",
+      "linkedin_cookie": "linkedin_api",
+    };
+    return maps[keyId] || `${keyId}_api`;
+  };
   const [values, setValues] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -439,7 +452,18 @@ const AdminSettings = () => {
         <div key={category} className="mb-8">
           <h2 className="text-lg font-semibold mb-4 text-foreground">{category}</h2>
           <div className="space-y-4">
-            {API_KEYS.filter((k) => k.category === category).map((config) => {
+{API_KEYS.filter((k) => k.category === category).map((config) => {
+              const purpose = getPurpose(config.id);
+              const isEnabled = leadToggles.isApiEnabled(purpose);
+              const configured = isKeyConfigured(config.envName);
+              const isLeadDiscovery = config.category === "Lead Discovery";
+              const statusText = isLeadDiscovery 
+                ? (isEnabled && configured ? "Enabled & Configured" : isEnabled ? "Enabled • Add Key" : "Disabled")
+                : (configured ? "Configured" : "Not set");
+              const statusVariant = isLeadDiscovery 
+                ? (isEnabled && configured ? "bg-emerald-500/10 text-emerald-400" : isEnabled ? "bg-amber-500/10 text-amber-400" : "bg-muted text-muted-foreground")
+                : (configured ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground");;
+
               const configured = isKeyConfigured(config.envName);
               return (
                 <div key={config.id} className="rounded-xl border border-border bg-card p-5">
@@ -449,20 +473,50 @@ const AdminSettings = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium">{config.label}</p>
-                          {configured ? (
-                            <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-                              <CheckCircle className="h-3 w-3" /> Configured
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                              <AlertCircle className="h-3 w-3" /> Not set
-                            </span>
-                          )}
+                          <span className={cn("flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold", statusVariant)}>
+                            {isLeadDiscovery ? (
+                              <>
+                                {isEnabled ? <CheckCircle className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+                                {statusText}
+                              </>
+                            ) : (
+                              configured ? (
+                                <>
+                                  <CheckCircle className="h-3 w-3" /> Configured
+                                </>
+                              ) : (
+                                <>
+                                  <AlertCircle className="h-3 w-3" /> Not set
+                                </>
+                              )
+                            )}
+                          </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{config.description}</p>
                       </div>
                     </div>
                   </div>
+                  {isLeadDiscovery && (
+                    <div className="flex items-center justify-between py-3 border-t border-border/50">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span>Enable API</span>
+                        <p className="text-xs text-muted-foreground">{leadToggles.LEAD_APIS.find(a => a.purpose === purpose)?.description}</p>
+                      </div>
+                      <Switch
+                        checked={isEnabled}
+                        onCheckedChange={(checked) => {
+                          leadToggles.toggleApi({ purpose, enabled: checked });
+                          toast({
+                            title: `${config.label} ${checked ? "enabled" : "disabled"}`,
+                            description: checked 
+                              ? "API calls will now use this integration" 
+                              : "API calls will skip this integration (fallback to others/AI)",
+                          });
+                        }}
+                        disabled={leadToggles.isToggling}
+                      />
+                    </div>
+                  )}
 
                   <div className="flex gap-2">
                     <div className="relative flex-1">

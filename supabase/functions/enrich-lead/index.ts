@@ -20,6 +20,22 @@ serve(async (req) => {
     const killed = await checkDeadSwitch(sb);
     if (killed) return errorResponse("AI operations are currently disabled by admin.", 503);
 
+    // ── Check Serper API toggle ──
+    const { data: serperToggle } = await sb
+      .from("ai_config")
+      .select("is_active")
+      .eq("purpose", "serper_api")
+      .maybeSingle();
+    
+    if (!serperToggle?.is_active) {
+      console.log("[enrich-lead] Serper API disabled by admin toggle. Skipping enrichment.");
+      return jsonResponse({ 
+        success: false, 
+        reason: "serper_disabled",
+        enrichment: { estimated_revenue: "Not available", estimated_employees: 0, key_contacts: [], tech_indicators: [] }
+      });
+    }
+
     const body = await req.json();
     const validationError = validateRequired(body, ["lead_id"]);
     if (validationError) return errorResponse(validationError, 400);

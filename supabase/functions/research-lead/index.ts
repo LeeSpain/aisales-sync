@@ -33,6 +33,18 @@ serve(async (req) => {
     const isKilled = await checkDeadSwitch(sb);
     if (isKilled) return errorResponse("AI operations are currently disabled by admin.", 503);
 
+    // ── Check Serper API toggle ──
+    const { data: serperToggle } = await sb
+      .from("ai_config")
+      .select("is_active")
+      .eq("purpose", "serper_api")
+      .maybeSingle();
+    
+    if (!serperToggle?.is_active) {
+      console.log("[research-lead] Serper API disabled by admin toggle. Skipping research.");
+      return jsonResponse({ status: "skipped", reason: "serper_disabled" });
+    }
+
     // Fetch lead from DB
     const { data: lead, error: leadError } = await sb
       .from("leads")

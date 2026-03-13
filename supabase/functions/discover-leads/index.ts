@@ -13,6 +13,18 @@ serve(async (req) => {
     const isKilled = await checkDeadSwitch(sb);
     if (isKilled) return errorResponse("AI operations are currently disabled by admin.", 503);
 
+    // ── Check Serper API toggle ──
+    const { data: serperToggle } = await sb
+      .from("ai_config")
+      .select("is_active")
+      .eq("purpose", "serper_api")
+      .maybeSingle();
+    
+    if (!serperToggle?.is_active) {
+      console.log("[discover-leads] Serper API disabled by admin toggle. Returning no leads.");
+      return jsonResponse({ leads: [], count: 0, source: "serper_disabled" });
+    }
+
     const { campaignId, companyProfile, targetCriteria, geographicFocus } = await req.json();
     if (!campaignId || !targetCriteria || !geographicFocus) {
       return errorResponse("Missing required params: campaignId, targetCriteria, geographicFocus", 400);
