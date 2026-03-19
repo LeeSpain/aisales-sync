@@ -182,6 +182,14 @@ const SettingsPage = () => {
   const sellingPoints = Array.isArray(company?.selling_points) ? company.selling_points as string[] : [];
   const targetMarkets = Array.isArray(company?.target_markets) ? company.target_markets as string[] : [];
 
+  if (!company) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[400px]">
+        <div className="animate-pulse text-muted-foreground">Loading company profile...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-8 space-y-6">
       {/* Header */}
@@ -190,22 +198,20 @@ const SettingsPage = () => {
           <Building2 className="h-6 w-6 text-white" />
         </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{company?.name || "Settings"}</h1>
+          <h1 className="text-2xl font-bold">{company.name || "Company Profile"}</h1>
           <p className="text-sm text-muted-foreground">
             Your AI's knowledge base — everything here shapes how your AI sells, writes, and targets leads.
           </p>
         </div>
-        {company && (
-          <Badge className={cn(
-            "text-xs uppercase tracking-wider",
-            company.status === "active" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"
-          )}>
-            {company.status ?? "setup"}
-          </Badge>
-        )}
+        <Badge className={cn(
+          "text-xs uppercase tracking-wider",
+          company.status === "active" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"
+        )}>
+          {company.status ?? "setup"}
+        </Badge>
       </div>
 
-      {/* Theme Picker — always visible, not gated on company */}
+      {/* Theme Picker */}
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="flex items-center gap-2 mb-3">
           {theme === "dark" ? <Moon className="h-4 w-4 text-primary" /> : theme === "brand" ? <Palette className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}
@@ -302,13 +308,6 @@ const SettingsPage = () => {
         </div>
       </div>
 
-      {/* Company-dependent sections — only render when company data is loaded */}
-      {!company ? (
-        <div className="rounded-xl border border-dashed border-border py-12 text-center">
-          <Building2 className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
-          <p className="text-sm text-muted-foreground">Loading company profile...</p>
-        </div>
-      ) : (<>
       {/* Top grid: Company Info + AI Config */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Company Info */}
@@ -517,7 +516,6 @@ const SettingsPage = () => {
           </div>
         </div>
       </div>
-      </>)}
     </div>
   );
 };
