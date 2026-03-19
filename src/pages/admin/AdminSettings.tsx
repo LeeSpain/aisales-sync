@@ -9,8 +9,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useTestMode } from "@/hooks/useTestMode";
 import { useTheme } from "@/hooks/useTheme";
 import { useBrandColors } from "@/hooks/useBrandColors";
-import { useLeadApiToggles } from "@/hooks/useLeadApiToggles";
-import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import {
   Key, Eye, EyeOff, Shield, Globe, CreditCard, Mail, Phone, Save,
@@ -33,7 +31,7 @@ const API_KEYS: ApiKeyConfig[] = [
   { id: "stripe_secret", label: "Stripe Secret Key", envName: "STRIPE_SECRET_KEY", description: "For subscription payments & billing portal. Get it from dashboard.stripe.com/apikeys", icon: CreditCard, category: "Payments", docsUrl: "https://dashboard.stripe.com/apikeys" },
   { id: "stripe_webhook", label: "Stripe Webhook Secret", envName: "STRIPE_WEBHOOK_SECRET", description: "For receiving Stripe webhook events. Found in your Stripe webhook endpoint settings.", icon: CreditCard, category: "Payments", docsUrl: "https://dashboard.stripe.com/webhooks" },
   { id: "google_places", label: "Google Places API Key", envName: "GOOGLE_PLACES_API_KEY", description: "For real lead discovery via Google Maps/Places. Enable Places API in Google Cloud Console.", icon: Globe, category: "Lead Discovery", docsUrl: "https://console.cloud.google.com/apis/credentials" },
-  { id: "serp_api", label: "Serper API Key", envName: "serper_api_key", description: "For enriching lead data with search results. Get it from serper.dev", icon: Globe, category: "Lead Discovery", docsUrl: "https://serper.dev" },
+  { id: "serp_api", label: "SerpAPI Key", envName: "SERP_API_KEY", description: "For enriching lead data with search results. Get it from serpapi.com/dashboard", icon: Globe, category: "Lead Discovery", docsUrl: "https://serpapi.com/dashboard" },
   { id: "apollo_api", label: "Apollo API Key", envName: "APOLLO_API_KEY", description: "For B2B prospect discovery and enrichment. Get it from your Apollo.io settings.", icon: Globe, category: "Lead Discovery", docsUrl: "https://apollo.io/settings/api" },
   { id: "linkedin_cookie", label: "LinkedIn session cookie (li_at)", envName: "LINKEDIN_SESSION_COOKIE", description: "For LinkedIn out-bound sequences and search. Grab 'li_at' cookie from browser.", icon: Globe, category: "Lead Discovery", docsUrl: "https://linkedin.com" },
   { id: "sendgrid", label: "SendGrid API Key", envName: "SENDGRID_API_KEY", description: "For sending outreach emails. Create one at app.sendgrid.com/settings/api_keys", icon: Mail, category: "Email", docsUrl: "https://app.sendgrid.com/settings/api_keys" },
@@ -52,17 +50,6 @@ const AdminSettings = () => {
   const { isTestMode, isToggling, toggle: toggleTestMode } = useTestMode();
   const { theme, setTheme } = useTheme();
   const { colors, setColors, reset: resetColors, defaults } = useBrandColors();
-  const leadToggles = useLeadApiToggles();
-
-  const getPurpose = (keyId: string): string => {
-    const maps: Record<string, string> = {
-      "google_places": "google_places",
-      "serp_api": "serper",
-      "apollo_api": "apollo",
-      "linkedin_cookie": "linkedin_session",
-    };
-    return maps[keyId] || keyId;
-  };
   const [values, setValues] = useState<Record<string, string>>({});
   const [visibility, setVisibility] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -122,13 +109,13 @@ const AdminSettings = () => {
   const { data: storedKeys } = useQuery({
     queryKey: ["admin-api-keys"],
     queryFn: async () => {
-      const { data } = await supabase.from("api_keys").select("*").eq("is_active", true);
+      const { data } = await supabase.from("ai_config").select("*").eq("purpose", "api_key_store");
       return data || [];
     },
     enabled: isAdmin,
   });
 
-  const isKeyConfigured = (envName: string) => storedKeys?.some((k) => k.key_name === envName && k.is_active);
+  const isKeyConfigured = (envName: string) => storedKeys?.some((k) => k.provider === envName && k.is_active);
 
   const handleSave = async (config: ApiKeyConfig) => {
     const value = values[config.id];
@@ -138,13 +125,13 @@ const AdminSettings = () => {
     }
     setSaving((p) => ({ ...p, [config.id]: true }));
     try {
-      const existing = storedKeys?.find((k) => k.key_name === config.envName);
+      const existing = storedKeys?.find((k) => k.provider === config.envName);
       if (existing) {
-        await supabase.from("api_keys").update({ key_value: value, is_active: true, label: config.label }).eq("id", existing.id);
+        await supabase.from("ai_config").update({ api_key_encrypted: "configured", is_active: true, model: config.label }).eq("id", existing.id);
       } else {
-        await supabase.from("api_keys").insert({ key_name: config.envName, key_value: value, label: config.label, is_active: true });
+        await supabase.from("ai_config").insert({ provider: config.envName, purpose: "api_key_store", model: config.label, api_key_encrypted: "configured", is_active: true });
       }
-      toast({ title: "Saved", description: `${config.label} has been saved and is now live.` });
+      toast({ title: "Saved", description: `${config.label} has been saved. Add it as a backend secret named ${config.envName} to activate.` });
       setValues((p) => ({ ...p, [config.id]: "" }));
       queryClient.invalidateQueries({ queryKey: ["admin-api-keys"] });
     } catch {
@@ -452,17 +439,8 @@ const AdminSettings = () => {
         <div key={category} className="mb-8">
           <h2 className="text-lg font-semibold mb-4 text-foreground">{category}</h2>
           <div className="space-y-4">
-{API_KEYS.filter((k) => k.category === category).map((config) => {
-              const purpose = getPurpose(config.id);
-              const isEnabled = leadToggles.isApiEnabled(purpose);
+            {API_KEYS.filter((k) => k.category === category).map((config) => {
               const configured = isKeyConfigured(config.envName);
-              const isLeadDiscovery = config.category === "Lead Discovery";
-              const statusText = isLeadDiscovery 
-                ? (isEnabled && configured ? "Enabled & Configured" : isEnabled ? "Enabled • Add Key" : "Disabled")
-                : (configured ? "Configured" : "Not set");
-              const statusVariant = isLeadDiscovery 
-                ? (isEnabled && configured ? "bg-emerald-500/10 text-emerald-400" : isEnabled ? "bg-amber-500/10 text-amber-400" : "bg-muted text-muted-foreground")
-                : (configured ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground");;
               return (
                 <div key={config.id} className="rounded-xl border border-border bg-card p-5">
                   <div className="flex items-start justify-between mb-3">
@@ -471,50 +449,20 @@ const AdminSettings = () => {
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-medium">{config.label}</p>
-                          <span className={cn("flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold", statusVariant)}>
-                            {isLeadDiscovery ? (
-                              <>
-                                {isEnabled ? <CheckCircle className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
-                                {statusText}
-                              </>
-                            ) : (
-                              configured ? (
-                                <>
-                                  <CheckCircle className="h-3 w-3" /> Configured
-                                </>
-                              ) : (
-                                <>
-                                  <AlertCircle className="h-3 w-3" /> Not set
-                                </>
-                              )
-                            )}
-                          </span>
+                          {configured ? (
+                            <span className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+                              <CheckCircle className="h-3 w-3" /> Configured
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                              <AlertCircle className="h-3 w-3" /> Not set
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{config.description}</p>
                       </div>
                     </div>
                   </div>
-                  {isLeadDiscovery && (
-                    <div className="flex items-center justify-between py-3 border-t border-border/50">
-                      <div className="flex items-center gap-2 text-sm">
-                        <span>Enable API</span>
-                        <p className="text-xs text-muted-foreground">{leadToggles.LEAD_APIS.find(a => a.purpose === purpose)?.description}</p>
-                      </div>
-                      <Switch
-                        checked={isEnabled}
-                        onCheckedChange={(checked) => {
-                          leadToggles.toggleApi({ purpose, enabled: checked });
-                          toast({
-                            title: `${config.label} ${checked ? "enabled" : "disabled"}`,
-                            description: checked 
-                              ? "API calls will now use this integration" 
-                              : "API calls will skip this integration (fallback to others/AI)",
-                          });
-                        }}
-                        disabled={leadToggles.isToggling}
-                      />
-                    </div>
-                  )}
 
                   <div className="flex gap-2">
                     <div className="relative flex-1">

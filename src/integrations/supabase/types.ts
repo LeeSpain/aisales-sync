@@ -57,12 +57,10 @@ export type Database = {
           id: string
           is_active: boolean | null
           max_tokens: number | null
-          metadata: Json | null
           model: string | null
           monthly_budget_cap: number | null
           provider: string | null
           purpose: string | null
-          system_prompt: string | null
           temperature: number | null
           updated_at: string
         }
@@ -73,12 +71,10 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           max_tokens?: number | null
-          metadata?: Json | null
           model?: string | null
           monthly_budget_cap?: number | null
           provider?: string | null
           purpose?: string | null
-          system_prompt?: string | null
           temperature?: number | null
           updated_at?: string
         }
@@ -89,13 +85,41 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           max_tokens?: number | null
-          metadata?: Json | null
           model?: string | null
           monthly_budget_cap?: number | null
           provider?: string | null
           purpose?: string | null
-          system_prompt?: string | null
           temperature?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      api_keys: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          key_name: string
+          key_value: string
+          label: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          key_name: string
+          key_value: string
+          label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          key_name?: string
+          key_value?: string
+          label?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -182,113 +206,56 @@ export type Database = {
           },
         ]
       }
-      invitations: {
-        Row: {
-          id: string
-          name: string
-          email: string
-          mobile: string | null
-          channels: Json
-          status: string
-          invited_by: string | null
-          accepted_at: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          name: string
-          email: string
-          mobile?: string | null
-          channels?: Json
-          status?: string
-          invited_by?: string | null
-          accepted_at?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          name?: string
-          email?: string
-          mobile?: string | null
-          channels?: Json
-          status?: string
-          invited_by?: string | null
-          accepted_at?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
       campaigns: {
         Row: {
           calls_made: number | null
           company_id: string
           created_at: string
-          deals_won: number | null
           emails_sent: number | null
-          estimated_deal_value: number | null
           geographic_focus: string | null
           id: string
           leads_found: number | null
           leads_qualified: number | null
-          meetings_booked: number | null
           minimum_score: number | null
           name: string
-          proposals_sent: number | null
           replies_received: number | null
           status: string | null
-          target_closings_per_month: number | null
           target_criteria: Json | null
           target_description: string | null
-          target_meetings_per_week: number | null
-          target_proposals_per_week: number | null
           updated_at: string
         }
         Insert: {
           calls_made?: number | null
           company_id: string
           created_at?: string
-          deals_won?: number | null
           emails_sent?: number | null
-          estimated_deal_value?: number | null
           geographic_focus?: string | null
           id?: string
           leads_found?: number | null
           leads_qualified?: number | null
-          meetings_booked?: number | null
           minimum_score?: number | null
           name: string
-          proposals_sent?: number | null
           replies_received?: number | null
           status?: string | null
-          target_closings_per_month?: number | null
           target_criteria?: Json | null
           target_description?: string | null
-          target_meetings_per_week?: number | null
-          target_proposals_per_week?: number | null
           updated_at?: string
         }
         Update: {
           calls_made?: number | null
           company_id?: string
           created_at?: string
-          deals_won?: number | null
           emails_sent?: number | null
-          estimated_deal_value?: number | null
           geographic_focus?: string | null
           id?: string
           leads_found?: number | null
           leads_qualified?: number | null
-          meetings_booked?: number | null
           minimum_score?: number | null
           name?: string
-          proposals_sent?: number | null
           replies_received?: number | null
           status?: string | null
-          target_closings_per_month?: number | null
           target_criteria?: Json | null
           target_description?: string | null
-          target_meetings_per_week?: number | null
-          target_proposals_per_week?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -349,8 +316,6 @@ export type Database = {
         Row: {
           ai_profile: Json | null
           autonomy_level: number | null
-          contact_name: string | null
-          contact_role: string | null
           created_at: string
           description: string | null
           fleet_or_inventory: Json | null
@@ -358,7 +323,6 @@ export type Database = {
           id: string
           industry: string | null
           name: string
-          outreach_languages: string[] | null
           owner_id: string | null
           pricing_summary: string | null
           selling_points: Json | null
@@ -375,8 +339,6 @@ export type Database = {
         Insert: {
           ai_profile?: Json | null
           autonomy_level?: number | null
-          contact_name?: string | null
-          contact_role?: string | null
           created_at?: string
           description?: string | null
           fleet_or_inventory?: Json | null
@@ -384,7 +346,6 @@ export type Database = {
           id?: string
           industry?: string | null
           name: string
-          outreach_languages?: string[] | null
           owner_id?: string | null
           pricing_summary?: string | null
           selling_points?: Json | null
@@ -401,8 +362,6 @@ export type Database = {
         Update: {
           ai_profile?: Json | null
           autonomy_level?: number | null
-          contact_name?: string | null
-          contact_role?: string | null
           created_at?: string
           description?: string | null
           fleet_or_inventory?: Json | null
@@ -410,7 +369,6 @@ export type Database = {
           id?: string
           industry?: string | null
           name?: string
-          outreach_languages?: string[] | null
           owner_id?: string | null
           pricing_summary?: string | null
           selling_points?: Json | null
@@ -547,6 +505,110 @@ export type Database = {
           },
         ]
       }
+      lead_field_provenance: {
+        Row: {
+          confidence: number
+          created_at: string
+          field_name: string
+          field_value: string
+          id: string
+          lead_id: string
+          source_provider: string
+          source_url: string | null
+          verified_at: string | null
+        }
+        Insert: {
+          confidence?: number
+          created_at?: string
+          field_name: string
+          field_value: string
+          id?: string
+          lead_id: string
+          source_provider: string
+          source_url?: string | null
+          verified_at?: string | null
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          field_name?: string
+          field_value?: string
+          id?: string
+          lead_id?: string
+          source_provider?: string
+          source_url?: string | null
+          verified_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_field_provenance_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_run_steps: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_ms: number | null
+          error_message: string | null
+          id: string
+          input_summary: string | null
+          lead_id: string
+          output_summary: string | null
+          pipeline_run_id: string
+          provider_name: string | null
+          status: string
+          step_name: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_summary?: string | null
+          lead_id: string
+          output_summary?: string | null
+          pipeline_run_id: string
+          provider_name?: string | null
+          status?: string
+          step_name: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          error_message?: string | null
+          id?: string
+          input_summary?: string | null
+          lead_id?: string
+          output_summary?: string | null
+          pipeline_run_id?: string
+          provider_name?: string | null
+          status?: string
+          step_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_run_steps_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_run_steps_pipeline_run_id_fkey"
+            columns: ["pipeline_run_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           address: string | null
@@ -555,7 +617,6 @@ export type Database = {
           city: string | null
           company_id: string
           contact_email: string | null
-          contact_linkedin_url: string | null
           contact_name: string | null
           contact_phone: string | null
           contact_role: string | null
@@ -563,7 +624,6 @@ export type Database = {
           created_at: string
           description: string | null
           email: string | null
-          enrichment_source: string | null
           id: string
           industry: string | null
           phone: string | null
@@ -586,7 +646,6 @@ export type Database = {
           city?: string | null
           company_id: string
           contact_email?: string | null
-          contact_linkedin_url?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_role?: string | null
@@ -594,7 +653,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
-          enrichment_source?: string | null
           id?: string
           industry?: string | null
           phone?: string | null
@@ -617,7 +675,6 @@ export type Database = {
           city?: string | null
           company_id?: string
           contact_email?: string | null
-          contact_linkedin_url?: string | null
           contact_name?: string | null
           contact_phone?: string | null
           contact_role?: string | null
@@ -625,7 +682,6 @@ export type Database = {
           created_at?: string
           description?: string | null
           email?: string | null
-          enrichment_source?: string | null
           id?: string
           industry?: string | null
           phone?: string | null
@@ -658,12 +714,11 @@ export type Database = {
           },
         ]
       }
-      outreach_messages: {
+      outreach_emails: {
         Row: {
           ai_model_used: string | null
           body: string
           campaign_id: string | null
-          channel: string | null
           clicked_at: string | null
           company_id: string
           created_at: string
@@ -673,7 +728,6 @@ export type Database = {
           opened_at: string | null
           replied_at: string | null
           sent_at: string | null
-          sequence_step_id: string | null
           status: string | null
           subject: string
         }
@@ -681,7 +735,6 @@ export type Database = {
           ai_model_used?: string | null
           body: string
           campaign_id?: string | null
-          channel?: string | null
           clicked_at?: string | null
           company_id: string
           created_at?: string
@@ -691,7 +744,6 @@ export type Database = {
           opened_at?: string | null
           replied_at?: string | null
           sent_at?: string | null
-          sequence_step_id?: string | null
           status?: string | null
           subject: string
         }
@@ -699,7 +751,6 @@ export type Database = {
           ai_model_used?: string | null
           body?: string
           campaign_id?: string | null
-          channel?: string | null
           clicked_at?: string | null
           company_id?: string
           created_at?: string
@@ -709,7 +760,6 @@ export type Database = {
           opened_at?: string | null
           replied_at?: string | null
           sent_at?: string | null
-          sequence_step_id?: string | null
           status?: string | null
           subject?: string
         }
@@ -733,6 +783,72 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_runs: {
+        Row: {
+          campaign_id: string
+          company_id: string
+          completed_at: string | null
+          created_at: string
+          current_stage: string
+          error_message: string | null
+          id: string
+          leads_discovered: number
+          leads_processed: number
+          leads_qualified: number
+          messages_generated: number
+          progress_message: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          campaign_id: string
+          company_id: string
+          completed_at?: string | null
+          created_at?: string
+          current_stage?: string
+          error_message?: string | null
+          id?: string
+          leads_discovered?: number
+          leads_processed?: number
+          leads_qualified?: number
+          messages_generated?: number
+          progress_message?: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          campaign_id?: string
+          company_id?: string
+          completed_at?: string | null
+          created_at?: string
+          current_stage?: string
+          error_message?: string | null
+          id?: string
+          leads_discovered?: number
+          leads_processed?: number
+          leads_qualified?: number
+          messages_generated?: number
+          progress_message?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_runs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_runs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -774,6 +890,95 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_configs: {
+        Row: {
+          company_id: string | null
+          config_json: Json | null
+          created_at: string
+          id: string
+          is_enabled: boolean
+          priority: number
+          provider_name: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          config_json?: Json | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          priority?: number
+          provider_name: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          config_json?: Json | null
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          priority?: number
+          provider_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_configs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scraped_pages: {
+        Row: {
+          extraction_quality: string
+          fetched_at: string
+          id: string
+          lead_id: string
+          pipeline_run_id: string | null
+          provider_name: string
+          raw_content: string
+          url: string
+        }
+        Insert: {
+          extraction_quality?: string
+          fetched_at?: string
+          id?: string
+          lead_id: string
+          pipeline_run_id?: string | null
+          provider_name: string
+          raw_content: string
+          url: string
+        }
+        Update: {
+          extraction_quality?: string
+          fetched_at?: string
+          id?: string
+          lead_id?: string
+          pipeline_run_id?: string | null
+          provider_name?: string
+          raw_content?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scraped_pages_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scraped_pages_pipeline_run_id_fkey"
+            columns: ["pipeline_run_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_runs"
             referencedColumns: ["id"]
           },
         ]
@@ -845,302 +1050,16 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
-      },
-      api_keys: {
-        Row: {
-          id: string
-          key_name: string
-          key_value: string
-          label: string | null
-          is_active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          key_name: string
-          key_value: string
-          label?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          key_name?: string
-          key_value?: string
-          label?: string | null
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      pipeline_runs: {
-        Row: {
-          id: string
-          campaign_id: string
-          company_id: string
-          status: string
-          current_stage: string
-          progress_message: string
-          leads_discovered: number
-          leads_processed: number
-          leads_qualified: number
-          messages_generated: number
-          started_at: string
-          completed_at: string | null
-          error_message: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          campaign_id: string
-          company_id: string
-          status?: string
-          current_stage?: string
-          progress_message?: string
-          leads_discovered?: number
-          leads_processed?: number
-          leads_qualified?: number
-          messages_generated?: number
-          started_at?: string
-          completed_at?: string | null
-          error_message?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          campaign_id?: string
-          company_id?: string
-          status?: string
-          current_stage?: string
-          progress_message?: string
-          leads_discovered?: number
-          leads_processed?: number
-          leads_qualified?: number
-          messages_generated?: number
-          started_at?: string
-          completed_at?: string | null
-          error_message?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "pipeline_runs_campaign_id_fkey"
-            columns: ["campaign_id"]
-            isOneToOne: false
-            referencedRelation: "campaigns"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "pipeline_runs_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      provider_configs: {
-        Row: {
-          id: string
-          company_id: string | null
-          provider_name: string
-          is_enabled: boolean
-          priority: number
-          config_json: Json
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          company_id?: string | null
-          provider_name: string
-          is_enabled?: boolean
-          priority?: number
-          config_json?: Json
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          company_id?: string | null
-          provider_name?: string
-          is_enabled?: boolean
-          priority?: number
-          config_json?: Json
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "provider_configs_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_run_steps: {
-        Row: {
-          id: string
-          pipeline_run_id: string
-          lead_id: string
-          step_name: string
-          provider_name: string | null
-          status: string
-          input_summary: string | null
-          output_summary: string | null
-          error_message: string | null
-          duration_ms: number | null
-          created_at: string
-          completed_at: string | null
-        }
-        Insert: {
-          id?: string
-          pipeline_run_id: string
-          lead_id: string
-          step_name: string
-          provider_name?: string | null
-          status?: string
-          input_summary?: string | null
-          output_summary?: string | null
-          error_message?: string | null
-          duration_ms?: number | null
-          created_at?: string
-          completed_at?: string | null
-        }
-        Update: {
-          id?: string
-          pipeline_run_id?: string
-          lead_id?: string
-          step_name?: string
-          provider_name?: string | null
-          status?: string
-          input_summary?: string | null
-          output_summary?: string | null
-          error_message?: string | null
-          duration_ms?: number | null
-          created_at?: string
-          completed_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_run_steps_pipeline_run_id_fkey"
-            columns: ["pipeline_run_id"]
-            isOneToOne: false
-            referencedRelation: "pipeline_runs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "lead_run_steps_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      scraped_pages: {
-        Row: {
-          id: string
-          lead_id: string
-          pipeline_run_id: string | null
-          url: string
-          provider_name: string
-          raw_content: string
-          extraction_quality: string
-          fetched_at: string
-        }
-        Insert: {
-          id?: string
-          lead_id: string
-          pipeline_run_id?: string | null
-          url: string
-          provider_name: string
-          raw_content: string
-          extraction_quality?: string
-          fetched_at?: string
-        }
-        Update: {
-          id?: string
-          lead_id?: string
-          pipeline_run_id?: string | null
-          url?: string
-          provider_name?: string
-          raw_content?: string
-          extraction_quality?: string
-          fetched_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scraped_pages_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "scraped_pages_pipeline_run_id_fkey"
-            columns: ["pipeline_run_id"]
-            isOneToOne: false
-            referencedRelation: "pipeline_runs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      lead_field_provenance: {
-        Row: {
-          id: string
-          lead_id: string
-          field_name: string
-          field_value: string
-          source_provider: string
-          source_url: string | null
-          confidence: number
-          verified_at: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          lead_id: string
-          field_name: string
-          field_value: string
-          source_provider: string
-          source_url?: string | null
-          confidence?: number
-          verified_at?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          lead_id?: string
-          field_name?: string
-          field_value?: string
-          source_provider?: string
-          source_url?: string | null
-          confidence?: number
-          verified_at?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "lead_field_provenance_lead_id_fkey"
-            columns: ["lead_id"]
-            isOneToOne: false
-            referencedRelation: "leads"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
-
     Views: {
       [_ in never]: never
     }
     Functions: {
+      activate_plan: {
+        Args: { p_is_trial?: boolean; p_plan: string }
+        Returns: string
+      }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {

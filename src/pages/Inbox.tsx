@@ -33,14 +33,14 @@ const Inbox = () => {
   const { data: replies, isLoading, refetch } = useQuery({
     queryKey: ["inbox-replies", profile?.company_id],
     queryFn: async () => {
-      const { data } = await supabase.from("inbound_replies").select("*, leads(business_name, city)").order("created_at", { ascending: false });
+      const { data } = await supabase.from("email_replies").select("*, leads(business_name, city)").order("created_at", { ascending: false });
       return data || [];
     },
     enabled: !!profile?.company_id,
   });
 
   const handleApprove = async (replyId: string) => {
-    await supabase.from("inbound_replies").update({ ai_draft_approved: true }).eq("id", replyId);
+    await supabase.from("email_replies").update({ ai_draft_approved: true }).eq("id", replyId);
     toast({ title: "Draft approved and queued for sending" });
     refetch();
   };
@@ -71,8 +71,8 @@ const Inbox = () => {
               {/* Original reply */}
               <div className="rounded-lg bg-muted/50 p-4 mb-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-xs font-medium uppercase text-primary">{reply.channel}</span>
-                  <p className="text-xs font-medium text-muted-foreground">From: {reply.from_identifier}</p>
+                  <span className="text-xs font-medium uppercase text-primary">email</span>
+                  <p className="text-xs font-medium text-muted-foreground">From: {reply.from_email || "Unknown"}</p>
                 </div>
                 {reply.subject && <p className="text-sm font-medium mb-1">{reply.subject}</p>}
                 <p className="text-sm">{reply.body}</p>

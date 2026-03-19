@@ -13,8 +13,6 @@ import {
     CheckCircle2,
     XCircle,
     ExternalLink,
-    Power,
-    PowerOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,8 +22,7 @@ interface DataSource {
     description: string;
     icon: typeof Database;
     category: "discovery" | "enrichment" | "verification";
-    keyName: string;
-    providerName: string;
+    envName: string;
     url: string;
     usage: { limit: number; period: string };
 }
@@ -37,20 +34,18 @@ const dataSources: DataSource[] = [
         description: "Discover local businesses by location and category",
         icon: Globe,
         category: "discovery",
-        keyName: "GOOGLE_PLACES_API_KEY",
-        providerName: "google_places",
+        envName: "GOOGLE_PLACES_API_KEY",
         url: "https://console.cloud.google.com/apis/library/places-backend.googleapis.com",
         usage: { limit: 5000, period: "Monthly" },
     },
     {
-        id: "serper",
-        name: "Serper",
+        id: "serpapi",
+        name: "SerpAPI",
         description: "Search engine results for lead research and discovery",
         icon: Search,
         category: "discovery",
-        keyName: "serper_api_key",
-        providerName: "serper",
-        url: "https://serper.dev",
+        envName: "SERP_API_KEY",
+        url: "https://serpapi.com/dashboard",
         usage: { limit: 2500, period: "Monthly" },
     },
     {
@@ -59,8 +54,7 @@ const dataSources: DataSource[] = [
         description: "Contact enrichment — LinkedIn profiles, direct dials, verified emails",
         icon: UserCheck,
         category: "enrichment",
-        keyName: "APOLLO_API_KEY",
-        providerName: "apollo",
+        envName: "APOLLO_API_KEY",
         url: "https://app.apollo.io/#/settings/integrations/api",
         usage: { limit: 1000, period: "Monthly" },
     },
@@ -70,8 +64,7 @@ const dataSources: DataSource[] = [
         description: "Email verification and pattern detection",
         icon: Mail,
         category: "verification",
-        keyName: "HUNTER_API_KEY",
-        providerName: "",
+        envName: "HUNTER_API_KEY",
         url: "https://hunter.io/api-keys",
         usage: { limit: 500, period: "Monthly" },
     },
@@ -81,6 +74,11 @@ const categoryLabels: Record<string, string> = {
     discovery: "Lead Discovery",
     enrichment: "Contact Enrichment",
     verification: "Email Verification",
+};
+
+const statusConfig = {
+    connected: { label: "Connected", color: "bg-emerald-500/10 text-emerald-400", icon: CheckCircle2 },
+    disconnected: { label: "Not Connected", color: "bg-muted text-muted-foreground", icon: XCircle },
 };
 
 const AdminDataSources = () => {
@@ -98,47 +96,20 @@ const AdminDataSources = () => {
     const isAdmin = roles?.some((r) => r.role === "admin");
     if (roles && !isAdmin) return <Navigate to="/dashboard" replace />;
 
-    // Read from api_keys table (admin-only via RLS)
-    const { data: storedKeys } = useQuery({
+    const { data: configuredKeys } = useQuery({
         queryKey: ["admin-api-keys"],
         queryFn: async () => {
             const { data } = await supabase
-                .from("api_keys")
-                .select("key_name, is_active, updated_at")
-                .eq("is_active", true);
+                .from("ai_config")
+                .select("*")
+                .eq("purpose", "api_key_store");
             return data || [];
         },
         enabled: isAdmin,
     });
 
-    // Read from provider_configs for enabled/disabled state
-    const { data: providerConfigs } = useQuery({
-        queryKey: ["provider-configs-datasources"],
-        queryFn: async () => {
-            const { data } = await supabase
-                .from("provider_configs")
-                .select("provider_name, is_enabled, updated_at");
-            return data || [];
-        },
-        enabled: isAdmin,
-    });
-
-    const isKeyConfigured = (keyName: string) => {
-        return storedKeys?.some((k) => k.key_name === keyName && k.is_active);
-    };
-
-    const isProviderEnabled = (providerName: string) => {
-        if (!providerName) return false;
-        const config = providerConfigs?.find((c) => c.provider_name === providerName);
-        return config?.is_enabled ?? false;
-    };
-
-    const getLastUpdated = (keyName: string, providerName: string) => {
-        const keyUpdate = storedKeys?.find((k) => k.key_name === keyName)?.updated_at;
-        const configUpdate = providerConfigs?.find((c) => c.provider_name === providerName)?.updated_at;
-        const latest = [keyUpdate, configUpdate].filter(Boolean).sort().pop();
-        if (!latest) return null;
-        return new Date(latest).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+    const isKeyConfigured = (envName: string) => {
+        return configuredKeys?.some((k) => k.provider === envName && k.is_active);
     };
 
     const categories = [...new Set(dataSources.map((ds) => ds.category))];
@@ -162,9 +133,9 @@ const AdminDataSources = () => {
                             .filter((ds) => ds.category === cat)
                             .map((ds) => {
                                 const Icon = ds.icon;
-                                const hasKey = isKeyConfigured(ds.keyName);
-                                const enabled = isProviderEnabled(ds.providerName);
-                                const lastUpdated = getLastUpdated(ds.keyName, ds.providerName);
+                                const connected = isKeyConfigured(ds.envName);
+                                const st = connected ? statusConfig.connected : statusConfig.disconnected;
+                                const StIcon = st.icon;
 
                                 return (
                                     <div
@@ -176,40 +147,17 @@ const AdminDataSources = () => {
                                                 <Icon className="h-5 w-5 text-primary" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-3 mb-1 flex-wrap">
-                                                    <h3 className="font-semibold">{ds.name}</h3>
-                                                    <Badge className={cn(
-                                                        "text-[10px]",
-                                                        hasKey
-                                                            ? "bg-emerald-500/10 text-emerald-400"
-                                                            : "bg-muted text-muted-foreground"
-                                                    )}>
-                                                        {hasKey
-                                                            ? <><CheckCircle2 className="h-3 w-3 mr-1" /> Key Set</>
-                                                            : <><XCircle className="h-3 w-3 mr-1" /> No Key</>
-                                                        }
+                                                <div className="flex items-center gap-3 mb-1">
+                                                    <h3 className="font-semibold text-white">{ds.name}</h3>
+                                                    <Badge className={cn("text-[10px]", st.color)}>
+                                                        <StIcon className="h-3 w-3 mr-1" />
+                                                        {st.label}
                                                     </Badge>
-                                                    {ds.providerName && (
-                                                        <Badge className={cn(
-                                                            "text-[10px]",
-                                                            enabled
-                                                                ? "bg-blue-500/10 text-blue-400"
-                                                                : "bg-muted text-muted-foreground"
-                                                        )}>
-                                                            {enabled
-                                                                ? <><Power className="h-3 w-3 mr-1" /> Enabled</>
-                                                                : <><PowerOff className="h-3 w-3 mr-1" /> Disabled</>
-                                                            }
-                                                        </Badge>
-                                                    )}
                                                 </div>
                                                 <p className="text-sm text-muted-foreground mb-3">{ds.description}</p>
                                                 <div className="text-xs text-muted-foreground">
-                                                    API Key: <code className="bg-muted px-1 py-0.5 rounded text-[10px]">{ds.keyName}</code>
+                                                    API Key: <code className="bg-muted px-1 py-0.5 rounded text-[10px]">{ds.envName}</code>
                                                     <span className="ml-3">Limit: {ds.usage.limit.toLocaleString()} / {ds.usage.period}</span>
-                                                    {lastUpdated && (
-                                                        <span className="ml-3">Updated: {lastUpdated}</span>
-                                                    )}
                                                 </div>
                                             </div>
 

@@ -237,7 +237,7 @@ const AdminAIAgentCenter = () => {
   });
 
   // Load autonomy config when it arrives
-  const loadedAutonomy = autonomyConfig?.metadata as Record<string, any> | null;
+  const loadedAutonomy = (autonomyConfig as any)?.metadata as Record<string, any> | null;
   if (loadedAutonomy && !("_loaded" in autonomyRules)) {
     // One-time hydration
     const rules = loadedAutonomy.rules || autonomyRules;
@@ -264,15 +264,15 @@ const AdminAIAgentCenter = () => {
         .maybeSingle();
 
       if (existing) {
-        await supabase.from("ai_config").update({ system_prompt: text }).eq("id", existing.id);
+        await supabase.from("ai_config").update({ api_key_encrypted: text } as any).eq("id", existing.id);
       } else {
         await supabase.from("ai_config").insert({
           provider: "lovable_gateway",
           purpose: context,
           model: "google/gemini-3-flash-preview",
           is_active: true,
-          system_prompt: text,
-        });
+          api_key_encrypted: text,
+        } as any);
       }
 
       toast({ title: "Saved", description: `System prompt for "${context}" updated.` });
@@ -340,15 +340,15 @@ const AdminAIAgentCenter = () => {
         .maybeSingle();
 
       if (existing) {
-        await supabase.from("ai_config").update({ metadata: meta }).eq("id", existing.id);
+        await supabase.from("ai_config").update({ api_key_encrypted: JSON.stringify(meta) } as any).eq("id", existing.id);
       } else {
         await supabase.from("ai_config").insert({
           provider: "autonomy_rules",
           purpose: "system_setting",
           model: "System",
           is_active: true,
-          metadata: meta,
-        });
+          api_key_encrypted: JSON.stringify(meta),
+        } as any);
       }
     },
     onSuccess: () => {
@@ -516,8 +516,8 @@ const AdminAIAgentCenter = () => {
           <div className="space-y-4">
             {Object.entries(DEFAULT_PROMPTS).map(([context, defaultText]) => {
               const config = configs.find((c) => c.purpose === context);
-              const currentText = editingPrompts[context] ?? config?.system_prompt ?? defaultText;
-              const isModified = config?.system_prompt && config.system_prompt !== defaultText;
+              const currentText = editingPrompts[context] ?? (config as any)?.system_prompt ?? defaultText;
+              const isModified = (config as any)?.system_prompt && (config as any).system_prompt !== defaultText;
 
               return (
                 <div key={context} className="rounded-lg border border-border p-4">

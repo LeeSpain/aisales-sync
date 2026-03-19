@@ -86,7 +86,7 @@ const Reports = () => {
         queryKey: ["report-emails-count", profile?.company_id],
         queryFn: async () => {
             const { count } = await supabase
-                .from("outreach_messages")
+                .from("outreach_emails")
                 .select("id", { count: "exact", head: true })
                 .eq("company_id", profile!.company_id!);
             return count || 0;

@@ -1,9 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.98.0";
 
 export function getCorsHeaders() {
-  const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "https://aisales-sync.com";
   return {
-    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers":
       "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   };
@@ -16,7 +15,8 @@ export function getSupabaseClient() {
   );
 }
 
-export async function checkDeadSwitch(sb: ReturnType<typeof createClient>) {
+// deno-lint-ignore no-explicit-any
+export async function checkDeadSwitch(sb: any) {
   const { data: deadSwitch } = await sb
     .from("ai_config")
     .select("is_active")
@@ -96,8 +96,9 @@ export function extractToolCallArgs(data: Record<string, unknown>): Record<strin
   return null;
 }
 
+// deno-lint-ignore no-explicit-any
 export async function logActivity(
-  sb: ReturnType<typeof createClient>,
+  sb: any,
   action: string,
   companyId: string | null,
   description: string,
