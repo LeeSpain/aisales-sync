@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Zap, UserCheck, MailOpen, TrendingUp, PhoneCall, Users, Target, CalendarCheck, FileText, Handshake, BarChart3 } from "lucide-react";
+import { Zap, UserCheck, MailOpen, TrendingUp, PhoneCall, Users, Target, CalendarCheck, FileText, Handshake, BarChart3, AlertTriangle, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { statusChartColors } from "@/lib/constants";
@@ -31,6 +31,19 @@ const Dashboard = () => {
     },
     enabled: !!user,
   });
+
+  const { data: companyData } = useQuery({
+    queryKey: ["company-completion", profile?.company_id],
+    queryFn: async () => {
+      const { data } = await supabase.from("companies").select("name, description, services, selling_points, target_markets").eq("id", profile!.company_id!).single();
+      return data;
+    },
+    enabled: !!profile?.company_id,
+  });
+  const pf = companyData ? [!!(companyData.name && String(companyData.name).trim()), !!(companyData.description && String(companyData.description).trim()), !!((companyData.services as string[] | null)?.length), !!((companyData.selling_points as string[] | null)?.length), !!((companyData.target_markets as string[] | null)?.length)] : [];
+  const pfDone = pf.filter(Boolean).length;
+  const pfPct = pfDone === 0 ? 0 : pfDone <= 2 ? 25 : pfDone <= 3 ? 60 : pfDone >= 5 ? 100 : 80;
+  const pfLabel = pfPct === 0 ? "Not started" : pfPct <= 25 ? "Just getting started" : pfPct < 100 ? "Almost there" : "Profile complete";
 
   const { data: campaigns } = useQuery({
     queryKey: ["campaigns-stats", profile?.company_id],
@@ -139,8 +152,36 @@ const Dashboard = () => {
             <span className="text-muted-foreground text-xl font-normal ml-2">({user.email})</span>
           ) : null}
         </h1>
-        <p className="mt-1 text-muted-foreground">Here's your sales pipeline at a glance</p>
+        <div className="mt-1 flex items-center gap-2">
+          <p className="text-muted-foreground">Here's your sales pipeline at a glance</p>
+          {companyData && pfPct === 100 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-[11px] font-medium text-success">
+              <CheckCircle2 className="h-3 w-3" /> Profile complete
+            </span>
+          )}
+        </div>
       </div>
+
+      {companyData && pfPct < 100 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5 mb-6 flex items-start gap-4">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 shrink-0">
+            <AlertTriangle className="h-5 w-5 text-amber-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-400">Your AI needs to know about your business</p>
+            <p className="text-xs text-muted-foreground mt-1">Complete your company profile so the AI can find the right leads, score them accurately, and write personalised outreach emails.</p>
+            <div className="mt-3 flex items-center gap-3">
+              <div className="h-1.5 flex-1 rounded-full bg-muted/50 overflow-hidden">
+                <div className="h-full rounded-full bg-amber-400 transition-all" style={{ width: `${pfPct}%` }} />
+              </div>
+              <span className="text-[10px] text-muted-foreground shrink-0">{pfPct}% — {pfLabel}</span>
+            </div>
+          </div>
+          <Button size="sm" className="shrink-0 gap-1" onClick={() => navigate("/settings")}>
+            Complete Profile <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
