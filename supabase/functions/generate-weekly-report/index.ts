@@ -72,7 +72,7 @@ serve(async (req) => {
 
       // Count outreach sent/opened/replied in the period
       sb
-        .from("outreach_emails")
+        .from("outreach_messages")
         .select("id, status, sent_at, opened_at, replied_at, channel")
         .eq("company_id", company_id)
         .gte("created_at", startISO)

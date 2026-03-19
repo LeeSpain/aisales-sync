@@ -27,7 +27,7 @@ serve(async (req) => {
 
     // 1. Fetch outreach message with lead details
     const { data: message, error: msgError } = await sb
-      .from("outreach_emails")
+      .from("outreach_messages")
       .select("*, leads(*)")
       .eq("id", message_id)
       .maybeSingle();
@@ -109,7 +109,7 @@ serve(async (req) => {
 
     // 6. Update outreach message status and sent_at
     const { error: updateMsgError } = await sb
-      .from("outreach_emails")
+      .from("outreach_messages")
       .update({
         status: finalStatus,
         ...(finalStatus === "sent" ? { sent_at: now } : {}),

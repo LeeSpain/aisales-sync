@@ -26,9 +26,9 @@ serve(async (req) => {
 
     const { from_identifier, subject, body: replyBody, channel = "email" } = body;
 
-    // 1. Search outreach_emails joining leads to match from_identifier
+    // 1. Search outreach_messages joining leads to match from_identifier
     const { data: matchedMessages, error: searchError } = await sb
-      .from("outreach_emails")
+      .from("outreach_messages")
       .select("*, leads!inner(*)")
       .or(
         `leads.email.ilike.%${from_identifier}%,leads.contact_email.ilike.%${from_identifier}%`
@@ -152,9 +152,9 @@ serve(async (req) => {
 
     const intent = classification.intent as string;
 
-    // 3. Insert into email_replies
+    // 3. Insert into inbound_replies
     const { data: reply, error: insertError } = await sb
-      .from("email_replies")
+      .from("inbound_replies")
       .insert({
         outreach_message_id: outreachMessageId,
         lead_id: leadId,
