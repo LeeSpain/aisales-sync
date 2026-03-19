@@ -96,7 +96,7 @@ serve(async (req) => {
     if (await checkDeadSwitch(sb)) return errorResponse("AI operations are currently disabled by admin.", 503);
 
     const body = await req.json();
-    const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone } = body;
+    const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone, maxLeads } = body;
     if (!campaignId || !companyId || !targetCriteria || !geographicFocus) {
       return errorResponse("Missing required params: campaignId, companyId, targetCriteria, geographicFocus", 400);
     }
@@ -117,6 +117,7 @@ serve(async (req) => {
     const exec = executePipeline(sb, runId, {
       campaignId, companyId, targetCriteria, geographicFocus,
       minimumScore: minimumScore ?? 3.0, tone: tone ?? "professional",
+      maxLeads: maxLeads ?? 25,
     }).catch(async (err) => {
       const message = err instanceof Error ? err.message : "Pipeline failed";
       console.error("[pipeline] Fatal:", err);
@@ -155,10 +156,12 @@ interface PipelineParams {
   geographicFocus: string;
   minimumScore: number;
   tone: string;
+  maxLeads: number;
 }
 
 async function executePipeline(sb: SB, runId: string, params: PipelineParams) {
   const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone } = params;
+  const maxLeads = params.maxLeads;
 
   // Fetch company profile
   const { data: companyData } = await sb.from("companies").select("*").eq("id", companyId).single();
@@ -173,7 +176,7 @@ async function executePipeline(sb: SB, runId: string, params: PipelineParams) {
   await sb.from("campaigns").update({ status: "hunting" }).eq("id", campaignId);
 
   const { data: discoverData, error: discoverError } = await callEdgeFunction("discover-leads", {
-    campaignId, companyProfile, targetCriteria, geographicFocus,
+    campaignId, companyProfile, targetCriteria, geographicFocus, maxLeads,
   });
 
   if (discoverError) throw new Error(discoverError || "Lead discovery failed. Check your Serper API key.");
