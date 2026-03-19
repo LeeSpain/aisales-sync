@@ -70,12 +70,12 @@ function classifyPipelineError(err: unknown): string {
     msg.includes("NetworkError") ||
     msg.includes("TypeError")
   ) {
-    return "Pipeline service is not deployed yet. Contact support or check deployment status.";
+    return "Cannot reach the pipeline service. Check your internet connection and try again.";
   }
 
   // HTTP 404 — function not found
   if (msg.includes("404") || msg.includes("not found")) {
-    return "Pipeline service is not deployed yet. Contact support or check deployment status.";
+    return "Pipeline function not found. It may need to be deployed — contact support.";
   }
 
   // HTTP 401/403 — auth/secrets issue
@@ -96,22 +96,6 @@ function classifyPipelineError(err: unknown): string {
 
   // Anything else: show the actual message
   return msg;
-}
-
-/**
- * Pre-flight check: verify edge functions are reachable before starting pipeline.
- * Calls the lightweight health-check function.
- * Returns true if healthy, false if unreachable.
- */
-async function checkEdgeFunctionHealth(): Promise<boolean> {
-  try {
-    const { error } = await supabase.functions.invoke("health-check", {
-      method: "GET",
-    });
-    return !error;
-  } catch {
-    return false;
-  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -184,7 +168,7 @@ export function useCampaignPipeline() {
 
     setState({
       stage: "discovering",
-      progress: "Checking pipeline services...",
+      progress: "Starting pipeline...",
       leadsFound: 0,
       leadsQualified: 0,
       messagesGenerated: 0,
@@ -192,15 +176,7 @@ export function useCampaignPipeline() {
     });
 
     try {
-      // ── Pre-flight: verify edge functions are reachable ──
-      const healthy = await checkEdgeFunctionHealth();
-      if (!healthy) {
-        throw new Error("Cannot reach pipeline services. Please check your deployment.");
-      }
-
-      setState((s) => ({ ...s, progress: "Starting pipeline..." }));
-
-      // ── Fire the pipeline edge function ──
+      // ── Fire the pipeline edge function directly ──
       const { data, error: invokeErr } = await supabase.functions.invoke(
         "run-campaign-pipeline",
         {
