@@ -246,15 +246,17 @@ serve(async (req) => {
       }
     })();
 
-    // Run in background — return run_id immediately so frontend can poll
-    // @ts-ignore — EdgeRuntime.waitUntil available in Supabase Edge Functions
-    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
-      EdgeRuntime.waitUntil(responsePromise);
-    } else {
-      await responsePromise;
-    }
+    // Wait for completion — the edge function stays alive until done
+    await responsePromise;
 
-    return jsonResponse({ run_id: runId, status: "running" });
+    // Re-read final state to return
+    const { data: finalRun } = await sb
+      .from("pipeline_runs")
+      .select("*")
+      .eq("id", runId)
+      .single();
+
+    return jsonResponse({ run_id: runId, ...finalRun });
   } catch (e) {
     console.error("run-campaign-pipeline error:", e);
     return errorResponse(e instanceof Error ? e.message : "Unknown error", 500);
@@ -630,22 +632,22 @@ async function executePipeline(
   // ══════════════════════════════════════════
   let messagesGenerated = 0;
 
-  // Re-fetch ALL campaign leads for outreach — never skip
-  const { data: enrichedLeads } = await sb
-    .from("leads")
-    .select("id, business_name, city, region, industry, website, description, contact_name, contact_role, contact_email, rating, review_count, research_data")
-    .eq("campaign_id", campaignId)
-    .in("status", ["qualified", "scored", "researched", "discovered"]);
-
-  const outreachLeads = enrichedLeads || qualifiedList;
-
-  if (outreachLeads.length > 0) {
+  if (qualifiedList.length > 0) {
     await updateProgress(sb, runId, {
       current_stage: "generating_outreach",
-      progress_message: `Writing outreach for ${outreachLeads.length} leads...`,
+      progress_message: `Writing outreach for ${qualifiedList.length} leads...`,
       leads_discovered: totalLeads,
       leads_qualified: qualifiedCount,
     });
+
+    // Re-fetch qualified leads with enriched data for outreach
+    const { data: enrichedLeads } = await sb
+      .from("leads")
+      .select("id, business_name, city, region, industry, website, description, contact_name, contact_role, contact_email, rating, review_count, research_data")
+      .eq("campaign_id", campaignId)
+      .eq("status", "qualified");
+
+    const outreachLeads = enrichedLeads || qualifiedList;
 
     for (let i = 0; i < outreachLeads.length; i++) {
       const lead = outreachLeads[i];

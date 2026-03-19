@@ -111,11 +111,10 @@ const SettingsPage = () => {
     enabled: !!user,
   });
 
-  // Ensure a company record exists for this user — find existing or create one
+  // Ensure a company record exists — find existing or create one
   const { data: company } = useQuery({
     queryKey: ["company-profile", user?.id],
     queryFn: async () => {
-      // 1. If profile has company_id, use it
       if (profile?.company_id) {
         const { data } = await supabase.from("companies").select("*").eq("id", profile.company_id).single();
         if (data) {
@@ -126,17 +125,10 @@ const SettingsPage = () => {
           return data;
         }
       }
-
-      // 2. Check if company already exists for this user (owner_id)
+      // Check if company already exists for this user
       const { data: existing } = await supabase
-        .from("companies")
-        .select("*")
-        .eq("owner_id", user!.id)
-        .limit(1)
-        .maybeSingle();
-
+        .from("companies").select("*").eq("owner_id", user!.id).limit(1).maybeSingle();
       if (existing) {
-        // Link it to the profile if not already linked
         if (profile && !profile.company_id) {
           await supabase.from("profiles").update({ company_id: existing.id }).eq("id", user!.id);
           queryClient.invalidateQueries({ queryKey: ["profile"] });
@@ -147,20 +139,15 @@ const SettingsPage = () => {
         }
         return existing;
       }
-
-      // 3. Create new company only if none exists
+      // Create new company
       const fullName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "My Company";
       const { data: newCompany } = await supabase
-        .from("companies")
-        .insert({ name: `${fullName}'s Company`, owner_id: user!.id, status: "active" })
-        .select("*")
-        .single();
-
+        .from("companies").insert({ name: `${fullName}'s Company`, owner_id: user!.id, status: "active" })
+        .select("*").single();
       if (newCompany) {
         await supabase.from("profiles").update({ company_id: newCompany.id }).eq("id", user!.id);
         queryClient.invalidateQueries({ queryKey: ["profile"] });
       }
-
       return newCompany;
     },
     enabled: !!user,

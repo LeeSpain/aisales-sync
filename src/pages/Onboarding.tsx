@@ -252,11 +252,8 @@ const Onboarding = () => {
         metadata: { company_name: companyName, industry, services, target_markets: targetMarkets, geographic_range: geo },
       });
 
-      // Invalidate all company-related caches so dashboard sees the saved data
+      // Invalidate the ProtectedRoute state so it allows navigation to dashboard
       await queryClient.invalidateQueries({ queryKey: ["flowState"] });
-      queryClient.invalidateQueries({ queryKey: ["company-profile"] });
-      queryClient.invalidateQueries({ queryKey: ["company-profile-check"] });
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
 
       toast({ title: "You're all set!", description: "Your AI sales team now knows your business." });
       navigate("/dashboard");

@@ -9,7 +9,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 import AdminRoute from "@/components/AdminRoute";
 import AdminLayout from "@/components/layout/AdminLayout";
-import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Loading spinner shown during lazy page loads
 const PageLoader = () => (
@@ -81,7 +80,6 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <ErrorBoundary>
           <Suspense fallback={<PageLoader />}>
             <Routes>
               {/* Public */}
@@ -130,7 +128,6 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
-          </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
