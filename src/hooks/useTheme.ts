@@ -1,41 +1,68 @@
-import { useState, useEffect, useCallback } from "react";
+import { useSyncExternalStore, useCallback } from "react";
 
 export type Theme = "dark" | "light" | "brand";
 
 const STORAGE_KEY = "ais-theme";
 
-function getInitialTheme(): Theme {
+// ─── Shared singleton store ───
+// All useTheme() instances read/write the SAME value.
+// This prevents AppLayout's stale "dark" state from overriding
+// a theme change made in Settings.
+
+let currentTheme: Theme = (() => {
   if (typeof window === "undefined") return "dark";
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === "light" || stored === "dark" || stored === "brand") return stored;
   return "dark";
+})();
+
+const listeners = new Set<() => void>();
+
+function subscribe(cb: () => void) {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
 }
 
+function getSnapshot(): Theme {
+  return currentTheme;
+}
+
+function applyTheme(t: Theme) {
+  const root = document.documentElement;
+  root.classList.remove("dark", "brand");
+
+  if (t === "dark") {
+    root.classList.add("dark");
+    root.style.colorScheme = "dark";
+  } else if (t === "brand") {
+    root.classList.add("dark", "brand");
+    root.style.colorScheme = "dark";
+  } else {
+    root.style.colorScheme = "light";
+  }
+
+  localStorage.setItem(STORAGE_KEY, t);
+}
+
+function setThemeGlobal(t: Theme) {
+  if (t === currentTheme) return;
+  currentTheme = t;
+  applyTheme(t);
+  listeners.forEach((cb) => cb());
+}
+
+// Apply once on load
+if (typeof window !== "undefined") {
+  applyTheme(currentTheme);
+}
+
+// ─── Hook ───
 export function useTheme() {
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  const theme = useSyncExternalStore(subscribe, getSnapshot, () => "dark" as Theme);
 
-  // Apply theme class to <html>
-  useEffect(() => {
-    const root = document.documentElement;
-    root.classList.remove("dark", "brand");
-
-    if (theme === "dark") {
-      root.classList.add("dark");
-      root.style.colorScheme = "dark";
-    } else if (theme === "brand") {
-      // Brand theme is dark-based but with primary-tinted surfaces
-      root.classList.add("dark", "brand");
-      root.style.colorScheme = "dark";
-    } else {
-      root.style.colorScheme = "light";
-    }
-
-    localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme]);
-
-  const setTheme = useCallback((t: Theme) => setThemeState(t), []);
+  const setTheme = useCallback((t: Theme) => setThemeGlobal(t), []);
   const toggle = useCallback(
-    () => setThemeState((prev) => (prev === "dark" ? "light" : prev === "light" ? "brand" : "dark")),
+    () => setThemeGlobal(currentTheme === "dark" ? "light" : currentTheme === "light" ? "brand" : "dark"),
     []
   );
 
