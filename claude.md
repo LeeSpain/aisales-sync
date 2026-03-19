@@ -522,5 +522,65 @@ git push origin main           # Triggers Vercel deploy
 
 ---
 
+## 16. LOVABLE SYNC PROTECTION
+
+Lovable auto-syncs from its own repo and WILL overwrite edge functions with broken versions containing wrong table names. After every sync from Lovable, these files MUST be restored from our version.
+
+### Protected edge functions (never let Lovable overwrite):
+- `supabase/functions/send-outreach/index.ts`
+- `supabase/functions/handle-reply/index.ts`
+- `supabase/functions/run-campaign-pipeline/index.ts`
+- `supabase/functions/score-lead/index.ts`
+- `supabase/functions/generate-outreach/index.ts`
+- `supabase/functions/ai-call/index.ts`
+- `supabase/functions/strategy-analysis/index.ts`
+- `supabase/functions/enrich-lead/index.ts`
+- `supabase/functions/find-decision-maker/index.ts`
+
+### Critical fixes that must NEVER be reverted:
+
+1. **TABLE NAMES** — The real database tables are:
+   - `outreach_emails` (NOT `outreach_messages`)
+   - `email_replies` (NOT `inbound_replies`)
+   - `companies` (NOT `company_profiles`)
+   Every edge function must use these exact table names.
+
+2. **SCORE-LEAD** — Must never crash the pipeline.
+   On any AI failure return:
+   `{ score: 3.0, qualified: true, reasoning: "Auto-scored — review manually" }`
+   Never return an HTTP error from score-lead.
+
+3. **RUN-CAMPAIGN-PIPELINE** — Must use `EdgeRuntime.waitUntil()`
+   to run in background. Must return `{ run_id }` immediately.
+   Never await the full pipeline execution.
+   Must generate outreach for ALL leads not just qualified.
+
+4. **GENERATE-OUTREACH** — Must include full company context:
+   name, services, selling_points, target_markets,
+   tone_preference, pricing_summary, description.
+   Must include full lead context:
+   business_name, industry, city, contact_name,
+   contact_role, website, score_reasoning, web_snippets.
+
+5. **CORS** — All edge functions must have:
+   `Access-Control-Allow-Origin: *`
+   NOT hardcoded to `https://aisales-sync.com`
+
+### After every Lovable sync:
+```bash
+# Always run after sync-from-lovable.sh:
+~/agent-aura-56/protect-edge-functions.sh
+```
+
+### Sync workflow:
+1. CC makes changes → `git add .` → `git commit` → `git push`
+2. Run sync: `~/agent-aura-56/sync-from-lovable.sh`
+3. Run protect: `~/agent-aura-56/protect-edge-functions.sh`
+4. Deploy functions: `supabase functions deploy [name] --project-ref cprbgquiqbyoyrffznny`
+
+### AI Sales Sync Supabase project ref: `cprbgquiqbyoyrffznny`
+
+---
+
 *Last updated: March 2026 by Claude*
 *If you update something significant, update this file too.*

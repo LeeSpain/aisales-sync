@@ -5,7 +5,13 @@
       "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
       "Bash(git pull:*)",
       "Bash(npx supabase:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Read(//Users/leewakeman/agent-aura-56/**)",
+      "Bash(chmod +x /Users/leewakeman/agent-aura-56/protect-edge-functions.sh)",
+      "Bash(/Users/leewakeman/agent-aura-56/protect-edge-functions.sh)"
+    ],
+    "additionalDirectories": [
+      "/Users/leewakeman/agent-aura-56"
     ]
   }
 }
