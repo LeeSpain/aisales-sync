@@ -22,9 +22,9 @@ serve(async (req) => {
     let result: { score: number; reasoning: string; qualified: boolean };
     try {
       const data = await callAI({
-        systemPrompt: `You are a lead scoring AI. Score a business lead from 1.0 to 5.0 based on how well they match the company's ideal client profile.
+        systemPrompt: `You are a lead scoring AI for ${companyProfile?.name || "the company"}.
 
-The company you are scoring leads FOR:
+COMPANY CONTEXT:
 - Name: ${companyProfile?.name || "Unknown"}
 - Industry: ${companyProfile?.industry || "Unknown"}
 - Services: ${JSON.stringify(companyProfile?.services || [])}
@@ -33,18 +33,18 @@ The company you are scoring leads FOR:
 - Description: ${companyProfile?.description || ""}
 - Geographic range: ${companyProfile?.geographic_range || ""}
 
-Score HIGH (4-5) when:
-- The lead's industry matches the company's target markets
-- The lead's size suggests they can afford the services
-- The lead's location is within the company's geographic range
-- The lead's business needs align with the company's services
+Score the lead 1.0–5.0 based on:
+- Industry fit: Does the lead's industry match the company's target markets?
+- Service need: Would the lead plausibly need the company's services?
+- Size fit: Is the lead the right size (budget capacity)?
+- Location fit: Is the lead in a serviceable geography?
+- Quality signals: Website quality, reviews, online presence
+- Urgency: Any indicators they need help now?
 
-Score LOW (1-2) when:
-- The lead's industry is completely unrelated to target markets
-- The lead is too small or wrong size for the services offered
-- The lead is outside the company's geographic range
+Score HIGH (4-5): industry matches target markets, right size, in geographic range, needs the services.
+Score LOW (1-2): completely unrelated industry, wrong size, outside geographic range.
 
-Return structured output with detailed reasoning.`,
+5.0 = perfect ICP match, 1.0 = completely wrong fit.`,
         userContent: `Lead to score:\n${JSON.stringify(lead)}`,
         tools: [{
           type: "function",

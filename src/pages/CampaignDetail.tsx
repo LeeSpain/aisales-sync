@@ -151,15 +151,21 @@ const CampaignDetail = () => {
     const { error } = await supabase.from("outreach_emails").update({ status: "approved" }).eq("id", emailId);
     if (error) {
       toast({ title: "Error", description: "Failed to approve", variant: "destructive" });
+      return;
+    }
+    toast({ title: "Approved", description: "Sending email..." });
+    queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
+
+    // Trigger actual email send via edge function
+    const { error: sendErr } = await supabase.functions.invoke("send-outreach", {
+      body: { emailId },
+    });
+    if (sendErr) {
+      console.error("send-outreach error:", sendErr);
+      toast({ title: "Send failed", description: "Email approved but failed to send. It will retry automatically.", variant: "destructive" });
     } else {
-      toast({ title: "Approved", description: "Email approved — sending now..." });
+      toast({ title: "Sent", description: "Email sent successfully." });
       queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
-      // Auto-trigger send
-      supabase.functions.invoke("send-outreach", { body: { message_id: emailId } })
-        .then(({ error: sendErr }) => {
-          if (sendErr) console.warn("Auto-send failed:", sendErr);
-          else queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
-        });
     }
   };
 
@@ -180,19 +186,19 @@ const CampaignDetail = () => {
     const { error } = await supabase.from("outreach_emails").update({ status: "approved" }).in("id", ids);
     if (error) {
       toast({ title: "Error", description: "Failed to approve all", variant: "destructive" });
-    } else {
-      toast({ title: "All Approved", description: `${ids.length} emails approved — sending now...` });
-      queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
-      // Auto-trigger send for each approved email
-      for (const id of ids) {
-        supabase.functions.invoke("send-outreach", { body: { message_id: id } })
-          .then(({ error: sendErr }) => {
-            if (sendErr) console.warn(`Auto-send failed for ${id}:`, sendErr);
-          });
-      }
-      // Refresh after a short delay to show updated statuses
-      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["campaign-messages"] }), 3000);
+      return;
     }
+    toast({ title: "All Approved", description: `Sending ${ids.length} emails...` });
+    queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
+
+    // Send each approved email
+    let sent = 0;
+    for (const emailId of ids) {
+      const { error: sendErr } = await supabase.functions.invoke("send-outreach", { body: { emailId } });
+      if (!sendErr) sent++;
+    }
+    toast({ title: "Batch complete", description: `${sent} of ${ids.length} emails sent.` });
+    queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
   };
 
   const pendingCount = messages?.filter((m) => getEmailStatus(m) === "pending_approval").length || 0;
