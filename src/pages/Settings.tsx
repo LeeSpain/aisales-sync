@@ -111,63 +111,28 @@ const SettingsPage = () => {
     enabled: !!user,
   });
 
-  // Ensure a company record exists — find existing or create one
   const { data: company } = useQuery({
-    queryKey: ["company-profile", user?.id],
+    queryKey: ["company-profile", profile?.company_id],
     queryFn: async () => {
-      if (profile?.company_id) {
-        const { data } = await supabase.from("companies").select("*").eq("id", profile.company_id).single();
-        if (data) {
-          if (!notesLoaded) {
-            setNotes((data.ai_profile as Record<string, unknown>)?.notes as string || "");
-            setNotesLoaded(true);
-          }
-          return data;
-        }
+      const { data } = await supabase.from("companies").select("*").eq("id", profile!.company_id!).single();
+      if (data && !notesLoaded) {
+        setNotes((data.ai_profile as Record<string, unknown>)?.notes as string || "");
+        setNotesLoaded(true);
       }
-      // Check if company already exists for this user
-      const { data: existing } = await supabase
-        .from("companies").select("*").eq("owner_id", user!.id).limit(1).maybeSingle();
-      if (existing) {
-        if (profile && !profile.company_id) {
-          await supabase.from("profiles").update({ company_id: existing.id }).eq("id", user!.id);
-          queryClient.invalidateQueries({ queryKey: ["profile"] });
-        }
-        if (!notesLoaded) {
-          setNotes((existing.ai_profile as Record<string, unknown>)?.notes as string || "");
-          setNotesLoaded(true);
-        }
-        return existing;
-      }
-      // Create new company
-      const fullName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "My Company";
-      const { data: newCompany } = await supabase
-        .from("companies").insert({ name: `${fullName}'s Company`, owner_id: user!.id, status: "active" })
-        .select("*").single();
-      if (newCompany) {
-        await supabase.from("profiles").update({ company_id: newCompany.id }).eq("id", user!.id);
-        queryClient.invalidateQueries({ queryKey: ["profile"] });
-      }
-      return newCompany;
+      return data;
     },
-    enabled: !!user,
+    enabled: !!profile?.company_id,
   });
 
   // ─── Save helpers ───
-  const invalidateCompanyQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ["company-profile"] });
-    queryClient.invalidateQueries({ queryKey: ["company-profile-check"] });
-    queryClient.invalidateQueries({ queryKey: ["profile"] });
-  };
-
   const updateCompanyField = async (field: string, value: unknown) => {
     if (!company) return;
     const { error } = await supabase.from("companies").update({ [field]: value }).eq("id", company.id);
     if (error) {
       toast({ title: "Error", description: `Failed to update ${field}.`, variant: "destructive" });
     } else {
-      toast({ title: "Saved", description: `${field.replace(/_/g, " ")} saved successfully.` });
-      invalidateCompanyQueries();
+      toast({ title: "Updated", description: `${field.replace(/_/g, " ")} saved.` });
+      queryClient.invalidateQueries({ queryKey: ["company-profile"] });
     }
   };
 
@@ -184,7 +149,7 @@ const SettingsPage = () => {
       toast({ title: "Error", description: "Failed to save notes.", variant: "destructive" });
     } else {
       toast({ title: "Saved", description: "Notes updated. The AI will use these as context." });
-      invalidateCompanyQueries();
+      queryClient.invalidateQueries({ queryKey: ["company-profile"] });
     }
   };
 
@@ -209,21 +174,13 @@ const SettingsPage = () => {
       toast({ title: "Error", description: "Failed to save preference.", variant: "destructive" });
     } else {
       toast({ title: "Updated", description: !current ? "Auto-send enabled" : "Approval required" });
-      invalidateCompanyQueries();
+      queryClient.invalidateQueries({ queryKey: ["company-profile"] });
     }
   };
 
   const services = Array.isArray(company?.services) ? company.services as string[] : [];
   const sellingPoints = Array.isArray(company?.selling_points) ? company.selling_points as string[] : [];
   const targetMarkets = Array.isArray(company?.target_markets) ? company.target_markets as string[] : [];
-
-  if (!company) {
-    return (
-      <div className="p-8 flex items-center justify-center min-h-[400px]">
-        <div className="animate-pulse text-muted-foreground">Loading company profile...</div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -233,20 +190,22 @@ const SettingsPage = () => {
           <Building2 className="h-6 w-6 text-white" />
         </div>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">{company.name || "Company Profile"}</h1>
+          <h1 className="text-2xl font-bold">{company?.name || "Settings"}</h1>
           <p className="text-sm text-muted-foreground">
             Your AI's knowledge base — everything here shapes how your AI sells, writes, and targets leads.
           </p>
         </div>
-        <Badge className={cn(
-          "text-xs uppercase tracking-wider",
-          company.status === "active" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"
-        )}>
-          {company.status ?? "setup"}
-        </Badge>
+        {company && (
+          <Badge className={cn(
+            "text-xs uppercase tracking-wider",
+            company.status === "active" ? "bg-emerald-500/10 text-emerald-400" : "bg-muted text-muted-foreground"
+          )}>
+            {company.status ?? "setup"}
+          </Badge>
+        )}
       </div>
 
-      {/* Theme Picker */}
+      {/* Theme Picker — always visible, not gated on company */}
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="flex items-center gap-2 mb-3">
           {theme === "dark" ? <Moon className="h-4 w-4 text-primary" /> : theme === "brand" ? <Palette className="h-4 w-4 text-primary" /> : <Sun className="h-4 w-4 text-primary" />}
@@ -343,6 +302,13 @@ const SettingsPage = () => {
         </div>
       </div>
 
+      {/* Company-dependent sections — only render when company data is loaded */}
+      {!company ? (
+        <div className="rounded-xl border border-dashed border-border py-12 text-center">
+          <Building2 className="h-8 w-8 mx-auto text-muted-foreground/30 mb-3" />
+          <p className="text-sm text-muted-foreground">Loading company profile...</p>
+        </div>
+      ) : (<>
       {/* Top grid: Company Info + AI Config */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Company Info */}
@@ -551,6 +517,7 @@ const SettingsPage = () => {
           </div>
         </div>
       </div>
+      </>)}
     </div>
   );
 };
