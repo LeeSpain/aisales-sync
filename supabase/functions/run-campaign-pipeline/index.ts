@@ -331,45 +331,52 @@ async function executePipeline(sb: SB, runId: string, params: PipelineParams) {
   let messagesGenerated = 0;
 
   // ══════════════════════════════════════════════════════════════════════════
-  // STAGE 6: EMAIL GENERATION
+  // STAGE 6: EMAIL GENERATION — Never skip. Generate for ALL qualified leads.
   // ══════════════════════════════════════════════════════════════════════════
   await updateProgress(sb, runId, { current_stage: "generating_emails", progress_message: `✉️ Writing emails for ${outreachLeads.length} leads...`, leads_discovered: totalLeads, leads_qualified: qualifiedCount });
 
-  const emailLeads = outreachLeads.filter((l) => (l.contact_email || l.email_verification_status !== "invalid"));
-
-  for (let i = 0; i < emailLeads.length; i++) {
-    const lead = emailLeads[i];
-
-    // Skip leads with no email or invalid email
-    if (!lead.contact_email) {
-      await logStep(sb, runId, lead.id, "email_gen", "gemini", "skipped", { output_summary: "No contact email — flagged for manual review" });
-      continue;
-    }
-    if (lead.email_verification_status === "invalid") {
-      await logStep(sb, runId, lead.id, "email_gen", "gemini", "skipped", { output_summary: "Invalid email — flagged for re-enrichment" });
-      continue;
-    }
-
+  for (let i = 0; i < outreachLeads.length; i++) {
+    const lead = outreachLeads[i];
     const researchData = (lead.research_data as Record<string, unknown>) || {};
     const stepId = await logStep(sb, runId, lead.id, "email_gen", "gemini", "running");
     const t0 = Date.now();
 
-    await updateProgress(sb, runId, { current_stage: "generating_emails", progress_message: `✉️ Writing email for ${lead.business_name}... (${i + 1}/${emailLeads.length})`, leads_discovered: totalLeads, leads_qualified: qualifiedCount, messages_generated: messagesGenerated });
+    // Build the lead payload — if no contact email, address to "the team"
+    const hasEmail = lead.contact_email && lead.email_verification_status !== "invalid";
+    const emailRecipient = hasEmail ? lead.contact_email : null;
+    const contactName = lead.contact_name || (hasEmail ? null : `the team at ${lead.business_name}`);
+
+    const needsReview = !hasEmail;
+    if (needsReview) {
+      console.log(`[pipeline] No contact email for ${lead.business_name} — generating email addressed to team, flagging as needs_review`);
+    }
+
+    await updateProgress(sb, runId, { current_stage: "generating_emails", progress_message: `✉️ Writing email for ${lead.business_name}... (${i + 1}/${outreachLeads.length})`, leads_discovered: totalLeads, leads_qualified: qualifiedCount, messages_generated: messagesGenerated });
 
     const { data: emailData, error: emailErr } = await callEdgeFunction("generate-outreach", {
-      lead: { ...lead, web_snippets: researchData.services_offered || [], services_found: researchData.competitive_advantages || [] },
+      lead: { ...lead, contact_name: contactName, web_snippets: researchData.services_offered || [], services_found: researchData.competitive_advantages || [] },
       companyProfile, tone,
     });
 
     if (emailErr || !emailData?.subject) {
+      console.warn(`[pipeline] Email generation failed for ${lead.business_name}: ${emailErr || "No subject returned"}`);
       await updateStep(sb, stepId, "failed", { error_message: emailErr || "No subject returned", duration_ms: Date.now() - t0 });
     } else {
+      const status = needsReview ? "pending_approval" : "pending_approval";
+      const meta: Record<string, unknown> = {
+        personalisation_used: emailData.personalisation_used || null,
+        sequence_step: "cold_intro",
+      };
+      if (needsReview) meta.needs_review = true;
+      if (needsReview) meta.review_reason = "No verified contact email — update recipient before sending";
+
       const { error: msgErr } = await sb.from("outreach_messages").insert({
         campaign_id: campaignId, company_id: companyId, lead_id: lead.id,
         subject: emailData.subject as string, body: emailData.body as string,
-        channel: "email", email_type: "outreach", status: "pending_approval",
+        to_email: emailRecipient,
+        channel: "email", email_type: "outreach", status,
         ai_model_used: "gemini-flash",
-        metadata: { personalisation_used: emailData.personalisation_used || null, sequence_step: "cold_intro" },
+        metadata: meta,
       });
       if (!msgErr) messagesGenerated++;
       await updateStep(sb, stepId, msgErr ? "failed" : "completed", { output_summary: `Subject: ${(emailData.subject as string).slice(0, 80)}`, duration_ms: Date.now() - t0 });

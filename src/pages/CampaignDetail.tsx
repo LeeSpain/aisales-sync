@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +15,7 @@ import {
   ArrowLeft, Target, Users, Mail, MessageSquare, Workflow,
   Clock, Check, X, Eye, Send, FileText, CheckCircle, Linkedin,
   Phone, AlertTriangle, Edit3, ChevronDown, ChevronUp, Filter,
-  Loader2,
+  Loader2, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { leadStatusColors } from "@/lib/constants";
@@ -149,6 +149,56 @@ const CampaignDetail = () => {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["campaign-messages"] }); toast({ title: "All approved" }); },
     onError: () => { toast({ title: "Error", description: "Failed to approve emails.", variant: "destructive" }); },
   });
+
+  // Generate emails for all qualified leads that don't have one yet
+  const [generatingEmails, setGeneratingEmails] = useState(false);
+  const generateEmailsForCampaign = useCallback(async () => {
+    if (!id || !profile?.company_id || generatingEmails) return;
+    setGeneratingEmails(true);
+    try {
+      // Get company profile
+      const { data: companyData } = await supabase.from("companies").select("*").eq("id", profile.company_id).single();
+      const companyProfile = companyData
+        ? { name: companyData.name, industry: companyData.industry, services: companyData.services || [], target_markets: companyData.target_markets || [], unique_selling_points: companyData.selling_points || [], tone_preference: companyData.tone_preference || "professional" }
+        : { name: "Our Company", services: [], target_markets: [], unique_selling_points: [], tone_preference: "professional" };
+
+      // Get qualified leads without emails
+      const existingLeadIds = new Set((messages || []).map((m) => m.lead_id));
+      const leadsWithoutEmail = (leads || []).filter((l) => !existingLeadIds.has(l.id) && (l.status === "qualified" || l.status === "scored" || l.status === "researched" || l.status === "discovered"));
+
+      if (leadsWithoutEmail.length === 0) {
+        toast({ title: "All leads have emails", description: "Every lead in this campaign already has an outreach email." });
+        setGeneratingEmails(false);
+        return;
+      }
+
+      toast({ title: "Generating emails", description: `Writing emails for ${leadsWithoutEmail.length} leads...` });
+
+      let generated = 0;
+      for (const lead of leadsWithoutEmail) {
+        const { data: emailData, error: invokeErr } = await supabase.functions.invoke("generate-outreach", {
+          body: { lead, companyProfile, tone: companyProfile.tone_preference },
+        });
+
+        if (!invokeErr && emailData?.subject) {
+          await supabase.from("outreach_messages").insert({
+            campaign_id: id, company_id: profile.company_id, lead_id: lead.id,
+            subject: emailData.subject, body: emailData.body,
+            channel: "email", email_type: "outreach", status: "pending_approval",
+            ai_model_used: "gemini-flash",
+            metadata: { personalisation_used: emailData.personalisation_used || null, sequence_step: "manual_generate" },
+          });
+          generated++;
+        }
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["campaign-messages", id] });
+      toast({ title: "Done", description: `Generated ${generated} email${generated !== 1 ? "s" : ""} for review.` });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to generate emails.", variant: "destructive" });
+    }
+    setGeneratingEmails(false);
+  }, [id, profile, leads, messages, generatingEmails, queryClient, toast]);
 
   // Mark as reviewed when expanded
   const markReviewed = async (emailId: string) => {
@@ -353,9 +403,20 @@ const CampaignDetail = () => {
           {filteredMessages.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border p-12 text-center">
               <Mail className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">
-                {approvalFilter === "pending" ? "No pending emails. All caught up!" : "No emails match this filter."}
+              <p className="text-sm text-muted-foreground mb-4">
+                {approvalFilter === "pending" ? "No pending emails. All caught up!" : emailMessages.length === 0 ? "No emails generated yet for this campaign." : "No emails match this filter."}
               </p>
+              {emailMessages.length === 0 && leads && leads.length > 0 && (
+                <Button
+                  size="sm"
+                  className="gradient-primary border-0 text-white gap-1.5"
+                  onClick={generateEmailsForCampaign}
+                  disabled={generatingEmails || pipelineRunning}
+                >
+                  {generatingEmails ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {generatingEmails ? "Generating..." : `Generate emails for ${leads.length} leads`}
+                </Button>
+              )}
             </div>
           ) : (
             <div className="space-y-3">

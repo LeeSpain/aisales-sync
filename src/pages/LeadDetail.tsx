@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +20,7 @@ import {
   Clock, Check, X, Eye, Send, FileText, CheckCircle,
   Linkedin, TrendingUp, TrendingDown, UserCheck, Building2,
   ExternalLink, StickyNote, Plus, CalendarDays,
-  MessageSquare, PhoneCall, Pencil, Save,
+  MessageSquare, PhoneCall, Pencil, Save, Loader2, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { leadStatusColors } from "@/lib/constants";
@@ -207,6 +207,54 @@ const LeadDetail = () => {
       queryClient.invalidateQueries({ queryKey: ["lead-outreach"] });
     }
   };
+
+  // Generate outreach email for this lead
+  const [generatingEmail, setGeneratingEmail] = useState(false);
+  const generateEmail = useCallback(async () => {
+    if (!lead || !profile?.company_id || generatingEmail) return;
+    setGeneratingEmail(true);
+    try {
+      // Get company profile for the AI
+      const { data: companyData } = await supabase.from("companies").select("*").eq("id", profile.company_id).single();
+      const companyProfile = companyData
+        ? { name: companyData.name, industry: companyData.industry, services: companyData.services || [], target_markets: companyData.target_markets || [], unique_selling_points: companyData.selling_points || [], tone_preference: companyData.tone_preference || "professional" }
+        : { name: "Our Company", services: [], target_markets: [], unique_selling_points: [], tone_preference: "professional" };
+
+      const { data: emailData, error: invokeErr } = await supabase.functions.invoke("generate-outreach", {
+        body: { lead, companyProfile, tone: companyProfile.tone_preference },
+      });
+
+      if (invokeErr || !emailData?.subject) {
+        toast({ title: "Error", description: "Failed to generate email. Check edge function logs.", variant: "destructive" });
+        setGeneratingEmail(false);
+        return;
+      }
+
+      // Save to outreach_messages
+      const { error: insertErr } = await supabase.from("outreach_messages").insert({
+        campaign_id: lead.campaign_id,
+        company_id: profile.company_id,
+        lead_id: lead.id,
+        subject: emailData.subject,
+        body: emailData.body,
+        channel: "email",
+        email_type: "outreach",
+        status: "pending_approval",
+        ai_model_used: "gemini-flash",
+        metadata: { personalisation_used: emailData.personalisation_used || null, sequence_step: "manual_generate" },
+      });
+
+      if (insertErr) {
+        toast({ title: "Error", description: "Email generated but failed to save.", variant: "destructive" });
+      } else {
+        toast({ title: "Email generated", description: "Outreach email created and waiting for your approval." });
+        queryClient.invalidateQueries({ queryKey: ["lead-outreach"] });
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Something went wrong generating the email.", variant: "destructive" });
+    }
+    setGeneratingEmail(false);
+  }, [lead, profile, generatingEmail, queryClient, toast]);
 
   const getEmailStatus = (msg: Record<string, unknown>): string => {
     if (msg.status === "blocked") return "blocked";
@@ -718,7 +766,16 @@ const LeadDetail = () => {
           ) : (
             <div className="text-center py-8">
               <Mail className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">No outreach messages yet</p>
+              <p className="text-sm text-muted-foreground mb-4">No outreach messages yet</p>
+              <Button
+                size="sm"
+                className="gradient-primary border-0 text-white gap-1.5"
+                onClick={generateEmail}
+                disabled={generatingEmail}
+              >
+                {generatingEmail ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                {generatingEmail ? "Writing email..." : "Write outreach email"}
+              </Button>
             </div>
           )}
         </div>
