@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -102,14 +102,18 @@ const CampaignDetail = () => {
   const pipelineRunning = pipelineRun?.status === "running";
   const pipelineFailed = pipelineRun?.status === "failed";
 
-  // Auto-refresh when pipeline finishes
+  // Auto-refresh when pipeline finishes — MUST be in useEffect (not render body)
   const [prevStatus, setPrevStatus] = useState<string | null>(null);
-  if (pipelineRun?.status === "completed" && prevStatus === "running") {
-    queryClient.invalidateQueries({ queryKey: ["campaign", id] });
-    queryClient.invalidateQueries({ queryKey: ["campaign-leads", id] });
-    queryClient.invalidateQueries({ queryKey: ["campaign-messages", id] });
-  }
-  if (pipelineRun?.status !== prevStatus) setPrevStatus(pipelineRun?.status ?? null);
+  useEffect(() => {
+    if (pipelineRun?.status === "completed" && prevStatus === "running") {
+      queryClient.invalidateQueries({ queryKey: ["campaign", id] });
+      queryClient.invalidateQueries({ queryKey: ["campaign-leads", id] });
+      queryClient.invalidateQueries({ queryKey: ["campaign-messages", id] });
+    }
+    if (pipelineRun?.status != null && pipelineRun.status !== prevStatus) {
+      setPrevStatus(pipelineRun.status);
+    }
+  }, [pipelineRun?.status, prevStatus, queryClient, id]);
 
   const { data: leads } = useQuery({
     queryKey: ["campaign-leads", id],
