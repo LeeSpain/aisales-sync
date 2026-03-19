@@ -98,7 +98,7 @@ serve(async (req) => {
     if (!lead) return errorResponse("Associated lead not found", 404);
 
     const { data: company, error: companyError } = await sb
-      .from("company_profiles")
+      .from("companies")
       .select("*")
       .eq("id", proposal.company_id)
       .maybeSingle();

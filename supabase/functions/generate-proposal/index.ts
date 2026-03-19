@@ -44,7 +44,7 @@ serve(async (req) => {
 
     // Fetch company details
     const { data: company, error: companyError } = await sb
-      .from("company_profiles")
+      .from("companies")
       .select("*")
       .eq("id", company_id)
       .maybeSingle();
