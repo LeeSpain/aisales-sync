@@ -59,16 +59,7 @@ const AdminClientDetail = React.lazy(() => import("./pages/admin/AdminClientDeta
 const AdminDataSources = React.lazy(() => import("./pages/admin/AdminDataSources"));
 const AdminAIAgentCenter = React.lazy(() => import("./pages/admin/AdminAIAgentCenter"));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
 const ProtectedWithLayout = ({ children }: { children: React.ReactNode }) => (
   <ProtectedRoute>
