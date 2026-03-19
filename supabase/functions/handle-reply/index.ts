@@ -171,8 +171,9 @@ Tone: ${tonePref}`;
     const intent = classification.intent as string;
 
     // 4. Insert into inbound_replies
+    // 3. Insert into email_replies
     const { data: reply, error: insertError } = await sb
-      .from("inbound_replies")
+      .from("email_replies")
       .insert({
         outreach_message_id: outreachMessageId,
         lead_id: leadId,
