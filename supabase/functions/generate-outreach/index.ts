@@ -19,15 +19,43 @@ serve(async (req) => {
 
     const { lead, companyProfile, tone = "professional" } = await req.json();
 
+    const companyName = companyProfile?.name || "our company";
+    const services = JSON.stringify(companyProfile?.services || []);
+    const sellingPoints = JSON.stringify(companyProfile?.selling_points || []);
+    const pricingSummary = companyProfile?.pricing_summary || "";
+    const leadName = lead?.contact_name?.split(" ")[0] || "";
+    const leadBiz = lead?.business_name || "their business";
+    const leadIndustry = lead?.industry || "";
+    const leadCity = lead?.city || lead?.region || "";
+    const leadRole = lead?.contact_role || "";
+    const leadDesc = lead?.description || "";
+    const webSnippets = lead?.web_snippets || lead?.research_data?.services_offered || [];
+    const leadWebsite = lead?.website || "";
+
     const data = await callAI({
-      systemPrompt: `You are an expert sales email writer. Write a personalised outreach email from the company to the lead. The email should:
-- Reference something specific about the lead's business
-- Be ${tone} in tone
+      systemPrompt: `You are an expert sales email writer for ${companyName}. Write a personalised outreach email.
+
+ABOUT THE SENDER (${companyName}):
+- Services: ${services}
+- Selling points: ${sellingPoints}
+- Pricing: ${pricingSummary || "Not specified"}
+- Description: ${companyProfile?.description || ""}
+
+RULES:
+- Tone: ${tone} (${tone === "formal" ? "no contractions, polished language" : tone === "casual" ? "conversational, relaxed" : tone === "friendly" ? "warm, approachable" : "clean and direct"})
+- ${leadName ? `Address them as "${leadName}"` : `Address to "the team at ${leadBiz}"`}
+- ${leadRole ? `Reference their role as ${leadRole}` : ""}
+- Reference something SPECIFIC about their business: ${leadDesc || "use details from web snippets below"}
+- ${leadCity ? `Mention their location (${leadCity}) if relevant` : ""}
+- ${webSnippets.length > 0 ? `Use these details from their website: ${JSON.stringify(webSnippets)}` : ""}
+- ${leadWebsite ? `Their website: ${leadWebsite}` : ""}
+- Mention 1-2 specific services from ${companyName} that are relevant to THIS lead
+- ${sellingPoints !== "[]" ? `Work in a selling point: ${sellingPoints}` : ""}
 - Be concise (150-250 words)
-- Include a clear call to action
-- Not be pushy or salesy
-- Feel like a human wrote it`,
-      userContent: `Company: ${JSON.stringify(companyProfile)}\n\nLead: ${JSON.stringify(lead)}\n\nWrite a personalised outreach email.`,
+- Include a clear call to action (meeting, call, or demo)
+- Not be pushy or salesy — feel like a human wrote it
+- NEVER use generic filler like "I came across your company" — be SPECIFIC`,
+      userContent: `Lead details:\n${JSON.stringify(lead)}\n\nWrite a personalised outreach email.`,
       tools: [{
         type: "function",
         function: {

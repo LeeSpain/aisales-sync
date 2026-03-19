@@ -22,12 +22,25 @@ serve(async (req) => {
     }
 
     const data = await callAI({
-      systemPrompt: `You are a lead discovery assistant. Based on the target criteria and geographic focus, generate a realistic list of up to 10 business leads that would match the profile. Each lead should have plausible business details.
+      systemPrompt: `You are a lead discovery assistant. Based on the target criteria and geographic focus, generate a list of up to 50 business leads that would be ideal prospects for the company.
+
+The company looking for leads:
+- Name: ${companyProfile?.name || "Unknown"}
+- Services they sell: ${JSON.stringify(companyProfile?.services || [])}
+- Their target markets: ${JSON.stringify(companyProfile?.target_markets || [])}
+- Industry: ${companyProfile?.industry || ""}
+
+IMPORTANT: The leads you find must match the TARGET MARKETS above. For example:
+- If target_markets = ["dental clinics", "medical practices"], find dental clinics and medical practices
+- If target_markets = ["SaaS companies"], find SaaS companies
+- Do NOT return generic businesses — match the specific target markets
+
+Each lead should have realistic, plausible business details for real businesses that would exist in the specified geographic area.
+
 Return ONLY function-call JSON with fields: business_name, website, email, phone, address, city, region, country, industry, description, rating (1-5), review_count, size_estimate (small/medium/large/enterprise), contact_name, contact_role.`,
-      userContent: `CampaignId: ${campaignId}
-Target: ${JSON.stringify(targetCriteria)}
+      userContent: `Target criteria: ${JSON.stringify(targetCriteria)}
 Geographic Focus: ${geographicFocus}
-Company Profile: ${JSON.stringify(companyProfile)}`,
+Find up to 50 businesses matching these criteria.`,
       tools: [{
         type: "function",
         function: {

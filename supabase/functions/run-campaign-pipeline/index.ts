@@ -292,11 +292,27 @@ async function executePipeline(
     ? {
         name: companyData.name,
         industry: companyData.industry,
+        description: companyData.description || "",
+        website: companyData.website || "",
         services: companyData.services || [],
+        selling_points: companyData.selling_points || [],
         target_markets: companyData.target_markets || [],
-        unique_selling_points: companyData.selling_points || [],
+        tone_preference: companyData.tone_preference || tone,
+        pricing_summary: companyData.pricing_summary || "",
+        geographic_range: companyData.geographic_range || geographicFocus,
       }
-    : { name: "Company", services: [], target_markets: [], unique_selling_points: [] };
+    : {
+        name: "Company",
+        industry: "",
+        description: "",
+        website: "",
+        services: [],
+        selling_points: [],
+        target_markets: [],
+        tone_preference: tone,
+        pricing_summary: "",
+        geographic_range: geographicFocus,
+      };
 
   // ══════════════════════════════════════════
   // STAGE 1: DISCOVER

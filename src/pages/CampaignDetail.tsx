@@ -152,8 +152,14 @@ const CampaignDetail = () => {
     if (error) {
       toast({ title: "Error", description: "Failed to approve", variant: "destructive" });
     } else {
-      toast({ title: "Approved", description: "Email approved and queued for sending." });
+      toast({ title: "Approved", description: "Email approved — sending now..." });
       queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
+      // Auto-trigger send
+      supabase.functions.invoke("send-outreach", { body: { message_id: emailId } })
+        .then(({ error: sendErr }) => {
+          if (sendErr) console.warn("Auto-send failed:", sendErr);
+          else queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
+        });
     }
   };
 
@@ -175,8 +181,17 @@ const CampaignDetail = () => {
     if (error) {
       toast({ title: "Error", description: "Failed to approve all", variant: "destructive" });
     } else {
-      toast({ title: "All Approved", description: `${ids.length} emails approved and queued for sending.` });
+      toast({ title: "All Approved", description: `${ids.length} emails approved — sending now...` });
       queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
+      // Auto-trigger send for each approved email
+      for (const id of ids) {
+        supabase.functions.invoke("send-outreach", { body: { message_id: id } })
+          .then(({ error: sendErr }) => {
+            if (sendErr) console.warn(`Auto-send failed for ${id}:`, sendErr);
+          });
+      }
+      // Refresh after a short delay to show updated statuses
+      setTimeout(() => queryClient.invalidateQueries({ queryKey: ["campaign-messages"] }), 3000);
     }
   };
 

@@ -22,8 +22,30 @@ serve(async (req) => {
     let result: { score: number; reasoning: string; qualified: boolean };
     try {
       const data = await callAI({
-        systemPrompt: `You are a lead scoring AI. Score a business lead from 1.0 to 5.0 based on how well they match the company's ideal client profile. Consider: industry fit, size, location, service needs, budget indicators. Return structured output.`,
-        userContent: `Company Profile: ${JSON.stringify(companyProfile)}\n\nLead to score: ${JSON.stringify(lead)}`,
+        systemPrompt: `You are a lead scoring AI. Score a business lead from 1.0 to 5.0 based on how well they match the company's ideal client profile.
+
+The company you are scoring leads FOR:
+- Name: ${companyProfile?.name || "Unknown"}
+- Industry: ${companyProfile?.industry || "Unknown"}
+- Services: ${JSON.stringify(companyProfile?.services || [])}
+- Selling points: ${JSON.stringify(companyProfile?.selling_points || [])}
+- Target markets: ${JSON.stringify(companyProfile?.target_markets || [])}
+- Description: ${companyProfile?.description || ""}
+- Geographic range: ${companyProfile?.geographic_range || ""}
+
+Score HIGH (4-5) when:
+- The lead's industry matches the company's target markets
+- The lead's size suggests they can afford the services
+- The lead's location is within the company's geographic range
+- The lead's business needs align with the company's services
+
+Score LOW (1-2) when:
+- The lead's industry is completely unrelated to target markets
+- The lead is too small or wrong size for the services offered
+- The lead is outside the company's geographic range
+
+Return structured output with detailed reasoning.`,
+        userContent: `Lead to score:\n${JSON.stringify(lead)}`,
         tools: [{
           type: "function",
           function: {
