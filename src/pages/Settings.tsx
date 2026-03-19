@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   Globe, Briefcase, MessageSquare, SlidersHorizontal, MapPin, Save,
   Building2, FileText, ShieldCheck, Mail, Send, FileCheck, X, Pencil,
-  Check, Lightbulb, Plus, Sun, Moon, Palette, CheckCircle2, Circle,
+  Check, Lightbulb, Plus, Sun, Moon, Palette,
 } from "lucide-react";
 import { useTheme } from "@/hooks/useTheme";
 import { cn } from "@/lib/utils";
@@ -210,44 +210,6 @@ const SettingsPage = () => {
           {company.status ?? "setup"}
         </Badge>
       </div>
-
-      {/* Profile Completion Widget */}
-      {company && (() => {
-        const checks = [
-          { label: "Company name", done: !!(company.name && String(company.name).trim()), hint: "Add your company name" },
-          { label: "Description", done: !!(company.description && String(company.description).trim()), hint: "Describe what your company does" },
-          { label: "Services", done: !!((company.services as string[] | null)?.length), hint: "Add your services" },
-          { label: "Selling points", done: !!((company.selling_points as string[] | null)?.length), hint: "What makes you different?" },
-          { label: "Target markets", done: !!((company.target_markets as string[] | null)?.length), hint: "Who do you sell to?" },
-        ];
-        const done = checks.filter((c) => c.done).length;
-        const pct = Math.round((done / 5) * 100);
-        if (pct === 100) return null;
-        return (
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold">Company profile — {done} of 5 sections complete</p>
-              <span className="text-xs text-muted-foreground">{pct}%</span>
-            </div>
-            <div className="h-2 w-full rounded-full bg-muted/50 overflow-hidden">
-              <div className={"h-full rounded-full transition-all " + (pct >= 80 ? "bg-success" : pct >= 40 ? "bg-amber-400" : "bg-primary")} style={{ width: `${pct}%` }} />
-            </div>
-            <div className="space-y-2">
-              {checks.map((c) => (
-                <div key={c.label} className="flex items-center gap-2 text-sm">
-                  {c.done ? (
-                    <CheckCircle2 className="h-4 w-4 text-success shrink-0" />
-                  ) : (
-                    <Circle className="h-4 w-4 text-muted-foreground/40 shrink-0" />
-                  )}
-                  <span className={c.done ? "text-foreground" : "text-muted-foreground"}>{c.label}</span>
-                  {!c.done && <span className="text-xs text-muted-foreground ml-auto">{c.hint}</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Theme Picker */}
       <div className="rounded-xl border border-border bg-card p-5">
