@@ -1,39 +1,16 @@
 {
   "permissions": {
     "allow": [
-      "Bash(grep -v \"^--$\")",
-      "Bash(git -C /Users/leewakeman/agent-aura-56/aisales-sync rev-parse --show-toplevel)",
-      "Read(//Users/leewakeman/agent-aura-56/**)",
-      "Read(//Users/leewakeman/**)",
-      "Bash(supabase status:*)",
-      "Bash(ls -1 /Users/leewakeman/aisales-sync/aisales-sync/supabase/migrations/2026031[3-9]*.sql)",
-      "Bash(supabase link:*)",
-      "Bash(chmod +x /Users/leewakeman/aisales-sync/aisales-sync/scripts/deploy-functions.sh)",
-      "Bash(find /Users/leewakeman/aisales-sync/aisales-sync -type f -name *lovable*)",
-      "Bash(find /Users/leewakeman/aisales-sync/aisales-sync/supabase -type f -name *.toml -o -name *.json -o -name *.ts -o -name *.js)",
-      "Bash(grep -r lovable /Users/leewakeman/aisales-sync/aisales-sync --include=*.ts --include=*.tsx --include=*.js --include=*.json)",
-      "Bash(grep -r deploy /Users/leewakeman/aisales-sync/aisales-sync --include=*.ts --include=*.tsx)",
-      "Bash(grep -r lovable /Users/leewakeman/aisales-sync/aisales-sync/src --include=*.ts --include=*.tsx)",
-      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
-      "Bash(grep -r functions.invoke /Users/leewakeman/aisales-sync/aisales-sync/src --include=*.ts --include=*.tsx)",
-      "Bash(grep -r \"callScrapeUrl\\\\|scrape-url\\\\|/functions/v1/\" /Users/leewakeman/aisales-sync/aisales-sync/supabase/functions --include=*.ts)",
-      "Bash(ls -lah /Users/leewakeman/aisales-sync/aisales-sync/supabase/functions/*/index.ts)",
-      "Read(//Users/leewakeman/agent-aura-56/aisales-sync/**)",
-      "Bash(git log:*)",
-      "Bash(ls -d supabase/functions/*/index.ts)",
-      "Bash(grep -r \"Agent Centre\\\\|Agent Center\\\\|email writer\\\\|email.*writer\" /Users/leewakeman/lifelink-sync/lifelink-sync/src --include=*.tsx --include=*.ts)",
-      "Bash(grep -l 'CREATE TABLE.*leads' /Users/leewakeman/lifelink-sync/supabase/migrations/*.sql)",
-      "Bash(grep -l \"first_name\\\\|last_name\\\\|company_name\\\\|job_title\\\\|lead_source\\\\|deal_value\" /Users/leewakeman/lifelink-sync/supabase/migrations/*.sql)",
-      "Bash(grep -r \"marketing_campaigns\\\\|marketing_content\" /Users/leewakeman/lifelink-sync/supabase/migrations/*.sql)",
-      "Bash(grep -l \"lead_intelligence_runs\" /Users/leewakeman/lifelink-sync/supabase/migrations/*.sql)"
-    ],
-    "additionalDirectories": [
-      "/Users/leewakeman/aisales-sync/aisales-sync/src/integrations/supabase",
-      "/Users/leewakeman/aisales-sync/aisales-sync/src/hooks",
-      "/Users/leewakeman/aisales-sync/aisales-sync/src/pages/admin",
-      "/Users/leewakeman/aisales-sync/aisales-sync/supabase/functions/health-check",
-      "/Users/leewakeman/aisales-sync/aisales-sync",
-      "/Users/leewakeman/lifelink-sync/lifelink-sync/supabase/functions/clara-email-engine"
+      "Bash(find /Users/leewakeman/agent-aura-56/agent-aura-56 -type f -name *migration* -o -name *schema* -o -name *supabase*)",
+      "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
+      "Bash(git pull:*)",
+      "Bash(npx supabase:*)",
+      "Bash(git push:*)",
+      "Bash(grep -E \"\\\\.sql$\")",
+      "Bash(npm run:*)",
+      "Bash(supabase --version)",
+      "Bash(supabase projects:*)",
+      "Bash(cat /Users/leewakeman/agent-aura-56/aisales-sync/.lovable/*.json)"
     ]
   }
 }

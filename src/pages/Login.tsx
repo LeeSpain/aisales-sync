@@ -1,0 +1,100 @@
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { Zap } from "lucide-react";
+import { loginSchema } from "@/lib/validations";
+
+const Login = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const result = loginSchema.safeParse({ email, password });
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.issues.forEach(i => { errors[i.path[0] as string] = i.message; });
+      setFieldErrors(errors);
+      return;
+    }
+    setFieldErrors({});
+
+    setLoading(true);
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+
+    if (error) {
+      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+    } else if (authData.user) {
+      // Check role + onboarding status to send user to the right place
+      const [{ data: roles }, { data: prof }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", authData.user.id),
+        supabase.from("profiles").select("company_id, onboarding_completed").eq("id", authData.user.id).single(),
+      ]);
+
+      const isAdmin = roles?.some((r) => r.role === "admin");
+
+      if (isAdmin) {
+        navigate("/admin");
+      } else if (!prof?.company_id) {
+        navigate("/select-plan");
+      } else if (!prof?.onboarding_completed) {
+        navigate("/onboarding");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+      <div className="w-full max-w-sm space-y-8">
+        <div className="text-center">
+          <Link to="/" className="mb-6 inline-flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-primary">
+              <Zap className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-lg font-bold">AI Sales Sync</span>
+          </Link>
+          <h1 className="mt-4 text-2xl font-bold">Welcome back</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Sign in to your account</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" required />
+            {fieldErrors.email && <p className="text-xs text-destructive mt-1">{fieldErrors.email}</p>}
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>
+            </div>
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required />
+            {fieldErrors.password && <p className="text-xs text-destructive mt-1">{fieldErrors.password}</p>}
+          </div>
+          <Button type="submit" className="w-full gradient-primary border-0 text-white" disabled={loading}>
+            {loading ? "Signing in..." : "Sign in"}
+          </Button>
+        </form>
+
+        <p className="text-center text-sm text-muted-foreground">
+          Don't have an account?{" "}
+          <Link to="/signup" className="font-medium text-primary hover:underline">Sign up</Link>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default Login;
