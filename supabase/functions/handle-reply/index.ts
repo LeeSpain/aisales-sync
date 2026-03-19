@@ -26,9 +26,9 @@ serve(async (req) => {
 
     const { from_identifier, subject, body: replyBody, channel = "email" } = body;
 
-    // 1. Search outreach_emails joining leads to match from_identifier
+    // 1. Search outreach_messages joining leads to match from_identifier
     const { data: matchedMessages, error: searchError } = await sb
-      .from("outreach_emails")
+      .from("outreach_messages")
       .select("*, leads!inner(*)")
       .or(
         `leads.email.ilike.%${from_identifier}%,leads.contact_email.ilike.%${from_identifier}%`
@@ -81,28 +81,10 @@ serve(async (req) => {
       }
     }
 
-    // 2. Fetch company profile for context in draft response
-    let companyContext = "";
-    if (companyId) {
-      const { data: companyData } = await sb
-        .from("companies")
-        .select("name, services, selling_points, tone_preference, pricing_summary")
-        .eq("id", companyId)
-        .maybeSingle();
-      if (companyData) {
-        const tonePref = companyData.tone_preference || "professional";
-        companyContext = `\n\nYou are replying on behalf of ${companyData.name}.
-Services: ${JSON.stringify(companyData.services || [])}
-Selling points: ${JSON.stringify(companyData.selling_points || [])}
-Pricing: ${companyData.pricing_summary || "Not specified"}
-Tone: ${tonePref}`;
-      }
-    }
-
-    // 3. Call AI to classify intent and draft response
+    // 2. Call AI to classify intent and draft response
     const aiData = await callAI({
-      systemPrompt: `You are an expert sales reply analyst. Classify the intent of an inbound reply to a sales outreach message and draft an appropriate response. Be professional and helpful.${companyContext}`,
-      userContent: `From: ${from_identifier}\nSubject: ${subject}\nBody: ${replyBody}\n\nClassify the intent and draft a response that references our actual services.`,
+      systemPrompt: `You are an expert sales reply analyst. Classify the intent of an inbound reply to a sales outreach message and draft an appropriate response. Be professional and helpful.`,
+      userContent: `From: ${from_identifier}\nSubject: ${subject}\nBody: ${replyBody}\n\nClassify the intent and draft a response.`,
       tools: [
         {
           type: "function",
@@ -170,10 +152,9 @@ Tone: ${tonePref}`;
 
     const intent = classification.intent as string;
 
-    // 4. Insert into inbound_replies
-    // 3. Insert into email_replies
+    // 3. Insert into inbound_replies
     const { data: reply, error: insertError } = await sb
-      .from("email_replies")
+      .from("inbound_replies")
       .insert({
         outreach_message_id: outreachMessageId,
         lead_id: leadId,
@@ -194,7 +175,7 @@ Tone: ${tonePref}`;
 
     if (insertError) throw insertError;
 
-    // 5. Update lead status based on intent
+    // 4. Update lead status based on intent
     const leadStatusMap: Record<string, string> = {
       interested: "replied",
       meeting_request: "call_scheduled",
@@ -209,7 +190,7 @@ Tone: ${tonePref}`;
       await sb.from("leads").update({ status: newLeadStatus }).eq("id", leadId);
     }
 
-    // 6. Increment campaign replies_received
+    // 5. Increment campaign replies_received
     if (campaignId) {
       const { data: campaign } = await sb
         .from("campaigns")
@@ -225,7 +206,7 @@ Tone: ${tonePref}`;
       }
     }
 
-    // 7. Log activity
+    // 6. Log activity
     await logActivity(
       sb,
       "reply_received",

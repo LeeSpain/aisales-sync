@@ -19,54 +19,15 @@ serve(async (req) => {
 
     const { lead, companyProfile, tone = "professional" } = await req.json();
 
-    const companyName = companyProfile?.name || "our company";
-    const services = companyProfile?.services || [];
-    const sellingPoints = companyProfile?.selling_points || [];
-    const pricingSummary = companyProfile?.pricing_summary || "";
-    const leadName = lead?.contact_name?.split(" ")[0] || "";
-    const leadBiz = lead?.business_name || "their business";
-    const leadIndustry = lead?.industry || "";
-    const leadCity = lead?.city || lead?.region || "";
-    const leadRole = lead?.contact_role || "";
-    const leadDesc = lead?.description || "";
-    const webSnippets = lead?.web_snippets || lead?.services_found || [];
-    const leadWebsite = lead?.website || "";
-
-    const toneGuide = tone === "formal" ? "no contractions, polished language"
-      : tone === "casual" ? "conversational, relaxed"
-      : tone === "friendly" ? "warm, approachable"
-      : "clean and direct";
-
     const data = await callAI({
-      systemPrompt: `You are an expert B2B sales email writer for ${companyName}.
-
-COMPANY CONTEXT (use this to sell):
-- Services: ${Array.isArray(services) ? services.join(", ") : JSON.stringify(services)}
-- Selling Points: ${Array.isArray(sellingPoints) ? sellingPoints.join(", ") : JSON.stringify(sellingPoints)}
-- Target Markets: ${(companyProfile?.target_markets || []).join?.(", ") || "not specified"}
-- Pricing: ${pricingSummary || "not specified"}
-- Description: ${companyProfile?.description || ""}
-
-LEAD DETAILS TO PERSONALISE WITH:
-- Business: ${leadBiz}${leadIndustry ? ` (${leadIndustry})` : ""}
-- ${leadCity ? `Location: ${leadCity}` : ""}
-- ${leadRole ? `Contact role: ${leadRole}` : ""}
-- ${leadDesc ? `About them: ${leadDesc}` : ""}
-- ${webSnippets.length > 0 ? `From their website: ${JSON.stringify(webSnippets)}` : ""}
-- ${leadWebsite ? `Website: ${leadWebsite}` : ""}
-
-RULES:
-- Tone: ${tone} (${toneGuide})
-- ${leadName ? `Address them as "${leadName}"` : `Address to "the team at ${leadBiz}"`}
-- Reference something SPECIFIC about their business — never generic filler
-- Explain how ONE of ${companyName}'s services solves a specific problem the lead likely has
-- ${sellingPoints.length > 0 ? `Work in a selling point naturally` : ""}
-- Be concise (120-180 words)
-- Include a clear, low-commitment call to action (e.g. "Would a 15-min call make sense?")
-- Not be pushy or salesy — feel like a human wrote it
-- Never use placeholder text like [Name] or {Company}
-- NEVER use "I came across your company" or similar generic openers`,
-      userContent: `Lead to write to:\n${JSON.stringify(lead)}\n\nWrite a personalised outreach email.`,
+      systemPrompt: `You are an expert sales email writer. Write a personalised outreach email from the company to the lead. The email should:
+- Reference something specific about the lead's business
+- Be ${tone} in tone
+- Be concise (150-250 words)
+- Include a clear call to action
+- Not be pushy or salesy
+- Feel like a human wrote it`,
+      userContent: `Company: ${JSON.stringify(companyProfile)}\n\nLead: ${JSON.stringify(lead)}\n\nWrite a personalised outreach email.`,
       tools: [{
         type: "function",
         function: {

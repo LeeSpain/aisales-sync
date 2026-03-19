@@ -111,63 +111,28 @@ const SettingsPage = () => {
     enabled: !!user,
   });
 
-  // Ensure a company record exists — find existing or create one
   const { data: company } = useQuery({
-    queryKey: ["company-profile", user?.id],
+    queryKey: ["company-profile", profile?.company_id],
     queryFn: async () => {
-      if (profile?.company_id) {
-        const { data } = await supabase.from("companies").select("*").eq("id", profile.company_id).single();
-        if (data) {
-          if (!notesLoaded) {
-            setNotes((data.ai_profile as Record<string, unknown>)?.notes as string || "");
-            setNotesLoaded(true);
-          }
-          return data;
-        }
+      const { data } = await supabase.from("companies").select("*").eq("id", profile!.company_id!).single();
+      if (data && !notesLoaded) {
+        setNotes((data.ai_profile as Record<string, unknown>)?.notes as string || "");
+        setNotesLoaded(true);
       }
-      // Check if company already exists for this user
-      const { data: existing } = await supabase
-        .from("companies").select("*").eq("owner_id", user!.id).limit(1).maybeSingle();
-      if (existing) {
-        if (profile && !profile.company_id) {
-          await supabase.from("profiles").update({ company_id: existing.id }).eq("id", user!.id);
-          queryClient.invalidateQueries({ queryKey: ["profile"] });
-        }
-        if (!notesLoaded) {
-          setNotes((existing.ai_profile as Record<string, unknown>)?.notes as string || "");
-          setNotesLoaded(true);
-        }
-        return existing;
-      }
-      // Create new company
-      const fullName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "My Company";
-      const { data: newCompany } = await supabase
-        .from("companies").insert({ name: `${fullName}'s Company`, owner_id: user!.id, status: "active" })
-        .select("*").single();
-      if (newCompany) {
-        await supabase.from("profiles").update({ company_id: newCompany.id }).eq("id", user!.id);
-        queryClient.invalidateQueries({ queryKey: ["profile"] });
-      }
-      return newCompany;
+      return data;
     },
-    enabled: !!user,
+    enabled: !!profile?.company_id,
   });
 
   // ─── Save helpers ───
-  const invalidateCompanyQueries = () => {
-    queryClient.invalidateQueries({ queryKey: ["company-profile"] });
-    queryClient.invalidateQueries({ queryKey: ["company-profile-check"] });
-    queryClient.invalidateQueries({ queryKey: ["profile"] });
-  };
-
   const updateCompanyField = async (field: string, value: unknown) => {
     if (!company) return;
     const { error } = await supabase.from("companies").update({ [field]: value }).eq("id", company.id);
     if (error) {
       toast({ title: "Error", description: `Failed to update ${field}.`, variant: "destructive" });
     } else {
-      toast({ title: "Saved", description: `${field.replace(/_/g, " ")} saved successfully.` });
-      invalidateCompanyQueries();
+      toast({ title: "Updated", description: `${field.replace(/_/g, " ")} saved.` });
+      queryClient.invalidateQueries({ queryKey: ["company-profile"] });
     }
   };
 
@@ -184,7 +149,7 @@ const SettingsPage = () => {
       toast({ title: "Error", description: "Failed to save notes.", variant: "destructive" });
     } else {
       toast({ title: "Saved", description: "Notes updated. The AI will use these as context." });
-      invalidateCompanyQueries();
+      queryClient.invalidateQueries({ queryKey: ["company-profile"] });
     }
   };
 
@@ -209,7 +174,7 @@ const SettingsPage = () => {
       toast({ title: "Error", description: "Failed to save preference.", variant: "destructive" });
     } else {
       toast({ title: "Updated", description: !current ? "Auto-send enabled" : "Approval required" });
-      invalidateCompanyQueries();
+      queryClient.invalidateQueries({ queryKey: ["company-profile"] });
     }
   };
 

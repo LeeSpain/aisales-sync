@@ -44,7 +44,7 @@ serve(async (req) => {
 
     // Fetch company details
     const { data: company, error: companyError } = await sb
-      .from("companies")
+      .from("company_profiles")
       .select("*")
       .eq("id", company_id)
       .maybeSingle();
@@ -76,13 +76,11 @@ serve(async (req) => {
         contact_role: lead.contact_role,
       },
       company: {
-        name: company.name,
+        name: company.company_name,
         services: company.services,
-        selling_points: company.selling_points,
         description: company.description,
         industry: company.industry,
-        pricing_summary: company.pricing_summary,
-        tone_preference: company.tone_preference,
+        unique_value: company.unique_value_proposition || company.value_proposition,
       },
       campaign: campaign
         ? {
