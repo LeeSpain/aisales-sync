@@ -96,13 +96,13 @@ serve(async (req) => {
     // Fetch previous outreach messages and inbound replies for context
     const [outreachResult, repliesResult] = await Promise.all([
       sb
-        .from("outreach_messages")
+        .from("outreach_emails")
         .select("subject, body, status, channel, sent_at, opened_at, replied_at")
         .eq("lead_id", lead_id)
         .order("created_at", { ascending: true })
         .limit(10),
       sb
-        .from("inbound_replies")
+        .from("email_replies")
         .select("body, intent, channel, created_at")
         .eq("lead_id", lead_id)
         .order("created_at", { ascending: true })
