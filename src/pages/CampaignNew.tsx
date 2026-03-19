@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCampaignPipeline, PIPELINE_STAGES } from "@/hooks/useCampaignPipeline";
+import { useQuery } from "@tanstack/react-query";
+import { useCampaignPipeline } from "@/hooks/useCampaignPipeline";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -112,28 +112,11 @@ const CampaignNew = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null);
   const [launchLocked, setLaunchLocked] = useState(false);
   const pipeline = useCampaignPipeline();
-  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Auto-redirect to campaign detail 2s after pipeline completes
-  useEffect(() => {
-    if (pipeline.stage === "done" && createdCampaignId) {
-      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
-      queryClient.invalidateQueries({ queryKey: ["campaign-leads"] });
-      queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
-      redirectTimerRef.current = setTimeout(() => {
-        navigate(`/campaigns/${createdCampaignId}`);
-      }, 2000);
-    }
-    return () => {
-      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
-    };
-  }, [pipeline.stage, createdCampaignId, navigate, queryClient]);
 
   // Form state
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
@@ -149,7 +132,6 @@ const CampaignNew = () => {
   const [tone, setTone] = useState("professional");
   const [outreachLanguage, setOutreachLanguage] = useState("English");
   const [minimumScore, setMinimumScore] = useState(3.5);
-  const [maxLeads, setMaxLeads] = useState(25);
   const [campaignName, setCampaignName] = useState("");
 
   const { data: profile } = useQuery({
@@ -270,7 +252,6 @@ const CampaignNew = () => {
         geo_countries: geoCountries,
         geo_regions: geoRegions,
         geo_cities: geoCities,
-        max_leads: maxLeads,
       };
 
       const { data: newCampaign, error: campErr } = await supabase
@@ -300,7 +281,6 @@ const CampaignNew = () => {
         geographicFocus: geo,
         minimumScore,
         tone,
-        maxLeads,
       });
     } catch (e) {
       console.error("Campaign create error:", e);
@@ -674,25 +654,6 @@ const CampaignNew = () => {
                       </div>
                     ))}
                   </div>
-
-                  <div className="space-y-4 pt-2">
-                    <div className="flex items-center justify-between">
-                      <Label>Leads to find</Label>
-                      <Badge variant="secondary" className="text-lg font-bold px-3 py-1">{maxLeads}</Badge>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[10, 25, 50, 100].map((n) => (
-                        <button
-                          key={n}
-                          onClick={() => setMaxLeads(n)}
-                          className={"rounded-xl border px-3 py-2 text-sm transition-all " + (maxLeads === n ? "border-primary bg-primary/10 font-medium" : "border-border hover:border-primary/50")}
-                        >
-                          {n}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">How many businesses to discover. More leads = longer pipeline run but more opportunities.</p>
-                  </div>
                 </CardContent>
               </Card>
             )}
@@ -723,7 +684,6 @@ const CampaignNew = () => {
                       <div className="flex justify-between"><span className="text-muted-foreground">Channels</span><span className="font-medium capitalize">{channels.join(", ")}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Tone</span><span className="font-medium capitalize">{tone}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Language</span><span className="font-medium">{outreachLanguage}</span></div>
-                      <div className="flex justify-between"><span className="text-muted-foreground">Leads to find</span><span className="font-medium">{maxLeads}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Min. score</span><span className="font-medium">{minimumScore.toFixed(1)} / 5.0</span></div>
                       {targetDecisionMaker !== "Any decision maker" && (
                         <div className="flex justify-between"><span className="text-muted-foreground">Contact</span><span className="font-medium">{targetDecisionMaker}</span></div>
@@ -759,108 +719,57 @@ const CampaignNew = () => {
                     {pipeline.stage === "done" ? (
                       <><CheckCircle2 className="h-5 w-5 text-success" />Campaign launched!</>
                     ) : pipeline.stage === "error" ? (
-                      <><AlertCircle className="h-5 w-5 text-destructive" />Pipeline {pipeline.cancelled ? "cancelled" : "error"}</>
+                      <><AlertCircle className="h-5 w-5 text-destructive" />Pipeline error</>
                     ) : (
                       <><Loader2 className="h-5 w-5 animate-spin text-primary" />AI is working...</>
                     )}
                   </CardTitle>
                   <CardDescription>
                     {pipeline.stage === "done"
-                      ? "Your leads have been discovered, scored, and outreach has been prepared. Head to the campaign to review and approve emails."
+                      ? "Your leads have been discovered, scored, and outreach has been prepared."
                       : pipeline.stage === "error"
-                      ? (pipeline.error || "Something went wrong. Your campaign has been saved — you can retry from the campaign page.")
-                      : "Sit back while your AI runs the full 10-stage pipeline."}
+                      ? "Something went wrong. Your campaign has been saved — you can retry from the campaign page."
+                      : "Sit back while your AI discovers and qualifies leads for this campaign."}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {/* Progress message */}
-                  {pipeline.progress && pipeline.stage !== "done" && pipeline.stage !== "error" && (
-                    <div className="rounded-xl bg-primary/5 border border-primary/20 px-4 py-3">
-                      <p className="text-sm text-primary font-medium">{pipeline.progress}</p>
-                    </div>
-                  )}
-
-                  {/* 10-stage progress tracker */}
-                  <div className="space-y-2">
-                    {PIPELINE_STAGES.map(({ key, label, emoji }) => {
-                      const stageKeys = PIPELINE_STAGES.map((s) => s.key);
-                      const currentIdx = stageKeys.indexOf(pipeline.stage as string);
-                      const thisIdx = stageKeys.indexOf(key);
-                      const isDone = currentIdx > thisIdx || pipeline.stage === "done";
+                  <div className="space-y-3">
+                    {[
+                      { key: "discovering", label: "Discovering real companies", icon: Search },
+                      { key: "scoring", label: "Scoring and qualifying leads", icon: BarChart3 },
+                      { key: "researching", label: "Researching decision-makers", icon: Users },
+                      { key: "outreach", label: "Generating personalised outreach", icon: MessageSquare },
+                    ].map(({ key, label, icon: Icon }) => {
+                      const stages = ["discovering", "scoring", "researching", "outreach", "done"];
+                      const stageIdx = stages.indexOf(pipeline.stage);
+                      const thisIdx = stages.indexOf(key);
+                      const isDone = stageIdx > thisIdx || pipeline.stage === "done";
                       const isActive = pipeline.stage === key;
-                      const isFailed = pipeline.stage === "error" && currentIdx === thisIdx;
                       return (
-                        <div key={key} className={
-                          "flex items-center gap-3 rounded-xl border p-2.5 transition-all " +
-                          (isFailed ? "border-destructive/30 bg-destructive/5" :
-                           isActive ? "border-primary bg-primary/5" :
-                           isDone ? "border-success/30 bg-success/5" :
-                           "border-border opacity-40")
-                        }>
-                          <div className={
-                            "flex h-7 w-7 items-center justify-center rounded-lg text-sm " +
-                            (isFailed ? "bg-destructive/20" :
-                             isDone ? "bg-success/20" :
-                             isActive ? "bg-primary/10" :
-                             "bg-muted/30")
-                          }>
-                            {isFailed ? <X className="h-3.5 w-3.5 text-destructive" /> :
-                             isDone ? <Check className="h-3.5 w-3.5 text-success" /> :
-                             isActive ? <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" /> :
-                             <span>{emoji}</span>}
+                        <div key={key} className={"flex items-center gap-3 rounded-xl border p-3 transition-all " + (isActive ? "border-primary bg-primary/5" : isDone ? "border-success/30 bg-success/5" : "border-border opacity-50")}>
+                          <div className={"flex h-8 w-8 items-center justify-center rounded-lg " + (isDone ? "bg-success/20" : isActive ? "bg-primary/10" : "bg-muted/30")}>
+                            {isDone ? <Check className="h-4 w-4 text-success" /> : isActive ? <Loader2 className="h-4 w-4 text-primary animate-spin" /> : <Icon className="h-4 w-4 text-muted-foreground" />}
                           </div>
-                          <span className={
-                            "text-xs font-medium " +
-                            (isFailed ? "text-destructive" :
-                             isDone ? "text-foreground" :
-                             isActive ? "text-primary" :
-                             "text-muted-foreground")
-                          }>{label}</span>
-                          {isDone && <Check className="h-3.5 w-3.5 text-success ml-auto" />}
+                          <span className={"text-sm " + (isDone ? "text-foreground font-medium" : isActive ? "text-primary font-medium" : "text-muted-foreground")}>{label}</span>
+                          {isDone && <Check className="h-4 w-4 text-success ml-auto" />}
                         </div>
                       );
                     })}
                   </div>
-
-                  {/* Live stats */}
-                  {(pipeline.leadsFound > 0 || pipeline.leadsQualified > 0 || pipeline.messagesGenerated > 0) && (
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="rounded-xl border border-border bg-card p-3 text-center">
-                        <p className="text-xl font-bold">{pipeline.leadsFound}</p>
-                        <p className="text-[10px] text-muted-foreground">Discovered</p>
-                      </div>
-                      <div className="rounded-xl border border-border bg-card p-3 text-center">
-                        <p className="text-xl font-bold text-primary">{pipeline.leadsQualified}</p>
-                        <p className="text-[10px] text-muted-foreground">Qualified</p>
-                      </div>
-                      <div className="rounded-xl border border-border bg-card p-3 text-center">
-                        <p className="text-xl font-bold text-accent">{pipeline.messagesGenerated}</p>
-                        <p className="text-[10px] text-muted-foreground">Emails Drafted</p>
-                      </div>
-                      <div className="rounded-xl border border-border bg-card p-3 text-center">
-                        <p className="text-xl font-bold text-success">{pipeline.messagesGenerated}</p>
-                        <p className="text-[10px] text-muted-foreground">Ready for Review</p>
-                      </div>
+                  {pipeline.leadsFound > 0 && (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center">
+                      <p className="text-2xl font-bold text-primary">{pipeline.leadsFound}</p>
+                      <p className="text-sm text-muted-foreground">qualified leads found so far</p>
                     </div>
                   )}
-
-                  {/* Action buttons */}
                   {pipeline.stage === "done" && createdCampaignId && (
-                    <div className="space-y-2">
-                      <p className="text-xs text-center text-muted-foreground">Redirecting to your campaign in 2 seconds...</p>
-                      <Button className="w-full gradient-primary text-white" onClick={() => navigate("/campaigns/" + createdCampaignId)}>
-                        <ChevronRight className="h-4 w-4 mr-2" />Review & Approve Emails Now
-                      </Button>
-                    </div>
+                    <Button className="w-full gradient-primary text-white" onClick={() => navigate("/campaigns/" + createdCampaignId)}>
+                      <ChevronRight className="h-4 w-4 mr-2" />View Campaign
+                    </Button>
                   )}
                   {pipeline.stage === "error" && createdCampaignId && (
                     <Button variant="outline" className="w-full" onClick={() => navigate("/campaigns/" + createdCampaignId)}>
                       View Campaign
-                    </Button>
-                  )}
-                  {pipeline.stage !== "done" && pipeline.stage !== "error" && pipeline.stage !== "idle" && (
-                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => pipeline.cancelPipeline()}>
-                      Cancel Pipeline
                     </Button>
                   )}
                 </CardContent>
