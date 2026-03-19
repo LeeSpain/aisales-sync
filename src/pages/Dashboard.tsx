@@ -173,7 +173,7 @@ const Dashboard = () => {
       </div>
 
       {/* Company profile completion banner */}
-      {company && !isProfileComplete && (
+      {!isProfileComplete && (
         <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
@@ -181,17 +181,19 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="font-semibold text-sm text-amber-400">
-                Complete your company profile ({completionPct}%)
+                {company ? `Complete your company profile (${completionPct}%)` : "Set up your company profile"}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Your AI needs to know about your business to find the right leads and write personalised emails.
               </p>
-              <div className="mt-2 h-1.5 w-48 rounded-full bg-amber-500/20">
-                <div
-                  className="h-1.5 rounded-full bg-amber-400 transition-all"
-                  style={{ width: `${completionPct}%` }}
-                />
-              </div>
+              {company && (
+                <div className="mt-2 h-1.5 w-48 rounded-full bg-amber-500/20">
+                  <div
+                    className="h-1.5 rounded-full bg-amber-400 transition-all"
+                    style={{ width: `${completionPct}%` }}
+                  />
+                </div>
+              )}
             </div>
           </div>
           <Button
@@ -199,7 +201,7 @@ const Dashboard = () => {
             className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white border-0"
             onClick={() => navigate("/settings")}
           >
-            Complete Profile
+            {company ? "Complete Profile" : "Set Up Profile"}
           </Button>
         </div>
       )}

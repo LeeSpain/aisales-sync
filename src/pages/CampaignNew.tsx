@@ -206,7 +206,24 @@ const CampaignNew = () => {
   };
 
   const ensureCompany = async (): Promise<string | null> => {
+    // 1. If profile already has company_id, use it
     if (profile?.company_id) return profile.company_id;
+
+    // 2. Check if company already exists for this user (prevents duplicates)
+    const { data: existing } = await supabase
+      .from("companies")
+      .select("id")
+      .eq("owner_id", user!.id)
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) {
+      // Link it to the profile
+      await supabase.from("profiles").update({ company_id: existing.id }).eq("id", user!.id);
+      return existing.id;
+    }
+
+    // 3. Only create if truly doesn't exist
     const fullName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "My Company";
     const { data: newCompany, error: compErr } = await supabase
       .from("companies")
