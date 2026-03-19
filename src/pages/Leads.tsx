@@ -120,7 +120,8 @@ const Leads = () => {
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-16">
           <Users className="h-12 w-12 text-muted-foreground/30 mb-4" />
           <h3 className="text-lg font-semibold mb-2">No leads found</h3>
-          <p className="text-sm text-muted-foreground">Leads will appear once your campaigns start discovering prospects</p>
+          <p className="text-sm text-muted-foreground mb-4">Leads will appear once your campaigns start discovering prospects</p>
+          <Button className="gradient-primary border-0 text-white hover:opacity-90" onClick={() => navigate("/campaigns/new")}>Go to Campaigns</Button>
         </div>
       )}
     </div>

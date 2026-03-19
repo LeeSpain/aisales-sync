@@ -15,26 +15,33 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const strategySuggestions = [
-    {
-        title: "Increase LinkedIn Touchpoints",
-        description: "Data shows higher reply rates from prospects who received a LinkedIn message before an email. Consider adding a LinkedIn step to all sequences.",
-        impact: "high",
-        icon: TrendingUp,
-    },
-    {
-        title: "Optimal Send Time",
-        description: "Emails sent between 9:15-10:30 AM (recipient timezone) tend to have higher open rates. Adjusting send schedules could yield more replies.",
-        impact: "medium",
-        icon: Target,
-    },
-    {
-        title: "Follow-Up Gaps",
-        description: "Check for qualified leads that haven't been contacted recently. Timely follow-up prevents pipeline stagnation.",
-        impact: "high",
-        icon: ArrowUpRight,
-    },
-];
+function buildStrategySuggestions(campaigns: Array<Record<string, unknown>> | undefined, leadsCount: number, emailsCount: number) {
+    const suggestions: Array<{ title: string; description: string; impact: string; icon: typeof TrendingUp }> = [];
+    const totalReplies = campaigns?.reduce((s, c) => s + ((c.replies_received as number) || 0), 0) || 0;
+    const totalSent = campaigns?.reduce((s, c) => s + ((c.emails_sent as number) || 0), 0) || 0;
+
+    if (leadsCount === 0) {
+        suggestions.push({ title: "Launch Your First Campaign", description: "You have no leads yet. Create a campaign to start discovering prospects and building your pipeline.", impact: "high", icon: ArrowUpRight });
+    } else if (emailsCount === 0) {
+        suggestions.push({ title: "Start Outreach", description: `You have ${leadsCount} leads but haven't sent any emails yet. Run a campaign pipeline to generate personalised outreach.`, impact: "high", icon: TrendingUp });
+    }
+
+    if (totalSent > 0 && totalReplies === 0) {
+        suggestions.push({ title: "Improve Email Personalisation", description: `${totalSent} emails sent with no replies yet. Review your subject lines and personalisation hooks — shorter, more specific emails tend to perform better.`, impact: "high", icon: Target });
+    } else if (totalSent > 10 && totalReplies / totalSent < 0.05) {
+        suggestions.push({ title: "Low Reply Rate", description: `Your reply rate is ${((totalReplies / totalSent) * 100).toFixed(1)}%. Consider A/B testing subject lines and adding LinkedIn touchpoints before email outreach.`, impact: "high", icon: TrendingUp });
+    }
+
+    if (leadsCount > 0 && emailsCount < leadsCount * 0.5) {
+        suggestions.push({ title: "Follow-Up Gaps", description: `Only ${emailsCount} of ${leadsCount} leads have been contacted. Check for qualified leads that haven't received outreach yet.`, impact: "high", icon: ArrowUpRight });
+    }
+
+    if (suggestions.length === 0) {
+        suggestions.push({ title: "Keep Going", description: "Your pipeline is healthy. Continue running campaigns and following up with engaged prospects.", impact: "medium", icon: Target });
+    }
+
+    return suggestions;
+}
 
 const Reports = () => {
     const { user } = useAuth();
@@ -151,7 +158,7 @@ const Reports = () => {
                         <Sparkles className="h-4 w-4 text-primary" />
                         <h2 className="text-lg font-semibold">AI Strategy</h2>
                     </div>
-                    {strategySuggestions.map((suggestion, i) => {
+                    {buildStrategySuggestions(campaigns, leadsCount || 0, emailsCount || 0).map((suggestion, i) => {
                         const Icon = suggestion.icon;
                         return (
                             <div
