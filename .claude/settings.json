@@ -1,44 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(find /Users/leewakeman/agent-aura-56/agent-aura-56 -type f -name *migration* -o -name *schema* -o -name *supabase*)",
-      "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
-      "Bash(git pull:*)",
-      "Bash(npx supabase:*)",
-      "Bash(git push:*)",
-      "Bash(grep -E \"\\\\.sql$\")",
-      "Bash(npm run:*)",
-      "Bash(supabase --version)",
-      "Bash(supabase projects:*)",
-      "Bash(cat /Users/leewakeman/agent-aura-56/aisales-sync/.lovable/*.json)",
-      "Bash(find /Users/leewakeman/aisales-sync/aisales-sync/src -name *ead* -o -name *lead* -o -name *Lead*)",
-      "Read(//Users/leewakeman/lifelink-sync/lifelink-sync/supabase/functions/**)",
-      "Read(//Users/leewakeman/lifelink-sync/lifelink-sync/supabase/migrations/**)",
-      "Bash(grep -l \"CREATE TABLE.*leads\" /Users/leewakeman/lifelink-sync/lifelink-sync/supabase/migrations/*.sql)",
-      "Bash(grep -l \"api_keys\" /Users/leewakeman/lifelink-sync/lifelink-sync/supabase/migrations/*.sql)",
-      "Bash(grep -l \"logActivity\\\\|research_data\\\\|contact_email\\\\|contact_confidence\" /Users/leewakeman/lifelink-sync/lifelink-sync/supabase/functions/*/index.ts)",
-      "Bash(xargs ls:*)",
-      "Bash(grep -l \"research_data\\\\|contact_email\\\\|contact_phone\\\\|contact_confidence\" /Users/leewakeman/lifelink-sync/lifelink-sync/supabase/migrations/*.sql)",
-      "Bash(grep -l \"api_key\\\\|apollo\\\\|enrich\" /Users/leewakeman/lifelink-sync/lifelink-sync/supabase/migrations/*.sql)",
-      "Bash(grep -r \"api_key\\\\|integration.*key\\\\|secret.*key\" /Users/leewakeman/lifelink-sync/lifelink-sync/supabase/migrations/*.sql)",
-      "Read(//Users/leewakeman/lifelink-sync/lifelink-sync/**)",
-      "Bash(grep -A 50 \"lead_intelligence_runs\\\\|follow.*up.*enrollment\" /Users/leewakeman/lifelink-sync/lifelink-sync/supabase/migrations/*.sql)",
-      "Bash(deno check:*)",
       "Bash(supabase link:*)",
-      "Bash(supabase migration:*)",
-      "Bash(grep -r \"CampaignDetail\\\\|Campaign.*Page\\\\|campaign.*view\" /Users/leewakeman/lifelink-sync/lifelink-sync/src/pages --include=*.tsx)",
-      "Read(//Users/leewakeman/**)",
-      "Bash(find ~ -maxdepth 3 -path *supabase* -type f)",
-      "Bash(find /Users/leewakeman/lifelink-sync/lifelink-sync/src/components -name *Lead* -o -name *Campaign*)",
-      "Read(//Users/leewakeman/agent-aura-56/aisales-sync/**)"
-    ],
-    "additionalDirectories": [
-      "/Users/leewakeman/lifelink-sync/lifelink-sync/supabase/migrations",
-      "/Users/leewakeman/lifelink-sync/lifelink-sync/supabase/functions",
-      "/Users/leewakeman/lifelink-sync/lifelink-sync/src/components/admin/leads",
-      "/Users/leewakeman/lifelink-sync/lifelink-sync/src/hooks",
-      "/Users/leewakeman/lifelink-sync/lifelink-sync/src/components/admin/pages",
-      "/Users/leewakeman/lifelink-sync/lifelink-sync/src/components/admin"
+      "Bash(npm run:*)"
     ]
-  }
+  },
+  "projectInstructions": "This is AI Sales Sync (aisales-sync.com) — an autonomous B2B sales platform. NEVER create files containing 'clara', 'lifelink', 'ice-alarm', or 'icehealthsync' in any filename or function name. If you find yourself writing CLARA content, STOP and re-read claude.md. The correct edge functions are: send-outreach, enrich-lead, find-decision-maker, run-campaign-pipeline, score-lead, generate-outreach, handle-reply, strategy-analysis, ai-chat, ai-call."
 }
