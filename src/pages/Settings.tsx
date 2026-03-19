@@ -105,39 +105,71 @@ const SettingsPage = () => {
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("company_id").eq("id", user!.id).single();
+      const { data } = await supabase.from("profiles").select("company_id, full_name").eq("id", user!.id).single();
       return data;
     },
     enabled: !!user,
   });
 
+  // Auto-create company if user doesn't have one yet
   const { data: company } = useQuery({
-    queryKey: ["company-profile", profile?.company_id],
+    queryKey: ["company-profile", profile?.company_id, user?.id],
     queryFn: async () => {
-      const { data } = await supabase.from("companies").select("*").eq("id", profile!.company_id!).single();
-      if (data && !notesLoaded) {
-        setNotes((data.ai_profile as Record<string, unknown>)?.notes as string || "");
-        setNotesLoaded(true);
+      // If profile already has a company_id, fetch it
+      if (profile?.company_id) {
+        const { data } = await supabase.from("companies").select("*").eq("id", profile.company_id).single();
+        if (data && !notesLoaded) {
+          setNotes((data.ai_profile as Record<string, unknown>)?.notes as string || "");
+          setNotesLoaded(true);
+        }
+        return data;
       }
-      return data;
+
+      // No company exists — create one automatically
+      const displayName = profile?.full_name || user?.user_metadata?.full_name || user?.email?.split("@")[0] || "My Company";
+      const { data: newCompany, error: createErr } = await supabase
+        .from("companies")
+        .insert({ name: `${displayName}'s Company`, owner_id: user!.id, status: "active" })
+        .select("*")
+        .single();
+
+      if (createErr || !newCompany) {
+        console.error("Failed to create company:", createErr?.message);
+        return null;
+      }
+
+      // Link company to profile
+      await supabase.from("profiles").update({ company_id: newCompany.id }).eq("id", user!.id);
+      await supabase.from("user_roles").upsert(
+        { user_id: user!.id, role: "client" as const },
+        { onConflict: "user_id,role" }
+      );
+
+      // Invalidate profile so it picks up the new company_id
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+
+      return newCompany;
     },
-    enabled: !!profile?.company_id,
+    enabled: !!user && profile !== undefined,
   });
 
   // ─── Save helpers ───
   const updateCompanyField = async (field: string, value: unknown) => {
-    if (!company) return;
+    if (!company?.id) {
+      toast({ title: "Error", description: "Company profile not ready. Please refresh.", variant: "destructive" });
+      return;
+    }
     const { error } = await supabase.from("companies").update({ [field]: value }).eq("id", company.id);
     if (error) {
-      toast({ title: "Error", description: `Failed to update ${field}.`, variant: "destructive" });
+      toast({ title: "Error", description: `Failed to update ${field.replace(/_/g, " ")}.`, variant: "destructive" });
     } else {
-      toast({ title: "Updated", description: `${field.replace(/_/g, " ")} saved.` });
+      toast({ title: "Saved", description: `${field.replace(/_/g, " ")} updated.` });
       queryClient.invalidateQueries({ queryKey: ["company-profile"] });
     }
   };
 
   const saveNotes = async () => {
-    if (!company) return;
+    if (!company?.id) return;
     setSavingNotes(true);
     const currentProfile = (company.ai_profile as Record<string, unknown>) || {};
     const { error: err } = await supabase
@@ -161,7 +193,7 @@ const SettingsPage = () => {
   const autoSendReplies = approval.auto_send_replies ?? false;
 
   const toggleApproval = async (key: string, current: boolean) => {
-    if (!company) return;
+    if (!company?.id) return;
     setSavingApproval(true);
     const currentProfile = (company.ai_profile as Record<string, unknown>) || {};
     const currentApproval = (currentProfile.approval as Record<string, boolean>) || {};
@@ -184,8 +216,9 @@ const SettingsPage = () => {
 
   if (!company) {
     return (
-      <div className="p-8 flex items-center justify-center min-h-[400px]">
-        <div className="animate-pulse text-muted-foreground">Loading company profile...</div>
+      <div className="p-8 flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-muted-foreground text-sm">Setting up your company profile...</p>
       </div>
     );
   }
