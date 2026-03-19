@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { Zap, UserCheck, MailOpen, TrendingUp, PhoneCall, Users, Target, CalendarCheck, FileText, Handshake, BarChart3 } from "lucide-react";
+import { Zap, UserCheck, MailOpen, TrendingUp, PhoneCall, Users, Target, CalendarCheck, FileText, Handshake, BarChart3, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { statusChartColors } from "@/lib/constants";
@@ -27,10 +27,44 @@ const Dashboard = () => {
     queryKey: ["profile", user?.id],
     queryFn: async () => {
       const { data } = await supabase.from("profiles").select("*").eq("id", user!.id).single();
+      // If company_id is null, try to find and link an existing company
+      if (data && !data.company_id) {
+        const { data: existing } = await supabase
+          .from("companies").select("id").eq("owner_id", user!.id).limit(1).maybeSingle();
+        if (existing) {
+          await supabase.from("profiles").update({ company_id: existing.id }).eq("id", user!.id);
+          data.company_id = existing.id;
+        }
+      }
       return data;
     },
     enabled: !!user,
   });
+
+  // Company profile for completion banner
+  const { data: company } = useQuery({
+    queryKey: ["company-profile-check", profile?.company_id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("companies")
+        .select("name, description, services, selling_points, target_markets")
+        .eq("id", profile!.company_id!)
+        .single();
+      return data;
+    },
+    enabled: !!profile?.company_id,
+  });
+
+  const profileFields = [
+    company?.name,
+    company?.description,
+    Array.isArray(company?.services) && (company?.services as string[]).length > 0,
+    Array.isArray(company?.selling_points) && (company?.selling_points as string[]).length > 0,
+    Array.isArray(company?.target_markets) && (company?.target_markets as string[]).length > 0,
+  ];
+  const completedFields = profileFields.filter(Boolean).length;
+  const completionPct = Math.round((completedFields / 5) * 100);
+  const isProfileComplete = completedFields === 5;
 
   const { data: campaigns } = useQuery({
     queryKey: ["campaigns-stats", profile?.company_id],
@@ -138,9 +172,48 @@ const Dashboard = () => {
           ) : user?.email ? (
             <span className="text-muted-foreground text-xl font-normal ml-2">({user.email})</span>
           ) : null}
+          {company && isProfileComplete && (
+            <span className="ml-2 text-xs bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full font-medium align-middle">
+              Profile complete
+            </span>
+          )}
         </h1>
         <p className="mt-1 text-muted-foreground">Here's your sales pipeline at a glance</p>
       </div>
+
+      {/* Company profile completion banner */}
+      {!isProfileComplete && (
+        <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
+              <AlertTriangle className="h-5 w-5 text-amber-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-amber-400">
+                {company ? `Complete your company profile (${completionPct}%)` : "Set up your company profile"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Your AI needs to know about your business to find the right leads and write personalised emails.
+              </p>
+              {company && (
+                <div className="mt-2 h-1.5 w-48 rounded-full bg-amber-500/20">
+                  <div
+                    className="h-1.5 rounded-full bg-amber-400 transition-all"
+                    style={{ width: `${completionPct}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+          <Button
+            size="sm"
+            className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white border-0"
+            onClick={() => navigate("/settings")}
+          >
+            {company ? "Complete Profile" : "Set Up Profile"}
+          </Button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
