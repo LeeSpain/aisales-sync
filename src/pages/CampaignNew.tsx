@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCampaignPipeline, PIPELINE_STAGES } from "@/hooks/useCampaignPipeline";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -112,11 +112,28 @@ const CampaignNew = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [createdCampaignId, setCreatedCampaignId] = useState<string | null>(null);
   const [launchLocked, setLaunchLocked] = useState(false);
   const pipeline = useCampaignPipeline();
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-redirect to campaign detail 2s after pipeline completes
+  useEffect(() => {
+    if (pipeline.stage === "done" && createdCampaignId) {
+      queryClient.invalidateQueries({ queryKey: ["campaigns"] });
+      queryClient.invalidateQueries({ queryKey: ["campaign-leads"] });
+      queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
+      redirectTimerRef.current = setTimeout(() => {
+        navigate(`/campaigns/${createdCampaignId}`);
+      }, 2000);
+    }
+    return () => {
+      if (redirectTimerRef.current) clearTimeout(redirectTimerRef.current);
+    };
+  }, [pipeline.stage, createdCampaignId, navigate, queryClient]);
 
   // Form state
   const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
@@ -132,6 +149,7 @@ const CampaignNew = () => {
   const [tone, setTone] = useState("professional");
   const [outreachLanguage, setOutreachLanguage] = useState("English");
   const [minimumScore, setMinimumScore] = useState(3.5);
+  const [maxLeads, setMaxLeads] = useState(25);
   const [campaignName, setCampaignName] = useState("");
 
   const { data: profile } = useQuery({
@@ -252,6 +270,7 @@ const CampaignNew = () => {
         geo_countries: geoCountries,
         geo_regions: geoRegions,
         geo_cities: geoCities,
+        max_leads: maxLeads,
       };
 
       const { data: newCampaign, error: campErr } = await supabase
@@ -281,6 +300,7 @@ const CampaignNew = () => {
         geographicFocus: geo,
         minimumScore,
         tone,
+        maxLeads,
       });
     } catch (e) {
       console.error("Campaign create error:", e);
@@ -654,6 +674,25 @@ const CampaignNew = () => {
                       </div>
                     ))}
                   </div>
+
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center justify-between">
+                      <Label>Leads to find</Label>
+                      <Badge variant="secondary" className="text-lg font-bold px-3 py-1">{maxLeads}</Badge>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[10, 25, 50, 100].map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => setMaxLeads(n)}
+                          className={"rounded-xl border px-3 py-2 text-sm transition-all " + (maxLeads === n ? "border-primary bg-primary/10 font-medium" : "border-border hover:border-primary/50")}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground">How many businesses to discover. More leads = longer pipeline run but more opportunities.</p>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -684,6 +723,7 @@ const CampaignNew = () => {
                       <div className="flex justify-between"><span className="text-muted-foreground">Channels</span><span className="font-medium capitalize">{channels.join(", ")}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Tone</span><span className="font-medium capitalize">{tone}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Language</span><span className="font-medium">{outreachLanguage}</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Leads to find</span><span className="font-medium">{maxLeads}</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Min. score</span><span className="font-medium">{minimumScore.toFixed(1)} / 5.0</span></div>
                       {targetDecisionMaker !== "Any decision maker" && (
                         <div className="flex justify-between"><span className="text-muted-foreground">Contact</span><span className="font-medium">{targetDecisionMaker}</span></div>
@@ -806,9 +846,12 @@ const CampaignNew = () => {
 
                   {/* Action buttons */}
                   {pipeline.stage === "done" && createdCampaignId && (
-                    <Button className="w-full gradient-primary text-white" onClick={() => navigate("/campaigns/" + createdCampaignId)}>
-                      <ChevronRight className="h-4 w-4 mr-2" />Review & Approve Emails
-                    </Button>
+                    <div className="space-y-2">
+                      <p className="text-xs text-center text-muted-foreground">Redirecting to your campaign in 2 seconds...</p>
+                      <Button className="w-full gradient-primary text-white" onClick={() => navigate("/campaigns/" + createdCampaignId)}>
+                        <ChevronRight className="h-4 w-4 mr-2" />Review & Approve Emails Now
+                      </Button>
+                    </div>
                   )}
                   {pipeline.stage === "error" && createdCampaignId && (
                     <Button variant="outline" className="w-full" onClick={() => navigate("/campaigns/" + createdCampaignId)}>

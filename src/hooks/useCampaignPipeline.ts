@@ -40,6 +40,7 @@ interface RunPipelineParams {
   geographicFocus: string;
   minimumScore: number;
   tone: string;
+  maxLeads?: number;
 }
 
 const POLL_INTERVAL_MS = 2000;
@@ -214,6 +215,7 @@ export function useCampaignPipeline() {
             geographicFocus: params.geographicFocus,
             minimumScore: params.minimumScore,
             tone: params.tone,
+            maxLeads: params.maxLeads ?? 25,
           },
         }
       );
