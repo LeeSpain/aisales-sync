@@ -1,3 +1,4 @@
+// Campaign pipeline orchestrator
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import {
   getSupabaseClient,
@@ -660,15 +661,14 @@ async function executePipeline(
           duration_ms: durationMs,
         });
       } else {
-        const { error: msgErr } = await sb.from("outreach_messages").insert({
+        const { error: msgErr } = await sb.from("outreach_emails").insert({
           campaign_id: campaignId,
           company_id: companyId,
           lead_id: lead.id,
           subject: emailData.subject as string,
           body: emailData.body as string,
-          channel: "email",
           email_type: "outreach",
-          status: "pending_approval",
+          status: "draft",
           ai_model_used: "gemini-flash",
         });
 

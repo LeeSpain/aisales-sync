@@ -1,6 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
-import { useTheme } from "@/hooks/useTheme";
 import {
     Users, Settings, LogOut, Zap, Activity, Mail, Database, CreditCard, LayoutDashboard
 } from "lucide-react";
@@ -25,10 +24,9 @@ const AdminLayout = ({ children }: AdminLayoutProps) => {
     const { user, signOut } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const { theme } = useTheme();
 
     return (
-        <div className={cn("flex min-h-screen bg-background", theme === "dark" || theme === "brand" ? "dark" : "")}>
+        <div className="flex min-h-screen bg-background dark">
             {/* Sidebar */}
             <aside className="flex w-64 shrink-0 flex-col border-r border-border bg-card">
                 <div className="flex h-16 items-center gap-2 border-b border-border px-6 cursor-pointer" onClick={() => navigate("/admin")}>

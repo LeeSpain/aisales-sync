@@ -91,7 +91,7 @@ const CampaignDetail = () => {
     queryKey: ["campaign-messages", id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("outreach_messages")
+        .from("outreach_emails")
         .select("*, leads(business_name, contact_name)")
         .eq("campaign_id", id!)
         .order("created_at", { ascending: false });
@@ -111,7 +111,7 @@ const CampaignDetail = () => {
   };
 
   const handleApprove = async (emailId: string) => {
-    const { error } = await supabase.from("outreach_messages").update({ status: "approved" }).eq("id", emailId);
+    const { error } = await supabase.from("outreach_emails").update({ status: "approved" }).eq("id", emailId);
     if (error) {
       toast({ title: "Error", description: "Failed to approve", variant: "destructive" });
     } else {
@@ -121,7 +121,7 @@ const CampaignDetail = () => {
   };
 
   const handleReject = async (emailId: string) => {
-    const { error } = await supabase.from("outreach_messages").update({ status: "rejected" }).eq("id", emailId);
+    const { error } = await supabase.from("outreach_emails").update({ status: "rejected" }).eq("id", emailId);
     if (error) {
       toast({ title: "Error", description: "Failed to reject", variant: "destructive" });
     } else {
@@ -134,7 +134,7 @@ const CampaignDetail = () => {
     const pending = messages?.filter((m) => getEmailStatus(m) === "pending_approval") || [];
     if (pending.length === 0) return;
     const ids = pending.map((m) => m.id);
-    const { error } = await supabase.from("outreach_messages").update({ status: "approved" }).in("id", ids);
+    const { error } = await supabase.from("outreach_emails").update({ status: "approved" }).in("id", ids);
     if (error) {
       toast({ title: "Error", description: "Failed to approve all", variant: "destructive" });
     } else {
@@ -176,11 +176,9 @@ const CampaignDetail = () => {
           { label: "Qualified", value: campaign.leads_qualified ?? 0, icon: Target },
           { label: "Messages Sent", value: campaign.emails_sent ?? 0, icon: Mail },
           { label: "Replies", value: campaign.replies_received ?? 0, icon: MessageSquare },
-          { label: "Meetings", value: campaign.meetings_booked ?? 0, icon: Target },
-          { label: "Proposals", value: campaign.proposals_sent ?? 0, icon: Target },
-          { label: "Deals Won", value: campaign.deals_won ?? 0, icon: Target },
+          { label: "Calls Made", value: campaign.calls_made ?? 0, icon: Target },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-border bg-card p-4">
+          <div key={s.label} className="rounded-xl border border-border bg-card p-5">
             <p className="text-xs text-muted-foreground">{s.label}</p>
             <p className="mt-1 text-xl font-bold">{s.value}</p>
           </div>

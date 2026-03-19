@@ -20,23 +20,6 @@ serve(async (req) => {
     const killed = await checkDeadSwitch(sb);
     if (killed) return errorResponse("AI operations are currently disabled by admin.", 503);
 
-    // ── Check Serper provider toggle (global default row) ──
-    const { data: serperToggle } = await sb
-      .from("provider_configs")
-      .select("is_enabled")
-      .eq("provider_name", "serper")
-      .is("company_id", null)
-      .maybeSingle();
-
-    if (!serperToggle?.is_enabled) {
-      console.log("[enrich-lead] Serper API disabled by admin toggle. Skipping enrichment.");
-      return jsonResponse({
-        success: false,
-        reason: "serper_disabled",
-        enrichment: { estimated_revenue: "Not available", estimated_employees: 0, key_contacts: [], tech_indicators: [] }
-      });
-    }
-
     const body = await req.json();
     const validationError = validateRequired(body, ["lead_id"]);
     if (validationError) return errorResponse(validationError, 400);
@@ -54,109 +37,93 @@ serve(async (req) => {
     if (leadError) throw leadError;
     if (!lead) return errorResponse("Lead not found", 404);
 
-    // ── Get Serper API key (env first, then DB) ──
-    let serperKey = Deno.env.get("SERPER_API_KEY");
-    if (!serperKey) {
-      const { data: keyRow } = await sb
-        .from("api_keys")
-        .select("key_value")
-        .eq("key_name", "serper_api_key")
-        .eq("is_active", true)
-        .maybeSingle();
-      serperKey = keyRow?.key_value || null;
-    }
+    // 2. Call AI with enrich_lead tool
+    const leadContext = {
+      business_name: lead.business_name,
+      website: lead.website,
+      industry: lead.industry,
+      city: lead.city,
+      region: lead.region,
+      country: lead.country,
+      description: lead.description,
+      size_estimate: lead.size_estimate,
+      existing_research: lead.research_data,
+      contact_name: lead.contact_name,
+      contact_role: lead.contact_role,
+      contact_email: lead.contact_email,
+    };
 
-    // ── Fetch real enrichment data via Serper ──
-    let realEnrichData = "";
-    if (serperKey && serperKey !== "configured") {
-      const name = lead.business_name;
-      const location = [lead.city, lead.region].filter(Boolean).join(" ");
-      const website = lead.website || "";
-
-      const queries = [
-        `${name} ${location} company size employees revenue`,
-        `${name} ${website} contact email team`,
-      ];
-
-      console.log(`[enrich-lead] Running ${queries.length} Serper queries for "${name}"`);
-
-      const results: unknown[] = [];
-      for (const q of queries) {
-        try {
-          const r = await fetch("https://google.serper.dev/search", {
-            method: "POST",
-            headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
-            body: JSON.stringify({ q, num: 5 }),
-          });
-          if (r.ok) {
-            const d = await r.json();
-            results.push(...(d.organic?.slice(0, 3) || []));
-          }
-        } catch (e) {
-          console.error("[enrich-lead] Serper query failed:", e);
-        }
-      }
-
-      if (results.length > 0) {
-        realEnrichData = `\n\nREAL GOOGLE SEARCH DATA for enrichment:
-${JSON.stringify(results, null, 2)}
-
-STRICT RULES:
-- Only state facts directly supported by the search data above
-- For estimated_revenue and estimated_employees: only provide ranges if the search data contains actual clues (e.g., "50 staff" or "£2M turnover"). Otherwise state "Not publicly available"
-- For key_contacts: ONLY include names/emails explicitly found in the search results — never guess or infer
-- For tech_indicators: only list technologies mentioned in the search results`;
-      }
-    }
-
-    // 2. Call AI with strict real-data rules
     const aiData = await callAI({
-      systemPrompt: `You are a business intelligence analyst. You must ONLY provide information supported by actual search results. Never fabricate revenue figures, employee counts, or contact details. If data is not available in the search results, say "Not publicly available".`,
-      userContent: `Enrich this lead using ONLY the real search data provided:
-${JSON.stringify({
-  business_name: lead.business_name,
-  website: lead.website,
-  industry: lead.industry,
-  city: lead.city,
-  region: lead.region,
-  country: lead.country,
-  description: lead.description,
-  size_estimate: lead.size_estimate,
-  contact_name: lead.contact_name,
-  contact_role: lead.contact_role,
-  contact_email: lead.contact_email,
-}, null, 2)}${realEnrichData}`,
+      systemPrompt: `You are a business intelligence analyst. Given information about a business lead, enrich the data with estimated details based on your knowledge. Provide realistic estimates for revenue, employee count, key contacts, technology indicators, business focus, pain points, and buying signals. Be specific and realistic based on the industry, size, and location.`,
+      userContent: `Enrich this lead:\n${JSON.stringify(leadContext, null, 2)}`,
       tools: [
         {
           type: "function",
           function: {
             name: "enrich_lead",
-            description: "Return enriched data based on real search results only",
+            description: "Return enriched data for the business lead",
             parameters: {
               type: "object",
               properties: {
-                estimated_revenue: { type: "string", description: "Revenue range from search data, or 'Not publicly available'" },
-                estimated_employees: { type: "number", description: "Employee count from search data, or 0 if unknown" },
+                estimated_revenue: {
+                  type: "string",
+                  description: "Estimated annual revenue range (e.g., '$1M-$5M')",
+                },
+                estimated_employees: {
+                  type: "number",
+                  description: "Estimated number of employees",
+                },
                 key_contacts: {
                   type: "array",
-                  description: "Contacts ONLY if found in real search results — never guess",
+                  description: "Key decision makers and contacts",
                   items: {
                     type: "object",
                     properties: {
-                      name: { type: "string" },
-                      role: { type: "string" },
-                      email: { type: "string" },
-                      linkedin: { type: "string" },
+                      name: { type: "string", description: "Contact name" },
+                      role: { type: "string", description: "Job title/role" },
+                      email: {
+                        type: "string",
+                        description: "Email address if inferable",
+                      },
+                      linkedin: {
+                        type: "string",
+                        description: "LinkedIn profile URL if inferable",
+                      },
                     },
                     required: ["name", "role"],
                   },
                 },
-                tech_indicators: { type: "array", items: { type: "string" }, description: "Technologies found in search results only" },
-                business_focus: { type: "string", description: "Primary business focus from search results" },
-                pain_points: { type: "array", items: { type: "string" }, description: "Industry-relevant pain points (these can be inferred from the industry)" },
-                buying_signals: { type: "array", items: { type: "string" }, description: "Purchase indicators from search data or industry context" },
+                tech_indicators: {
+                  type: "array",
+                  description: "Technologies or platforms likely used",
+                  items: { type: "string" },
+                },
+                business_focus: {
+                  type: "string",
+                  description:
+                    "Primary business focus and market positioning",
+                },
+                pain_points: {
+                  type: "array",
+                  description:
+                    "Likely pain points based on industry and size",
+                  items: { type: "string" },
+                },
+                buying_signals: {
+                  type: "array",
+                  description: "Indicators of purchase intent or need",
+                  items: { type: "string" },
+                },
               },
-              required: ["estimated_revenue", "estimated_employees", "key_contacts", "tech_indicators", "business_focus", "pain_points", "buying_signals"],
+              required: [
+                "estimated_revenue",
+                "estimated_employees",
+                "key_contacts",
+                "tech_indicators",
+                "business_focus",
+                "pain_points",
+                "buying_signals",
+              ],
             },
           },
         },
@@ -165,10 +132,14 @@ ${JSON.stringify({
     });
 
     const enrichment = extractToolCallArgs(aiData);
-    if (!enrichment) return errorResponse("AI failed to generate enrichment data", 500);
+    if (!enrichment) {
+      return errorResponse("AI failed to generate enrichment data", 500);
+    }
 
-    // 3. Update lead's research_data JSONB
-    const existingResearch = (lead.research_data as Record<string, unknown>) || {};
+    // 3. Update lead's research_data JSONB with enrichment
+    const existingResearch =
+      (lead.research_data as Record<string, unknown>) || {};
+
     const updatedResearchData = {
       ...existingResearch,
       enrichment: {
@@ -180,7 +151,6 @@ ${JSON.stringify({
         pain_points: enrichment.pain_points,
         buying_signals: enrichment.buying_signals,
         enriched_at: new Date().toISOString(),
-        data_source: serperKey && serperKey !== "configured" ? "serper_google_search" : "ai_only",
       },
       enrichment_source: "ai_enrichment",
     };
@@ -190,21 +160,48 @@ ${JSON.stringify({
       enrichment_source: "ai_enrichment",
     };
 
-    // 4. Only update contact fields if found in REAL search data
-    const keyContacts = enrichment.key_contacts as Array<{ name?: string; role?: string; email?: string }>;
+    // 4. If contact info found in key_contacts, update contact fields
+    const keyContacts = enrichment.key_contacts as Array<{
+      name?: string;
+      role?: string;
+      email?: string;
+    }>;
+
     if (keyContacts && keyContacts.length > 0) {
       const primaryContact = keyContacts[0];
-      if (primaryContact.name && !lead.contact_name) updatePayload.contact_name = primaryContact.name;
-      if (primaryContact.role && !lead.contact_role) updatePayload.contact_role = primaryContact.role;
-      if (primaryContact.email && !lead.contact_email) updatePayload.contact_email = primaryContact.email;
+
+      if (primaryContact.name && !lead.contact_name) {
+        updatePayload.contact_name = primaryContact.name;
+      }
+      if (primaryContact.role && !lead.contact_role) {
+        updatePayload.contact_role = primaryContact.role;
+      }
+      if (primaryContact.email && !lead.contact_email) {
+        updatePayload.contact_email = primaryContact.email;
+      }
     }
 
-    const { error: updateError } = await sb.from("leads").update(updatePayload).eq("id", lead_id);
+    const { error: updateError } = await sb
+      .from("leads")
+      .update(updatePayload)
+      .eq("id", lead_id);
+
     if (updateError) throw updateError;
 
-    await logActivity(sb, "lead_enriched", lead.company_id,
-      `Lead "${lead.business_name || lead_id}" enriched via ${serperKey ? "Serper+AI" : "AI only"}`,
-      { lead_id, estimated_revenue: enrichment.estimated_revenue, estimated_employees: enrichment.estimated_employees, contacts_found: keyContacts?.length || 0 }
+    // 5. Log activity
+    await logActivity(
+      sb,
+      "lead_enriched",
+      lead.company_id,
+      `Lead "${lead.business_name || lead_id}" enriched via AI (est. ${enrichment.estimated_employees} employees, ${enrichment.estimated_revenue} revenue)`,
+      {
+        lead_id,
+        estimated_revenue: enrichment.estimated_revenue,
+        estimated_employees: enrichment.estimated_employees,
+        contacts_found: keyContacts?.length || 0,
+        pain_points_count: (enrichment.pain_points as string[])?.length || 0,
+        buying_signals_count: (enrichment.buying_signals as string[])?.length || 0,
+      }
     );
 
     return jsonResponse({
@@ -219,7 +216,10 @@ ${JSON.stringify({
         pain_points: enrichment.pain_points,
         buying_signals: enrichment.buying_signals,
       },
-      contacts_updated: !!(keyContacts?.length && (!lead.contact_name || !lead.contact_role || !lead.contact_email)),
+      contacts_updated: !!(
+        keyContacts?.length &&
+        (!lead.contact_name || !lead.contact_role || !lead.contact_email)
+      ),
     });
   } catch (e) {
     console.error("enrich-lead error:", e);

@@ -728,20 +728,19 @@ const CampaignNew = () => {
                     {pipeline.stage === "done"
                       ? "Your leads have been discovered, scored, and outreach has been prepared."
                       : pipeline.stage === "error"
-                      ? (pipeline.error || "Something went wrong. Your campaign has been saved — you can retry from the campaign page.")
+                      ? "Something went wrong. Your campaign has been saved — you can retry from the campaign page."
                       : "Sit back while your AI discovers and qualifies leads for this campaign."}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-3">
                     {[
-                      { key: "discovering", label: "Finding real businesses on Google Places", icon: Search },
-                      { key: "researching", label: "Researching each business website", icon: Globe },
-                      { key: "scoring", label: "Scoring fit 1–5 with your services", icon: BarChart3 },
-                      { key: "decision_makers", label: "Finding decision makers & contacts", icon: Users },
-                      { key: "generating_outreach", label: "Generating personalised outreach", icon: MessageSquare },
+                      { key: "discovering", label: "Discovering real companies", icon: Search },
+                      { key: "scoring", label: "Scoring and qualifying leads", icon: BarChart3 },
+                      { key: "researching", label: "Researching decision-makers", icon: Users },
+                      { key: "outreach", label: "Generating personalised outreach", icon: MessageSquare },
                     ].map(({ key, label, icon: Icon }) => {
-                      const stages = ["discovering", "researching", "scoring", "decision_makers", "generating_outreach", "done"];
+                      const stages = ["discovering", "scoring", "researching", "outreach", "done"];
                       const stageIdx = stages.indexOf(pipeline.stage);
                       const thisIdx = stages.indexOf(key);
                       const isDone = stageIdx > thisIdx || pipeline.stage === "done";

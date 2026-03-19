@@ -80,7 +80,7 @@ const AdminClients = () => {
     queryKey: ["admin-invites"],
     queryFn: async () => {
       const { data } = await supabase
-        .from("invitations")
+        .from("activity_log" as any)
         .select("*")
         .order("created_at", { ascending: false });
       return data || [];
@@ -117,15 +117,18 @@ const AdminClients = () => {
     try {
       // Store the invite
       const { data: newInvite, error } = await supabase
-        .from("invitations")
+        .from("activity_log" as any)
         .insert({
-          name: invite.name.trim(),
-          email: invite.email.trim(),
-          mobile: invite.mobile.trim() || null,
-          channels: sendVia,
-          status: "pending",
-          invited_by: user!.id,
-        })
+          action: "invite_sent",
+          description: `Invite to ${invite.name.trim()} (${invite.email.trim()})`,
+          metadata: {
+            name: invite.name.trim(),
+            email: invite.email.trim(),
+            mobile: invite.mobile.trim() || null,
+            channels: sendVia,
+            status: "pending",
+          },
+        } as any)
         .select("id")
         .single();
 
@@ -133,7 +136,7 @@ const AdminClients = () => {
 
       // Call the send-invite edge function
       const { error: fnErr } = await supabase.functions.invoke("send-invite", {
-        body: { invite_id: newInvite.id },
+        body: { invite_id: (newInvite as any)?.id },
       });
 
       if (fnErr) {
@@ -162,7 +165,7 @@ const AdminClients = () => {
     }
   };
 
-  const pendingInvites = invites?.filter((i) => i.status === "pending") || [];
+  const pendingInvites = invites?.filter((i: any) => i.status === "pending" || (i.metadata as any)?.status === "pending") || [];
 
   return (
     <div className="p-4 md:p-8">
@@ -186,12 +189,14 @@ const AdminClients = () => {
             </p>
           </div>
           <div className="space-y-2">
-            {pendingInvites.map((inv) => (
+            {pendingInvites.map((inv: any) => {
+              const meta = inv.metadata || {};
+              return (
               <div key={inv.id} className="flex items-center gap-3 text-sm">
-                <span className="font-medium">{inv.name}</span>
-                <span className="text-muted-foreground">{inv.email}</span>
+                <span className="font-medium">{meta.name || "Unknown"}</span>
+                <span className="text-muted-foreground">{meta.email || ""}</span>
                 <div className="flex items-center gap-1 ml-auto">
-                  {(inv.channels as string[])?.map((ch: string) => (
+                  {(meta.channels as string[])?.map((ch: string) => (
                     <Badge key={ch} variant="outline" className="text-[10px] capitalize">
                       {ch === "email" ? <Mail className="h-2.5 w-2.5 mr-0.5" /> : <MessageSquare className="h-2.5 w-2.5 mr-0.5" />}
                       {ch}
@@ -202,7 +207,8 @@ const AdminClients = () => {
                   {new Date(inv.created_at).toLocaleDateString()}
                 </span>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

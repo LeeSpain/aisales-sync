@@ -65,7 +65,7 @@ const Proposals = () => {
         queryKey: ["proposals", profile?.company_id],
         queryFn: async () => {
             const { data } = await supabase
-                .from("outreach_messages")
+                .from("outreach_emails")
                 .select("*, leads(business_name, contact_name, industry)")
                 .eq("company_id", profile!.company_id!)
                 .order("created_at", { ascending: false })
@@ -91,7 +91,7 @@ const Proposals = () => {
 
     const handleApprove = async (emailId: string) => {
         const { error } = await supabase
-            .from("outreach_messages")
+            .from("outreach_emails")
             .update({ status: "approved" })
             .eq("id", emailId);
         if (error) {
@@ -104,7 +104,7 @@ const Proposals = () => {
 
     const handleReject = async (emailId: string) => {
         const { error } = await supabase
-            .from("outreach_messages")
+            .from("outreach_emails")
             .update({ status: "rejected" })
             .eq("id", emailId);
         if (error) {

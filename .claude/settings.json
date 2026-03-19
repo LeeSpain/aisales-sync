@@ -1,9 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(supabase link:*)",
-      "Bash(npm run:*)"
+      "Bash(find /Users/leewakeman/agent-aura-56/agent-aura-56 -type f -name *migration* -o -name *schema* -o -name *supabase*)",
+      "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
+      "Bash(git pull:*)",
+      "Bash(npx supabase:*)",
+      "Bash(git push:*)"
     ]
-  },
-  "projectInstructions": "This is AI Sales Sync (aisales-sync.com) — an autonomous B2B sales platform. NEVER create files containing 'clara', 'lifelink', 'ice-alarm', or 'icehealthsync' in any filename or function name. If you find yourself writing CLARA content, STOP and re-read claude.md. The correct edge functions are: send-outreach, enrich-lead, find-decision-maker, run-campaign-pipeline, score-lead, generate-outreach, handle-reply, strategy-analysis, ai-chat, ai-call."
+  }
 }

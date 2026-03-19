@@ -62,10 +62,14 @@ const Campaigns = () => {
               {campaign.target_description && (
                 <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{campaign.target_description}</p>
               )}
-              <div className="grid grid-cols-5 gap-2 text-center">
+              <div className="grid grid-cols-4 gap-2 text-center">
                 <div>
                   <p className="text-lg font-bold">{campaign.leads_found ?? 0}</p>
                   <p className="text-[10px] text-muted-foreground">Leads</p>
+                </div>
+                <div>
+                  <p className="text-lg font-bold">{campaign.leads_qualified ?? 0}</p>
+                  <p className="text-[10px] text-muted-foreground">Qualified</p>
                 </div>
                 <div>
                   <p className="text-lg font-bold">{campaign.emails_sent ?? 0}</p>
@@ -74,14 +78,6 @@ const Campaigns = () => {
                 <div>
                   <p className="text-lg font-bold">{campaign.replies_received ?? 0}</p>
                   <p className="text-[10px] text-muted-foreground">Replies</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold">{campaign.meetings_booked ?? 0}</p>
-                  <p className="text-[10px] text-muted-foreground">Meetings</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold">{campaign.deals_won ?? 0}</p>
-                  <p className="text-[10px] text-muted-foreground">Deals</p>
                 </div>
               </div>
             </div>
