@@ -19,15 +19,14 @@ serve(async (req) => {
     if (killed) return errorResponse("AI operations are currently disabled by admin.", 503);
 
     const body = await req.json();
-    const validationError = validateRequired(body, ["message_id"]);
-    if (validationError) return errorResponse(validationError, 400);
-
-    const { message_id } = body;
+    // Accept either message_id or emailId
+    const message_id = body.message_id || body.emailId;
+    if (!message_id) return errorResponse("Missing message_id or emailId", 400);
     if (!validateUUID(message_id)) return errorResponse("Invalid message_id format", 400);
 
-    // 1. Fetch outreach message with lead details
+    // 1. Fetch outreach email with lead details
     const { data: message, error: msgError } = await sb
-      .from("outreach_messages")
+      .from("outreach_emails")
       .select("*, leads(*)")
       .eq("id", message_id)
       .maybeSingle();
@@ -107,9 +106,9 @@ serve(async (req) => {
     const now = new Date().toISOString();
     const finalStatus = sendResult.status;
 
-    // 6. Update outreach message status and sent_at
+    // 6. Update outreach email status and sent_at
     const { error: updateMsgError } = await sb
-      .from("outreach_messages")
+      .from("outreach_emails")
       .update({
         status: finalStatus,
         ...(finalStatus === "sent" ? { sent_at: now } : {}),

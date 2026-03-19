@@ -20,14 +20,23 @@ serve(async (req) => {
     const { lead, companyProfile, tone = "professional" } = await req.json();
 
     const data = await callAI({
-      systemPrompt: `You are an expert sales email writer. Write a personalised outreach email from the company to the lead. The email should:
-- Reference something specific about the lead's business
+      systemPrompt: `You are an expert B2B sales email writer for ${companyProfile?.name || "the company"}.
+
+COMPANY CONTEXT (use this to sell):
+- Services: ${(companyProfile?.services || []).join(", ") || "not specified"}
+- Selling Points: ${(companyProfile?.unique_selling_points || companyProfile?.selling_points || []).join(", ") || "not specified"}
+- Target Markets: ${(companyProfile?.target_markets || []).join(", ") || "not specified"}
+
+RULES:
+- Reference something SPECIFIC about the lead's business (their industry, website snippets, recent activity)
+- Explain how ONE of the company's services solves a specific problem the lead likely has
 - Be ${tone} in tone
-- Be concise (150-250 words)
-- Include a clear call to action
-- Not be pushy or salesy
-- Feel like a human wrote it`,
-      userContent: `Company: ${JSON.stringify(companyProfile)}\n\nLead: ${JSON.stringify(lead)}\n\nWrite a personalised outreach email.`,
+- Be concise (120-180 words)
+- Include a clear, low-commitment call to action (e.g. "Would a 15-min call make sense?")
+- Not be pushy or salesy — feel like a human wrote it
+- Use the lead's contact_name if available, otherwise use their business name
+- Never use placeholder text like [Name] or {Company}`,
+      userContent: `Lead to write to:\n${JSON.stringify(lead)}\n\nWrite a personalised outreach email.`,
       tools: [{
         type: "function",
         function: {
