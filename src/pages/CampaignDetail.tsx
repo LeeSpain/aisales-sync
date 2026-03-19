@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Target, Users, Mail, MessageSquare, Workflow,
   Clock, Check, X, Eye, Send, FileText, CheckCircle,
+  Loader2, AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -77,6 +78,38 @@ const CampaignDetail = () => {
     },
     enabled: !!id,
   });
+
+  // Poll pipeline status
+  const { data: pipelineRun } = useQuery({
+    queryKey: ["pipeline-run", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("pipeline_runs")
+        .select("id, status, current_stage, progress_message, leads_discovered, leads_qualified, messages_generated, error_message")
+        .eq("campaign_id", id!)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id,
+    refetchInterval: (query) => {
+      const run = query.state.data;
+      return run?.status === "running" ? 2000 : false;
+    },
+  });
+
+  const pipelineRunning = pipelineRun?.status === "running";
+  const pipelineFailed = pipelineRun?.status === "failed";
+
+  // Auto-refresh when pipeline finishes
+  const [prevStatus, setPrevStatus] = useState<string | null>(null);
+  if (pipelineRun?.status === "completed" && prevStatus === "running") {
+    queryClient.invalidateQueries({ queryKey: ["campaign", id] });
+    queryClient.invalidateQueries({ queryKey: ["campaign-leads", id] });
+    queryClient.invalidateQueries({ queryKey: ["campaign-messages", id] });
+  }
+  if (pipelineRun?.status !== prevStatus) setPrevStatus(pipelineRun?.status ?? null);
 
   const { data: leads } = useQuery({
     queryKey: ["campaign-leads", id],
@@ -184,6 +217,62 @@ const CampaignDetail = () => {
           </div>
         ))}
       </div>
+
+      {/* ═══════ PIPELINE STATUS BANNER ═══════ */}
+      {pipelineRunning && pipelineRun && (() => {
+        const stageMap: Record<string, number> = {
+          discovering: 1, saving_leads: 1, researching: 2, scoring: 3,
+          decision_makers: 4, enriching: 4,
+          generating_outreach: 5, generating_emails: 5, generating_linkedin: 5,
+          generating_calls: 5, quality_check: 5, finalizing: 5,
+        };
+        const stageLabels = ["Finding businesses", "Researching websites", "Scoring leads", "Finding contacts", "Writing emails"];
+        const currentNum = stageMap[pipelineRun.current_stage] || 1;
+        const progressPct = (currentNum / 5) * 100;
+        return (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 mb-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 text-primary animate-spin shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-primary">AI is working... Currently: {stageLabels[currentNum - 1]}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{pipelineRun.progress_message || "Processing..."}</p>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <div className="h-2.5 w-full rounded-full bg-muted/50 overflow-hidden">
+                <div className="h-full rounded-full bg-primary transition-all duration-700 ease-out" style={{ width: `${progressPct}%` }} />
+              </div>
+              <p className="text-[10px] text-muted-foreground text-right">Stage {currentNum} of 5</p>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-lg border border-border bg-card p-2.5 text-center">
+                <p className="text-lg font-bold">{pipelineRun.leads_discovered ?? 0}</p>
+                <p className="text-[10px] text-muted-foreground">Discovered</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-2.5 text-center">
+                <p className="text-lg font-bold text-primary">{pipelineRun.leads_qualified ?? 0}</p>
+                <p className="text-[10px] text-muted-foreground">Qualified</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-2.5 text-center">
+                <p className="text-lg font-bold text-accent">{pipelineRun.messages_generated ?? 0}</p>
+                <p className="text-[10px] text-muted-foreground">Emails</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {pipelineFailed && pipelineRun && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 mb-6 flex items-center gap-4">
+          <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-destructive">Pipeline stopped</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {pipelineRun.error_message || "An error occurred. Any leads and emails created before the error are still available below."}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Outreach Emails */}
       {messages && messages.length > 0 && (
