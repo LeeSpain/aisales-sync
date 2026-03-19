@@ -195,7 +195,7 @@ serve(async (req) => {
     if (isKilled) return errorResponse("AI operations are currently disabled by admin.", 503);
 
     const body = await req.json();
-    const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone } = body;
+    const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone, maxLeads } = body;
 
     if (!campaignId || !companyId || !targetCriteria || !geographicFocus) {
       return errorResponse("Missing required params: campaignId, companyId, targetCriteria, geographicFocus", 400);
@@ -231,6 +231,7 @@ serve(async (req) => {
           geographicFocus,
           minimumScore: minimumScore ?? 3.0,
           tone: tone ?? "professional",
+          maxLeads: maxLeads ?? 25,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Pipeline failed";
@@ -274,6 +275,7 @@ interface PipelineParams {
   geographicFocus: string;
   minimumScore: number;
   tone: string;
+  maxLeads: number;
 }
 
 async function executePipeline(
@@ -314,6 +316,7 @@ async function executePipeline(
     companyProfile,
     targetCriteria,
     geographicFocus,
+    maxLeads: params.maxLeads,
   });
 
   if (discoverError) {

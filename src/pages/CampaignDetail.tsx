@@ -85,6 +85,7 @@ const CampaignDetail = () => {
       return data || [];
     },
     enabled: !!id,
+    staleTime: Infinity,
   });
 
   const { data: messages } = useQuery({

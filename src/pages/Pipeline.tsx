@@ -46,6 +46,7 @@ const Pipeline = () => {
             return data || [];
         },
         enabled: !!profile?.company_id,
+        staleTime: Infinity,
     });
 
     const getStageLeads = (stageKey: string) => {

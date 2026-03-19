@@ -34,6 +34,7 @@ const Leads = () => {
       return { leads: data || [], totalCount: count || 0 };
     },
     enabled: !!profile?.company_id,
+    staleTime: Infinity,
   });
 
   const filtered = leads?.leads?.filter((l) => {
