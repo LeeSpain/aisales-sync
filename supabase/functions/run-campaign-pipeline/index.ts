@@ -195,7 +195,7 @@ serve(async (req) => {
     if (isKilled) return errorResponse("AI operations are currently disabled by admin.", 503);
 
     const body = await req.json();
-    const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone } = body;
+    const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone, maxLeads } = body;
 
     if (!campaignId || !companyId || !targetCriteria || !geographicFocus) {
       return errorResponse("Missing required params: campaignId, companyId, targetCriteria, geographicFocus", 400);
@@ -231,6 +231,7 @@ serve(async (req) => {
           geographicFocus,
           minimumScore: minimumScore ?? 3.0,
           tone: tone ?? "professional",
+          maxLeads: maxLeads ?? 25,
         });
       } catch (err) {
         const message = err instanceof Error ? err.message : "Pipeline failed";
@@ -246,17 +247,15 @@ serve(async (req) => {
       }
     })();
 
-    // Wait for completion — the edge function stays alive until done
-    await responsePromise;
+    // Run pipeline in background — return run_id immediately so frontend can poll
+    // @ts-ignore — EdgeRuntime.waitUntil is available in Supabase Edge Functions
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(responsePromise);
+    } else {
+      await responsePromise;
+    }
 
-    // Re-read final state to return
-    const { data: finalRun } = await sb
-      .from("pipeline_runs")
-      .select("*")
-      .eq("id", runId)
-      .single();
-
-    return jsonResponse({ run_id: runId, ...finalRun });
+    return jsonResponse({ run_id: runId, status: "running" });
   } catch (e) {
     console.error("run-campaign-pipeline error:", e);
     return errorResponse(e instanceof Error ? e.message : "Unknown error", 500);
@@ -274,6 +273,7 @@ interface PipelineParams {
   geographicFocus: string;
   minimumScore: number;
   tone: string;
+  maxLeads: number;
 }
 
 async function executePipeline(
@@ -281,7 +281,7 @@ async function executePipeline(
   runId: string,
   params: PipelineParams
 ) {
-  const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone } = params;
+  const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone, maxLeads } = params;
 
   // ── Fetch company profile ──
   const { data: companyData } = await sb
@@ -314,6 +314,7 @@ async function executePipeline(
     companyProfile,
     targetCriteria,
     geographicFocus,
+    maxLeads,
   });
 
   if (discoverError) {
@@ -612,30 +613,34 @@ async function executePipeline(
   }
 
   // ══════════════════════════════════════════
-  // STAGE 6: GENERATE OUTREACH
+  // STAGE 6: GENERATE OUTREACH — Never skip. Generate for ALL qualified leads.
   // ══════════════════════════════════════════
   let messagesGenerated = 0;
 
-  if (qualifiedList.length > 0) {
+  // Re-fetch all campaign leads (qualified or scored) with enriched data
+  const { data: enrichedLeads } = await sb
+    .from("leads")
+    .select("id, business_name, city, region, industry, website, description, contact_name, contact_role, contact_email, rating, review_count, research_data")
+    .eq("campaign_id", campaignId)
+    .in("status", ["qualified", "scored", "researched", "discovered"]);
+
+  const outreachLeads = enrichedLeads || qualifiedList;
+
+  if (outreachLeads.length > 0) {
     await updateProgress(sb, runId, {
       current_stage: "generating_outreach",
-      progress_message: `Writing outreach for ${qualifiedList.length} leads...`,
+      progress_message: `Writing outreach for ${outreachLeads.length} leads...`,
       leads_discovered: totalLeads,
       leads_qualified: qualifiedCount,
     });
 
-    // Re-fetch qualified leads with enriched data for outreach
-    const { data: enrichedLeads } = await sb
-      .from("leads")
-      .select("id, business_name, city, region, industry, website, description, contact_name, contact_role, contact_email, rating, review_count, research_data")
-      .eq("campaign_id", campaignId)
-      .eq("status", "qualified");
-
-    const outreachLeads = enrichedLeads || qualifiedList;
-
     for (let i = 0; i < outreachLeads.length; i++) {
       const lead = outreachLeads[i];
       const researchData = (lead.research_data as Record<string, unknown>) || {};
+
+      // If no contact email, address to "the team"
+      const contactName = lead.contact_name || `the team at ${lead.business_name}`;
+      const needsReview = !lead.contact_email;
 
       const t0 = Date.now();
       const stepId = await logStep(sb, runId, lead.id, "outreach", "gemini", "running", {
@@ -645,6 +650,7 @@ async function executePipeline(
       const { data: emailData, error: emailErr } = await callEdgeFunction("generate-outreach", {
         lead: {
           ...lead,
+          contact_name: contactName,
           web_snippets: researchData.services_offered || [],
           services_found: researchData.competitive_advantages || [],
         },
@@ -668,7 +674,7 @@ async function executePipeline(
           subject: emailData.subject as string,
           body: emailData.body as string,
           email_type: "outreach",
-          status: "draft",
+          status: needsReview ? "pending_approval" : "draft",
           ai_model_used: "gemini-flash",
         });
 
