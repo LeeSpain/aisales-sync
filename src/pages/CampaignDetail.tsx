@@ -15,6 +15,7 @@ import {
   ArrowLeft, Target, Users, Mail, MessageSquare, Workflow,
   Clock, Check, X, Eye, Send, FileText, CheckCircle, Linkedin,
   Phone, AlertTriangle, Edit3, ChevronDown, ChevronUp, Filter,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { leadStatusColors } from "@/lib/constants";
@@ -61,10 +62,46 @@ const CampaignDetail = () => {
     enabled: !!id,
   });
 
+  // Check if there's an active pipeline run for this campaign
+  const { data: activePipelineRun } = useQuery({
+    queryKey: ["pipeline-run", id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("pipeline_runs")
+        .select("id, status, current_stage, progress_message, leads_discovered, leads_qualified, messages_generated, error_message")
+        .eq("campaign_id", id!)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!id,
+    refetchInterval: (query) => {
+      const run = query.state.data;
+      if (run && run.status === "running") return 3000;
+      return false;
+    },
+  });
+
+  const pipelineRunning = activePipelineRun?.status === "running";
+  const pipelineFailed = activePipelineRun?.status === "failed";
+
+  // Auto-refresh leads and messages when pipeline finishes
+  const [prevPipelineStatus, setPrevPipelineStatus] = useState<string | null>(null);
+  if (activePipelineRun?.status === "completed" && prevPipelineStatus === "running") {
+    queryClient.invalidateQueries({ queryKey: ["campaign", id] });
+    queryClient.invalidateQueries({ queryKey: ["campaign-leads", id] });
+    queryClient.invalidateQueries({ queryKey: ["campaign-messages", id] });
+  }
+  if (activePipelineRun?.status !== prevPipelineStatus) {
+    setPrevPipelineStatus(activePipelineRun?.status ?? null);
+  }
+
   const { data: leads } = useQuery({
     queryKey: ["campaign-leads", id],
     queryFn: async () => { const { data } = await supabase.from("leads").select("*").eq("campaign_id", id!).order("score", { ascending: false }); return data || []; },
     enabled: !!id,
+    refetchInterval: pipelineRunning ? 5000 : false,
   });
 
   const { data: messages, refetch: refetchMessages } = useQuery({
@@ -77,6 +114,7 @@ const CampaignDetail = () => {
       return data || [];
     },
     enabled: !!id,
+    refetchInterval: pipelineRunning ? 5000 : false,
   });
 
   // Mutations
@@ -206,6 +244,42 @@ const CampaignDetail = () => {
           </button>
         ))}
       </div>
+
+      {/* ═══════ PIPELINE STATUS BANNER ═══════ */}
+      {pipelineRunning && activePipelineRun && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 mb-6 flex items-center gap-4">
+          <Loader2 className="h-5 w-5 text-primary animate-spin shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-primary">Pipeline is running</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {activePipelineRun.progress_message || "Processing..."}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
+            {(activePipelineRun.leads_discovered ?? 0) > 0 && (
+              <span>{activePipelineRun.leads_discovered} found</span>
+            )}
+            {(activePipelineRun.leads_qualified ?? 0) > 0 && (
+              <span>{activePipelineRun.leads_qualified} qualified</span>
+            )}
+            {(activePipelineRun.messages_generated ?? 0) > 0 && (
+              <span>{activePipelineRun.messages_generated} emails</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {pipelineFailed && activePipelineRun && (
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4 mb-6 flex items-center gap-4">
+          <AlertTriangle className="h-5 w-5 text-destructive shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-destructive">Pipeline stopped</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {activePipelineRun.error_message || "An error occurred. Any leads and emails created before the error are still available below."}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ═══════ OVERVIEW TAB ═══════ */}
       {activeTab === "overview" && (

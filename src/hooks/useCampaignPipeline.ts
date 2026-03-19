@@ -182,7 +182,10 @@ export function useCampaignPipeline() {
     };
   }, []);
 
-  // ── Start pipeline — NO health-check pre-flight, just call directly ──
+  // ── Start pipeline ──
+  // The edge function returns the run_id immediately and processes in the
+  // background. We start polling pipeline_runs right away so the user sees
+  // real-time stage progress.
   const runPipeline = useCallback(async (params: RunPipelineParams) => {
     if (isRunningRef.current) return;
     isRunningRef.current = true;
@@ -201,7 +204,6 @@ export function useCampaignPipeline() {
     });
 
     try {
-      // Call the pipeline directly — no health-check gate
       const { data, error: invokeErr } = await supabase.functions.invoke(
         "run-campaign-pipeline",
         {
@@ -228,7 +230,7 @@ export function useCampaignPipeline() {
       runIdRef.current = runId;
       setState((s) => ({ ...s, runId }));
 
-      // Start polling for progress updates
+      // Start polling immediately — the pipeline is running in the background
       pollingRef.current = setInterval(pollProgress, POLL_INTERVAL_MS);
       await pollProgress();
     } catch (err) {

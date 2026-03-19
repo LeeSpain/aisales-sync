@@ -111,21 +111,33 @@ serve(async (req) => {
     if (runErr || !run) return errorResponse(`Failed to create pipeline run: ${runErr?.message || "unknown"}`, 500);
     const runId = run.id;
 
-    // Return run_id immediately, then execute pipeline
-    const exec = (async () => {
-      try {
-        await executePipeline(sb, runId, { campaignId, companyId, targetCriteria, geographicFocus, minimumScore: minimumScore ?? 3.0, tone: tone ?? "professional" });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Pipeline failed";
-        console.error("[pipeline] Fatal:", err);
-        await updateProgress(sb, runId, { current_stage: "failed", progress_message: message, status: "failed", error_message: message, completed_at: new Date().toISOString() });
-        await sb.from("campaigns").update({ status: "setup" }).eq("id", campaignId);
-      }
-    })();
+    // Execute pipeline in the background — return run_id immediately so
+    // the frontend can start polling pipeline_runs for progress.
+    // The pipeline updates pipeline_runs as each stage completes.
+    const exec = executePipeline(sb, runId, {
+      campaignId, companyId, targetCriteria, geographicFocus,
+      minimumScore: minimumScore ?? 3.0, tone: tone ?? "professional",
+    }).catch(async (err) => {
+      const message = err instanceof Error ? err.message : "Pipeline failed";
+      console.error("[pipeline] Fatal:", err);
+      await updateProgress(sb, runId, {
+        current_stage: "failed", progress_message: message,
+        status: "failed", error_message: message,
+        completed_at: new Date().toISOString(),
+      });
+      await sb.from("campaigns").update({ status: "setup" }).eq("id", campaignId);
+    });
 
-    await exec;
-    const { data: finalRun } = await sb.from("pipeline_runs").select("*").eq("id", runId).single();
-    return jsonResponse({ run_id: runId, ...finalRun });
+    // Tell Deno to keep running the pipeline after we send the response
+    // @ts-ignore — EdgeRuntime.waitUntil is available in Supabase Edge Functions
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(exec);
+    } else {
+      // Fallback: wait for pipeline to complete (blocks response)
+      await exec;
+    }
+
+    return jsonResponse({ run_id: runId, status: "running" });
   } catch (e) {
     console.error("run-campaign-pipeline error:", e);
     return errorResponse(e instanceof Error ? e.message : "Unknown error", 500);
