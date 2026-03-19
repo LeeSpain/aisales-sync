@@ -85,6 +85,7 @@ const CampaignDetail = () => {
       await supabase.from("outreach_messages").update({ status: "approved" }).eq("id", emailId);
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["campaign-messages"] }); toast({ title: "Approved" }); },
+    onError: () => { toast({ title: "Error", description: "Failed to approve email.", variant: "destructive" }); },
   });
 
   const rejectMutation = useMutation({
@@ -92,6 +93,7 @@ const CampaignDetail = () => {
       await supabase.from("outreach_messages").update({ status: "rejected", metadata: { rejected_reason: reason, rejected_at: new Date().toISOString() } }).eq("id", emailId);
     },
     onSuccess: () => { setRejectingId(null); setRejectReason(""); queryClient.invalidateQueries({ queryKey: ["campaign-messages"] }); toast({ title: "Rejected" }); },
+    onError: () => { toast({ title: "Error", description: "Failed to reject email.", variant: "destructive" }); },
   });
 
   const editApproveMutation = useMutation({
@@ -99,6 +101,7 @@ const CampaignDetail = () => {
       await supabase.from("outreach_messages").update({ subject, body, status: "approved", metadata: { edited_before_approval: true, edited_at: new Date().toISOString() } }).eq("id", emailId);
     },
     onSuccess: () => { setEditingId(null); queryClient.invalidateQueries({ queryKey: ["campaign-messages"] }); toast({ title: "Edited & Approved" }); },
+    onError: () => { toast({ title: "Error", description: "Failed to save changes.", variant: "destructive" }); },
   });
 
   const bulkApproveMutation = useMutation({
@@ -106,6 +109,7 @@ const CampaignDetail = () => {
       await supabase.from("outreach_messages").update({ status: "approved" }).in("id", ids);
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["campaign-messages"] }); toast({ title: "All approved" }); },
+    onError: () => { toast({ title: "Error", description: "Failed to approve emails.", variant: "destructive" }); },
   });
 
   // Mark as reviewed when expanded

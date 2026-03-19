@@ -150,6 +150,7 @@ const LeadDetail = () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
       toast({ title: "Status updated" });
     },
+    onError: () => { toast({ title: "Error", description: "Failed to update status.", variant: "destructive" }); },
   });
 
   // Lead update mutation
@@ -166,6 +167,7 @@ const LeadDetail = () => {
       setIsEditing(false);
       toast({ title: "Lead updated" });
     },
+    onError: () => { toast({ title: "Error", description: "Failed to update lead.", variant: "destructive" }); },
   });
 
   // Add note mutation
@@ -183,6 +185,7 @@ const LeadDetail = () => {
       queryClient.invalidateQueries({ queryKey: ["lead-activity-log", id] });
       toast({ title: "Note added" });
     },
+    onError: () => { toast({ title: "Error", description: "Failed to add note.", variant: "destructive" }); },
   });
 
   const handleApprove = async (emailId: string) => {
