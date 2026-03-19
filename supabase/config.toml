@@ -20,6 +20,9 @@ verify_jwt = false
 [functions.score-lead]
 verify_jwt = false
 
+[functions.find-decision-maker]
+verify_jwt = false
+
 [functions.generate-outreach]
 verify_jwt = false
 

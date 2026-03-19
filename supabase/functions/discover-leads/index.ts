@@ -66,7 +66,7 @@ serve(async (req) => {
     const serperRes = await fetch("https://google.serper.dev/places", {
       method: "POST",
       headers: { "X-API-KEY": serperKey, "Content-Type": "application/json" },
-      body: JSON.stringify({ q: query, gl: "us", hl: "en", num: 20 }),
+      body: JSON.stringify({ q: query, gl: "us", hl: "en", num: 50 }),
     });
 
     if (!serperRes.ok) {
@@ -104,7 +104,7 @@ CRITICAL RULES:
 - Infer industry from the business type/category in the Serper data
 - Estimate size_estimate (small/medium/large/enterprise) based on review_count and description`,
       userContent: `REAL Google Places data — format these into leads:
-${JSON.stringify(places.slice(0, 20), null, 2)}
+${JSON.stringify(places.slice(0, 50), null, 2)}
 
 Campaign target criteria: ${JSON.stringify(targetCriteria)}
 Geographic focus: ${geographicFocus}`,

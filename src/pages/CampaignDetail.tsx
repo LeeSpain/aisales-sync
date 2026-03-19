@@ -1,42 +1,37 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   ArrowLeft, Target, Users, Mail, MessageSquare, Workflow,
-  Clock, Check, X, Eye, Send, FileText, CheckCircle,
+  Clock, Check, X, Eye, Send, FileText, CheckCircle, Linkedin,
+  Phone, AlertTriangle, Edit3, ChevronDown, ChevronUp, Filter,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const leadStatusColors: Record<string, string> = {
-  discovered: "bg-muted text-muted-foreground",
-  researched: "bg-muted text-muted-foreground",
-  scored: "bg-primary/10 text-primary",
-  qualified: "bg-success/10 text-success",
-  sequence_active: "bg-accent/10 text-accent",
-  contacted: "bg-accent/10 text-accent",
-  replied: "bg-warning/10 text-warning",
-  in_conversation: "bg-warning/10 text-warning",
-  meeting_booked: "bg-success/10 text-success",
-  proposal_sent: "bg-primary/10 text-primary",
-  negotiating: "bg-warning/10 text-warning",
-  converted: "bg-success/10 text-success",
-  rejected: "bg-destructive/10 text-destructive",
-  unresponsive: "bg-muted text-muted-foreground",
-};
+import { leadStatusColors } from "@/lib/constants";
 
 const emailStatusConfig: Record<string, { label: string; color: string; icon: typeof FileText }> = {
-  pending_approval: { label: "Pending Approval", color: "bg-amber-500/10 text-amber-400", icon: Clock },
+  pending_approval: { label: "Pending", color: "bg-amber-500/10 text-amber-400", icon: Clock },
   draft: { label: "Draft", color: "bg-muted text-muted-foreground", icon: FileText },
   approved: { label: "Approved", color: "bg-success/10 text-success", icon: CheckCircle },
   sent: { label: "Sent", color: "bg-blue-500/10 text-blue-400", icon: Send },
-  opened: { label: "Viewed", color: "bg-amber-500/10 text-amber-400", icon: Eye },
+  opened: { label: "Opened", color: "bg-amber-500/10 text-amber-400", icon: Eye },
   replied: { label: "Replied", color: "bg-emerald-500/10 text-emerald-400", icon: CheckCircle },
+  blocked: { label: "Blocked", color: "bg-destructive/10 text-destructive", icon: X },
+  rejected: { label: "Rejected", color: "bg-destructive/10 text-destructive", icon: X },
+  pending_manual: { label: "Manual Send", color: "bg-accent/10 text-accent", icon: Linkedin },
 };
+
+const channelIcons: Record<string, typeof Mail> = { email: Mail, linkedin: Linkedin, phone: Phone };
 
 const CampaignDetail = () => {
   const { id } = useParams();
@@ -45,54 +40,38 @@ const CampaignDetail = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const [expandedMessage, setExpandedMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "approval" | "leads">("overview");
+  const [approvalFilter, setApprovalFilter] = useState("all");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editSubject, setEditSubject] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", user?.id],
-    queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("company_id").eq("id", user!.id).single();
-      return data;
-    },
+    queryFn: async () => { const { data } = await supabase.from("profiles").select("company_id").eq("id", user!.id).single(); return data; },
     enabled: !!user,
   });
 
-  const { data: company } = useQuery({
-    queryKey: ["company-profile", profile?.company_id],
-    queryFn: async () => {
-      const { data } = await supabase.from("companies").select("ai_profile").eq("id", profile!.company_id!).single();
-      return data;
-    },
-    enabled: !!profile?.company_id,
-  });
-
-  const aiProfile = (company?.ai_profile as Record<string, unknown>) || {};
-  const approval = (aiProfile.approval as Record<string, boolean>) || {};
-  const requiresApproval = !approval.auto_send_outreach;
-
   const { data: campaign } = useQuery({
     queryKey: ["campaign", id],
-    queryFn: async () => {
-      const { data } = await supabase.from("campaigns").select("*").eq("id", id!).single();
-      return data;
-    },
+    queryFn: async () => { const { data } = await supabase.from("campaigns").select("*").eq("id", id!).single(); return data; },
     enabled: !!id,
   });
 
   const { data: leads } = useQuery({
     queryKey: ["campaign-leads", id],
-    queryFn: async () => {
-      const { data } = await supabase.from("leads").select("*").eq("campaign_id", id!).order("score", { ascending: false });
-      return data || [];
-    },
+    queryFn: async () => { const { data } = await supabase.from("leads").select("*").eq("campaign_id", id!).order("score", { ascending: false }); return data || []; },
     enabled: !!id,
   });
 
-  const { data: messages } = useQuery({
+  const { data: messages, refetch: refetchMessages } = useQuery({
     queryKey: ["campaign-messages", id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("outreach_messages")
-        .select("*, leads(business_name, contact_name)")
+      const { data } = await supabase.from("outreach_messages")
+        .select("*, leads(id, business_name, contact_name, contact_role, contact_email, score, email_verification_status)")
         .eq("campaign_id", id!)
         .order("created_at", { ascending: false });
       return data || [];
@@ -100,54 +79,76 @@ const CampaignDetail = () => {
     enabled: !!id,
   });
 
-  const getEmailStatus = (email: any): string => {
-    if (email.replied_at) return "replied";
-    if (email.opened_at) return "opened";
-    if (email.sent_at) return "sent";
-    if (email.status === "approved") return "approved";
-    if (email.status === "pending_approval") return "pending_approval";
-    if (!email.sent_at && requiresApproval) return "pending_approval";
-    return "draft";
-  };
+  // Mutations
+  const approveMutation = useMutation({
+    mutationFn: async (emailId: string) => {
+      await supabase.from("outreach_messages").update({ status: "approved" }).eq("id", emailId);
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["campaign-messages"] }); toast({ title: "Approved" }); },
+  });
 
-  const handleApprove = async (emailId: string) => {
-    const { error } = await supabase.from("outreach_messages").update({ status: "approved" }).eq("id", emailId);
-    if (error) {
-      toast({ title: "Error", description: "Failed to approve", variant: "destructive" });
-    } else {
-      toast({ title: "Approved", description: "Email approved and queued for sending." });
-      queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
+  const rejectMutation = useMutation({
+    mutationFn: async ({ emailId, reason }: { emailId: string; reason: string }) => {
+      await supabase.from("outreach_messages").update({ status: "rejected", metadata: { rejected_reason: reason, rejected_at: new Date().toISOString() } }).eq("id", emailId);
+    },
+    onSuccess: () => { setRejectingId(null); setRejectReason(""); queryClient.invalidateQueries({ queryKey: ["campaign-messages"] }); toast({ title: "Rejected" }); },
+  });
+
+  const editApproveMutation = useMutation({
+    mutationFn: async ({ emailId, subject, body }: { emailId: string; subject: string; body: string }) => {
+      await supabase.from("outreach_messages").update({ subject, body, status: "approved", metadata: { edited_before_approval: true, edited_at: new Date().toISOString() } }).eq("id", emailId);
+    },
+    onSuccess: () => { setEditingId(null); queryClient.invalidateQueries({ queryKey: ["campaign-messages"] }); toast({ title: "Edited & Approved" }); },
+  });
+
+  const bulkApproveMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      await supabase.from("outreach_messages").update({ status: "approved" }).in("id", ids);
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ["campaign-messages"] }); toast({ title: "All approved" }); },
+  });
+
+  // Mark as reviewed when expanded
+  const markReviewed = async (emailId: string) => {
+    const msg = messages?.find((m) => m.id === emailId);
+    const meta = (msg?.metadata as Record<string, unknown>) || {};
+    if (!meta.reviewed_at) {
+      await supabase.from("outreach_messages").update({ metadata: { ...meta, reviewed_at: new Date().toISOString() } }).eq("id", emailId);
     }
   };
 
-  const handleReject = async (emailId: string) => {
-    const { error } = await supabase.from("outreach_messages").update({ status: "rejected" }).eq("id", emailId);
-    if (error) {
-      toast({ title: "Error", description: "Failed to reject", variant: "destructive" });
+  const toggleExpand = (emailId: string) => {
+    if (expandedId === emailId) {
+      setExpandedId(null);
     } else {
-      toast({ title: "Rejected", description: "Email rejected." });
-      queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
+      setExpandedId(emailId);
+      markReviewed(emailId);
     }
   };
 
-  const handleApproveAll = async () => {
-    const pending = messages?.filter((m) => getEmailStatus(m) === "pending_approval") || [];
-    if (pending.length === 0) return;
-    const ids = pending.map((m) => m.id);
-    const { error } = await supabase.from("outreach_messages").update({ status: "approved" }).in("id", ids);
-    if (error) {
-      toast({ title: "Error", description: "Failed to approve all", variant: "destructive" });
-    } else {
-      toast({ title: "All Approved", description: `${ids.length} emails approved and queued for sending.` });
-      queryClient.invalidateQueries({ queryKey: ["campaign-messages"] });
-    }
-  };
+  // Filtered messages
+  const emailMessages = messages?.filter((m) => m.channel === "email") || [];
+  const filteredMessages = approvalFilter === "all" ? emailMessages :
+    approvalFilter === "pending" ? emailMessages.filter((m) => m.status === "pending_approval") :
+    approvalFilter === "approved" ? emailMessages.filter((m) => m.status === "approved") :
+    approvalFilter === "rejected" ? emailMessages.filter((m) => m.status === "rejected") :
+    approvalFilter === "flagged" ? emailMessages.filter((m) => { const meta = (m.metadata as Record<string, unknown>) || {}; return ((meta.quality_flags as string[]) || []).length > 0; }) :
+    emailMessages;
 
-  const pendingCount = messages?.filter((m) => getEmailStatus(m) === "pending_approval").length || 0;
+  const pendingIds = emailMessages.filter((m) => m.status === "pending_approval").map((m) => m.id);
+  const approvedCount = emailMessages.filter((m) => m.status === "approved" || m.status === "sent").length;
+  const rejectedCount = emailMessages.filter((m) => m.status === "rejected").length;
+  const reviewedCount = emailMessages.filter((m) => { const meta = (m.metadata as Record<string, unknown>) || {}; return !!meta.reviewed_at; }).length;
 
   if (!campaign) {
     return <div className="flex items-center justify-center h-full"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>;
   }
+
+  const tabs = [
+    { key: "overview" as const, label: "Overview" },
+    { key: "approval" as const, label: "Approval Queue", count: pendingIds.length },
+    { key: "leads" as const, label: "Leads", count: leads?.length },
+  ];
 
   return (
     <div className="p-4 md:p-8">
@@ -155,7 +156,8 @@ const CampaignDetail = () => {
         <ArrowLeft className="h-4 w-4" /> Back to Campaigns
       </button>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6 md:mb-8">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-6">
         <div className="min-w-0">
           <h1 className="text-xl md:text-2xl font-bold truncate">{campaign.name}</h1>
           <p className="text-muted-foreground text-sm">{campaign.target_description}</p>
@@ -163,21 +165,20 @@ const CampaignDetail = () => {
         <div className="flex items-center gap-2 shrink-0">
           <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary uppercase">{campaign.status}</span>
           <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/campaigns/${id}/sequence`)}>
-            <Workflow className="h-3.5 w-3.5" />
-            Design Sequence
+            <Workflow className="h-3.5 w-3.5" /> Sequence
           </Button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 mb-8">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 mb-6">
         {[
           { label: "Leads Found", value: campaign.leads_found ?? 0, icon: Users },
           { label: "Qualified", value: campaign.leads_qualified ?? 0, icon: Target },
-          { label: "Messages Sent", value: campaign.emails_sent ?? 0, icon: Mail },
+          { label: "Emails", value: emailMessages.length, icon: Mail },
+          { label: "Approved", value: approvedCount, icon: CheckCircle },
           { label: "Replies", value: campaign.replies_received ?? 0, icon: MessageSquare },
           { label: "Meetings", value: campaign.meetings_booked ?? 0, icon: Target },
-          { label: "Proposals", value: campaign.proposals_sent ?? 0, icon: Target },
           { label: "Deals Won", value: campaign.deals_won ?? 0, icon: Target },
         ].map((s) => (
           <div key={s.label} className="rounded-xl border border-border bg-card p-4">
@@ -187,136 +188,276 @@ const CampaignDetail = () => {
         ))}
       </div>
 
-      {/* Outreach Emails */}
-      {messages && messages.length > 0 && (
-        <div className="rounded-xl border border-border bg-card mb-8">
-          <div className="border-b border-border px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <h3 className="font-semibold">Outreach Emails ({messages.length})</h3>
-              {pendingCount > 0 && (
-                <Badge className="bg-amber-500/10 text-amber-400 text-[10px] gap-1">
-                  <Clock className="h-3 w-3" />
-                  {pendingCount} pending
-                </Badge>
-              )}
-            </div>
-            {pendingCount > 1 && (
-              <Button size="sm" className="gradient-primary border-0 text-white gap-1.5 h-7 text-xs" onClick={handleApproveAll}>
-                <Check className="h-3 w-3" />
-                Approve All ({pendingCount})
-              </Button>
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-border mb-6">
+        {tabs.map((tab) => (
+          <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={cn(
+            "px-4 py-2.5 text-sm font-medium border-b-2 transition-colors",
+            activeTab === tab.key ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
+          )}>
+            {tab.label}
+            {tab.count !== undefined && tab.count > 0 && (
+              <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-[10px]">{tab.count}</Badge>
             )}
-          </div>
+          </button>
+        ))}
+      </div>
 
-          {/* Pending approval banner */}
-          {pendingCount > 0 && (
-            <div className="px-6 py-3 bg-amber-500/5 border-b border-amber-500/10 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-amber-400" />
-              <p className="text-xs text-amber-400">
-                {pendingCount} {pendingCount === 1 ? "email" : "emails"} waiting for your approval before sending.
-                {requiresApproval && <span className="text-muted-foreground ml-1">Change this in Settings → Approval Preferences.</span>}
-              </p>
+      {/* ═══════ OVERVIEW TAB ═══════ */}
+      {activeTab === "overview" && (
+        <div className="space-y-6">
+          {/* All messages list */}
+          {messages && messages.length > 0 && (
+            <div className="rounded-xl border border-border bg-card">
+              <div className="border-b border-border px-6 py-4">
+                <h3 className="font-semibold">All Outreach ({messages.length})</h3>
+              </div>
+              <div className="divide-y divide-border">
+                {messages.slice(0, 20).map((msg: Record<string, unknown>) => {
+                  const channel = (msg.channel as string) || "email";
+                  const status = (msg.status as string) || "draft";
+                  const st = emailStatusConfig[status] || emailStatusConfig.draft;
+                  const StIcon = st.icon;
+                  const ChIcon = channelIcons[channel] || Mail;
+                  const lead = msg.leads as Record<string, unknown> | null;
+
+                  return (
+                    <div key={msg.id as string} className="px-6 py-3 flex items-center gap-4">
+                      <ChIcon className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{msg.subject as string}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {lead?.business_name as string || "Unknown"} {lead?.contact_name ? `· ${lead.contact_name}` : ""}
+                        </p>
+                      </div>
+                      <Badge className={cn("text-[10px] gap-1 shrink-0", st.color)}>
+                        <StIcon className="h-3 w-3" /> {st.label}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground shrink-0">
+                        {new Date(msg.created_at as string).toLocaleDateString()}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
-
-          <div className="divide-y divide-border">
-            {messages.map((email: any) => {
-              const statusKey = getEmailStatus(email);
-              const st = emailStatusConfig[statusKey] || emailStatusConfig.draft;
-              const StIcon = st.icon;
-              const isPending = statusKey === "pending_approval";
-              const isExpanded = expandedMessage === email.id;
-              return (
-                <div key={email.id}>
-                  <div
-                    className={cn(
-                      "px-6 py-3 flex items-center gap-4",
-                      isPending ? "bg-amber-500/[0.02]" : ""
-                    )}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{email.subject}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        To {email.leads?.business_name || "Unknown"}
-                        {email.leads?.contact_name && ` · ${email.leads.contact_name}`}
-                      </p>
-                    </div>
-                    <Badge className={cn("text-[10px] gap-1 shrink-0", st.color)}>
-                      <StIcon className="h-3 w-3" />
-                      {st.label}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground shrink-0 w-16 text-right">
-                      {new Date(email.created_at).toLocaleDateString()}
-                    </span>
-                    <div className="flex items-center gap-1 shrink-0">
-                      {isPending && (
-                        <>
-                          <Button
-                            size="sm"
-                            className="h-8 px-2.5 text-xs gradient-primary border-0 text-white"
-                            onClick={() => handleApprove(email.id)}
-                          >
-                            <Check className="h-3 w-3 mr-0.5" /> Approve
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-8 px-2 text-muted-foreground hover:text-destructive"
-                            onClick={() => handleReject(email.id)}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </>
-                      )}
-                      <button
-                        onClick={() => setExpandedMessage(isExpanded ? null : email.id)}
-                        className="text-muted-foreground hover:text-primary ml-1"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  {isExpanded && (
-                    <div className="px-6 py-4 bg-muted/20 border-t border-border/50">
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Subject</p>
-                      <p className="text-sm font-medium mb-3">{email.subject}</p>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Body</p>
-                      <div className="text-sm whitespace-pre-wrap bg-card rounded-lg border border-border p-4">{email.body}</div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
 
-      {/* Leads */}
-      <div className="rounded-xl border border-border bg-card">
-        <div className="border-b border-border px-6 py-4">
-          <h3 className="font-semibold">Leads ({leads?.length || 0})</h3>
-        </div>
-        {leads && leads.length > 0 ? (
-          <div className="divide-y divide-border">
-            {leads.map((lead) => (
-              <div key={lead.id} className="flex items-center gap-4 px-6 py-3 hover:bg-muted/30 cursor-pointer" onClick={() => navigate(`/leads/${lead.id}`)}>
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
-                  {lead.score?.toFixed(1) || "—"}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{lead.business_name}</p>
-                  <p className="text-xs text-muted-foreground">{lead.city} · {lead.industry}</p>
-                </div>
-                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium capitalize", leadStatusColors[lead.status] || "bg-muted text-muted-foreground")}>
-                  {lead.status}
-                </span>
-              </div>
-            ))}
+      {/* ═══════ APPROVAL QUEUE TAB ═══════ */}
+      {activeTab === "approval" && (
+        <div className="space-y-4">
+          {/* Bulk actions bar */}
+          <div className="sticky top-0 z-10 rounded-xl border border-border bg-card p-4 flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              {["all", "pending", "approved", "rejected", "flagged"].map((f) => (
+                <button key={f} onClick={() => setApprovalFilter(f)} className={cn(
+                  "rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors",
+                  approvalFilter === f ? "gradient-primary text-white" : "bg-muted text-muted-foreground hover:text-foreground"
+                )}>{f}</button>
+              ))}
+            </div>
+            <div className="ml-auto flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">
+                {reviewedCount}/{emailMessages.length} reviewed · {approvedCount} approved · {rejectedCount} rejected
+              </span>
+              {pendingIds.length > 0 && (
+                <Button size="sm" className="gradient-primary border-0 text-white gap-1.5 text-xs" onClick={() => bulkApproveMutation.mutate(pendingIds)}>
+                  <Check className="h-3 w-3" /> Approve All ({pendingIds.length})
+                </Button>
+              )}
+            </div>
           </div>
-        ) : (
-          <div className="py-12 text-center text-sm text-muted-foreground">No leads yet. The AI will discover and enrich leads when the campaign starts running.</div>
-        )}
-      </div>
+
+          {/* Email cards */}
+          {filteredMessages.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border p-12 text-center">
+              <Mail className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground">
+                {approvalFilter === "pending" ? "No pending emails. All caught up!" : "No emails match this filter."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredMessages.map((msg: Record<string, unknown>) => {
+                const msgId = msg.id as string;
+                const status = (msg.status as string) || "draft";
+                const st = emailStatusConfig[status] || emailStatusConfig.draft;
+                const StIcon = st.icon;
+                const lead = msg.leads as Record<string, unknown> | null;
+                const meta = (msg.metadata as Record<string, unknown>) || {};
+                const qualityFlags = (meta.quality_flags as string[]) || [];
+                const isExpanded = expandedId === msgId;
+                const isEditing = editingId === msgId;
+                const isRejecting = rejectingId === msgId;
+                const isPending = status === "pending_approval";
+
+                return (
+                  <div key={msgId} className={cn(
+                    "rounded-xl border bg-card overflow-hidden transition-all",
+                    isPending ? "border-amber-500/20" : status === "blocked" ? "border-destructive/20" : "border-border"
+                  )}>
+                    {/* Header row */}
+                    <div className="px-5 py-3 flex items-center gap-3 cursor-pointer" onClick={() => toggleExpand(msgId)}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <p className="text-sm font-medium truncate">{lead?.business_name as string || "Unknown"}</p>
+                          {lead?.score && (
+                            <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded",
+                              (lead.score as number) >= 4 ? "bg-emerald-500/10 text-emerald-400" : "bg-primary/10 text-primary"
+                            )}>{(lead.score as number).toFixed(1)}</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {lead?.contact_name as string || "No contact"} {lead?.contact_role ? `· ${lead.contact_role}` : ""}
+                          {lead?.contact_email ? ` · ${lead.contact_email}` : ""}
+                        </p>
+                      </div>
+
+                      {qualityFlags.length > 0 && (
+                        <div className="flex gap-1">
+                          {qualityFlags.map((flag) => (
+                            <Badge key={flag} variant="outline" className="text-[9px] text-amber-400 border-amber-400/30 gap-0.5">
+                              <AlertTriangle className="h-2.5 w-2.5" /> {flag.replace(/_/g, " ")}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+
+                      <Badge className={cn("text-[10px] gap-1 shrink-0", st.color)}>
+                        <StIcon className="h-3 w-3" /> {st.label}
+                      </Badge>
+                      {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                    </div>
+
+                    {/* Subject line */}
+                    <div className="px-5 pb-2">
+                      <p className="text-xs text-muted-foreground">Subject:</p>
+                      <p className="text-sm font-medium">{msg.subject as string}</p>
+                    </div>
+
+                    {/* Expanded view */}
+                    {isExpanded && (
+                      <div className="px-5 pb-4 space-y-3 border-t border-border/50 pt-3">
+                        {/* Blocked reason */}
+                        {msg.blocked_reason && (
+                          <div className="rounded-lg bg-destructive/5 border border-destructive/20 p-3 flex items-start gap-2">
+                            <X className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-xs font-medium text-destructive">Blocked</p>
+                              <p className="text-xs text-muted-foreground">{msg.blocked_reason as string}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Email body */}
+                        {isEditing ? (
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Subject</p>
+                              <Input value={editSubject} onChange={(e) => setEditSubject(e.target.value)} />
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Body</p>
+                              <Textarea value={editBody} onChange={(e) => setEditBody(e.target.value)} className="min-h-[200px] text-sm" />
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" className="gradient-primary border-0 text-white gap-1" onClick={() => editApproveMutation.mutate({ emailId: msgId, subject: editSubject, body: editBody })}>
+                                <Check className="h-3 w-3" /> Save & Approve
+                              </Button>
+                              <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="rounded-lg bg-muted/20 p-4 text-sm whitespace-pre-wrap leading-relaxed">{msg.body as string}</div>
+                        )}
+
+                        {/* Reject reason input */}
+                        {isRejecting && (
+                          <div className="flex gap-2">
+                            <Input placeholder="Reason for rejection..." value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} className="text-sm" />
+                            <Button size="sm" variant="destructive" onClick={() => rejectMutation.mutate({ emailId: msgId, reason: rejectReason })}>Reject</Button>
+                            <Button size="sm" variant="ghost" onClick={() => setRejectingId(null)}>Cancel</Button>
+                          </div>
+                        )}
+
+                        {/* Action buttons */}
+                        {isPending && !isEditing && !isRejecting && (
+                          <div className="flex items-center gap-2 pt-2">
+                            <Button size="sm" className="gradient-primary border-0 text-white gap-1" onClick={() => approveMutation.mutate(msgId)}>
+                              <Check className="h-3 w-3" /> Approve
+                            </Button>
+                            <Button size="sm" variant="outline" className="gap-1" onClick={() => { setEditingId(msgId); setEditSubject(msg.subject as string); setEditBody(msg.body as string); }}>
+                              <Edit3 className="h-3 w-3" /> Edit & Approve
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-destructive gap-1" onClick={() => setRejectingId(msgId)}>
+                              <X className="h-3 w-3" /> Reject
+                            </Button>
+                            {lead?.id && (
+                              <button onClick={() => navigate(`/leads/${lead.id}`)} className="ml-auto text-xs text-muted-foreground hover:text-primary">
+                                View Lead
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Send status for approved emails */}
+                        {(status === "approved" || status === "sent" || status === "opened" || status === "replied") && (
+                          <div className="flex items-center gap-3 text-xs">
+                            {["approved", "sent", "opened", "replied"].map((step) => {
+                              const reached = ["approved", "sent", "opened", "replied"].indexOf(status) >= ["approved", "sent", "opened", "replied"].indexOf(step);
+                              return (
+                                <div key={step} className={cn("flex items-center gap-1 capitalize", reached ? "text-foreground" : "text-muted-foreground/40")}>
+                                  {reached ? <Check className="h-3 w-3 text-success" /> : <div className="h-3 w-3 rounded-full border border-muted-foreground/30" />}
+                                  {step === "approved" ? "Queued" : step}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══════ LEADS TAB ═══════ */}
+      {activeTab === "leads" && (
+        <div className="rounded-xl border border-border bg-card">
+          <div className="border-b border-border px-6 py-4">
+            <h3 className="font-semibold">Leads ({leads?.length || 0})</h3>
+          </div>
+          {leads && leads.length > 0 ? (
+            <div className="divide-y divide-border">
+              {leads.map((lead) => (
+                <div key={lead.id} className="flex items-center gap-4 px-6 py-3 hover:bg-muted/30 cursor-pointer" onClick={() => navigate(`/leads/${lead.id}`)}>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-xs font-bold text-primary">
+                    {lead.score?.toFixed(1) || "—"}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{lead.business_name}</p>
+                    <p className="text-xs text-muted-foreground">{lead.city} · {lead.industry}</p>
+                  </div>
+                  {lead.contact_name && (
+                    <span className="text-xs text-muted-foreground hidden md:block">{lead.contact_name}</span>
+                  )}
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium capitalize", leadStatusColors[lead.status] || "bg-muted text-muted-foreground")}>
+                    {lead.status?.replace(/_/g, " ")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-sm text-muted-foreground">No leads yet.</div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

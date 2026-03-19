@@ -9,6 +9,82 @@ import {
 } from "../_shared/utils.ts";
 import { validateRequired, validateUUID } from "../_shared/validators.ts";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Email verification via Hunter.io
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface VerificationResult {
+  status: "valid" | "invalid" | "risky" | "unknown";
+  score: number;
+}
+
+async function verifyEmailWithHunter(email: string): Promise<VerificationResult> {
+  const hunterKey = Deno.env.get("HUNTER_API_KEY");
+  if (!hunterKey) {
+    console.warn("HUNTER_API_KEY not set — skipping email verification");
+    return { status: "unknown", score: 0 };
+  }
+
+  try {
+    const url = `https://api.hunter.io/v2/email-verifier?email=${encodeURIComponent(email)}&api_key=${hunterKey}`;
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      console.error("Hunter API error:", res.status, await res.text());
+      return { status: "unknown", score: 0 };
+    }
+
+    const json = await res.json();
+    const data = json.data;
+
+    // Hunter returns: deliverable, undeliverable, risky, unknown
+    const result = data?.result || "unknown";
+    const score = data?.score || 0;
+
+    if (result === "deliverable") return { status: "valid", score };
+    if (result === "undeliverable") return { status: "invalid", score };
+    if (result === "risky") return { status: "risky", score };
+    return { status: "unknown", score };
+  } catch (err) {
+    console.error("Hunter verification failed:", err);
+    return { status: "unknown", score: 0 };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Block helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function blockSend(
+  sb: ReturnType<typeof getSupabaseClient>,
+  messageId: string,
+  leadId: string,
+  companyId: string,
+  reason: string,
+  businessName: string,
+) {
+  // Update outreach message to blocked
+  await sb
+    .from("outreach_messages")
+    .update({
+      status: "blocked",
+      blocked_reason: reason,
+    })
+    .eq("id", messageId);
+
+  // Log the blocked send
+  await logActivity(sb, "outreach_blocked", companyId, `Outreach to ${businessName} blocked: ${reason}`, {
+    message_id: messageId,
+    lead_id: leadId,
+    event_type: "outreach_blocked",
+    blocked_reason: reason,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main handler
+// ─────────────────────────────────────────────────────────────────────────────
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return optionsResponse();
 
@@ -38,16 +114,94 @@ serve(async (req) => {
     const lead = message.leads;
     if (!lead) return errorResponse("Associated lead not found", 404);
 
-    // 2. Fetch email config for the company
+    // 2. Determine recipient email
+    const recipientEmail = lead.contact_email || lead.email;
+    const channel = message.channel || "email";
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // EMAIL BOUNCE PROTECTION — Pre-send verification checks
+    // ═══════════════════════════════════════════════════════════════════════
+
+    if (channel === "email" && recipientEmail) {
+      const verificationStatus = lead.email_verification_status as string | null;
+      const contactConfidence = lead.contact_confidence as string | null;
+
+      // CHECK 1: Email marked as invalid — hard block
+      if (verificationStatus === "invalid") {
+        const reason = "Email marked as invalid — re-enrich this lead first";
+        await blockSend(sb, message_id, lead.id, lead.company_id, reason, lead.business_name);
+        return jsonResponse({
+          success: false,
+          blocked: true,
+          reason,
+          message_id,
+          lead_id: lead.id,
+        }, 422);
+      }
+
+      // CHECK 2: Risky email + guessed contact — block
+      if (verificationStatus === "risky" && contactConfidence === "guessed") {
+        const reason = "Email confidence too low — verify before sending";
+        await blockSend(sb, message_id, lead.id, lead.company_id, reason, lead.business_name);
+        return jsonResponse({
+          success: false,
+          blocked: true,
+          reason,
+          message_id,
+          lead_id: lead.id,
+        }, 422);
+      }
+
+      // CHECK 3: No verification status yet — verify on the fly
+      if (verificationStatus === null) {
+        const result = await verifyEmailWithHunter(recipientEmail);
+
+        // Store the verification result on the lead
+        await sb.from("leads").update({
+          email_verification_status: result.status,
+        }).eq("id", lead.id);
+
+        // If invalid after verification — block
+        if (result.status === "invalid") {
+          const reason = "Email verified as invalid by Hunter.io — re-enrich this lead first";
+          await blockSend(sb, message_id, lead.id, lead.company_id, reason, lead.business_name);
+          return jsonResponse({
+            success: false,
+            blocked: true,
+            reason,
+            message_id,
+            lead_id: lead.id,
+          }, 422);
+        }
+
+        // If risky + guessed — block
+        if (result.status === "risky" && contactConfidence === "guessed") {
+          const reason = "Email verified as risky with low confidence — verify before sending";
+          await blockSend(sb, message_id, lead.id, lead.company_id, reason, lead.business_name);
+          return jsonResponse({
+            success: false,
+            blocked: true,
+            reason,
+            message_id,
+            lead_id: lead.id,
+          }, 422);
+        }
+
+        // valid or unknown with decent confidence — proceed
+        console.log(`Email ${recipientEmail} verified: ${result.status} (score: ${result.score})`);
+      }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // END BOUNCE PROTECTION — proceed to send
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // 3. Fetch email config for the company
     const { data: emailConfig } = await sb
       .from("email_config")
       .select("*")
       .eq("company_id", lead.company_id)
       .maybeSingle();
-
-    // 3. Determine recipient email
-    const recipientEmail = lead.contact_email || lead.email;
-    const channel = message.channel || "email";
 
     let sendResult: { status: string; method: string };
 
