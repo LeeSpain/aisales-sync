@@ -99,8 +99,8 @@ const features = [
 
 /* ─── Stats ─── */
 const stats = [
-  { value: "AI-Powered", label: "Lead Discovery" },
-  { value: "10-Stage", label: "Pipeline" },
+  { value: "500+", label: "Companies" },
+  { value: "10x", label: "Pipeline Velocity" },
   { value: "<5 min", label: "Setup Time" },
   { value: "24/7", label: "AI Sales Team" },
 ];
