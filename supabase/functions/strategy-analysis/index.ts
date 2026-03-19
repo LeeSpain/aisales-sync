@@ -67,7 +67,7 @@ serve(async (req) => {
 
       // All outreach with response data
       sb
-        .from("outreach_messages")
+        .from("outreach_emails")
         .select(
           "id, status, channel, sent_at, opened_at, replied_at, campaign_id",
         )
