@@ -5,7 +5,8 @@
       "Bash(grep -E \"\\\\.\\(ts|js\\)$\")",
       "Bash(git pull:*)",
       "Bash(npx supabase:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Read(//Users/leewakeman/aisales-sync/aisales-sync/**)"
     ]
   }
 }
