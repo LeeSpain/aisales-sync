@@ -26,7 +26,6 @@ interface RunPipelineParams {
   geographicFocus: string;
   minimumScore: number;
   tone: string;
-  maxLeads?: number;
 }
 
 interface PipelineRunSnapshot {
@@ -102,7 +101,7 @@ export function useCampaignPipeline() {
   }, []);
 
   const runPipeline = useCallback(async (params: RunPipelineParams) => {
-    const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone, maxLeads } = params;
+    const { campaignId, companyId, targetCriteria, geographicFocus, minimumScore, tone } = params;
 
     if (isRunningRef.current) return;
     isRunningRef.current = true;
@@ -125,7 +124,6 @@ export function useCampaignPipeline() {
           geographicFocus,
           minimumScore,
           tone,
-          maxLeads: maxLeads ?? 25,
         },
       });
 

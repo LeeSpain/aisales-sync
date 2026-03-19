@@ -48,7 +48,6 @@ const Dashboard = () => {
       return data || [];
     },
     enabled: !!profile?.company_id,
-    staleTime: Infinity,
   });
 
   const { data: recentActivity } = useQuery({
